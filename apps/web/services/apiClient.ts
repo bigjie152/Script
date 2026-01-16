@@ -18,13 +18,23 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT = 12000;
 
+export function getApiBase() {
+  const envBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
+  if (envBase) {
+    return envBase;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api`;
+  }
+  return "/api";
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
   timeoutMs = DEFAULT_TIMEOUT
 ): Promise<T> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "https://script-426.pages.dev";
+  const baseUrl = getApiBase();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -73,11 +83,18 @@ function safeJsonParse(value: string) {
 }
 
 function resolveUrl(base: string, path: string) {
-  if (!base) return path;
-  if (base.startsWith("/")) return `${base}${path}`;
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!normalizedBase) return normalizedPath;
+  if (normalizedBase.endsWith("/api") && normalizedPath.startsWith("/api/")) {
+    return `${normalizedBase}${normalizedPath.slice(4)}`;
+  }
+  if (normalizedBase.startsWith("/")) {
+    return `${normalizedBase}${normalizedPath}`;
+  }
   try {
-    return new URL(path, base).toString();
+    return new URL(normalizedPath, normalizedBase).toString();
   } catch {
-    return `${base}${path}`;
+    return `${normalizedBase}${normalizedPath}`;
   }
 }

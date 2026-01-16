@@ -13,10 +13,10 @@ npm install
 设置 API 基础地址（推荐指向线上 API，以避免本地 D1 绑定问题）：
 ```bash
 # macOS / Linux
-export NEXT_PUBLIC_API_BASE_URL=https://script-426.pages.dev
+export NEXT_PUBLIC_API_BASE_URL=https://<api-domain>
 
 # Windows PowerShell
-$env:NEXT_PUBLIC_API_BASE_URL="https://script-426.pages.dev"
+$env:NEXT_PUBLIC_API_BASE_URL="https://<api-domain>"
 ```
 
 启动前端：

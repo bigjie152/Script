@@ -6,6 +6,7 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { TopNav } from "../../components/layout/TopNav";
+import { getApiBase } from "../../services/apiClient";
 import { createProject } from "../../services/projectApi";
 
 const MOCK_PROJECTS = [
@@ -30,6 +31,7 @@ export default function WorkspacePage() {
   const [recent, setRecent] = useState<
     Array<{ id: string; name: string; description?: string | null }>
   >([]);
+  const apiBase = getApiBase();
 
   const handleCreate = async () => {
     setError(null);
@@ -86,6 +88,7 @@ export default function WorkspacePage() {
         <Sidebar activeKey="workspace" />
         <main className="space-y-6">
           <TopNav onCreate={handleCreate} creating={creating} />
+          <div className="text-xs text-muted">API Base: {apiBase}</div>
           {error ? <ErrorBanner message={error} /> : null}
 
           <section className="space-y-4">
