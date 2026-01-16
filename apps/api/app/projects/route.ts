@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, schema } from "../../lib/db";
+import { db, getD1Binding, schema } from "../../lib/db";
 import { jsonError } from "../../lib/http";
 
 export const runtime = "edge";
@@ -102,13 +102,13 @@ export async function POST(request: Request) {
   }
 
   const bindingName = process.env.D1_BINDING || "DB";
-  const binding = (globalThis as Record<string, unknown>)[bindingName];
-  if (!binding || typeof (binding as { prepare?: unknown }).prepare !== "function") {
+  const binding = getD1Binding();
+  if (!binding) {
     logError({
       message: "DB binding not found",
       requestId,
       contentType,
-      body
+      body: { bindingName }
     });
     return jsonError(500, "DB binding not found");
   }
