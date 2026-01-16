@@ -62,3 +62,40 @@ commit：31623ffce6cb578d3bc64b6ab496d0cc8f82c241
 1) **POST /api/projects 返回 invalid json**（即使 Content-Type: application/json），导致闭环无法开始。  
 2) **后续链路全部被阻塞**（truth/lock/AI/issue/feedback 无法验证）。  
 3) **缺少服务端日志回溯**（无法定位 JSON 解析失败的具体原因）。
+
+---
+
+## 5) 修复后复验（2026-01-16 16:41:10 +08:00）
+
+commit：0a7c53e3b778f02348334b53526cc015333aced7  
+部署 ID：4548e265-3b71-4079-a18f-01ff182e7c07  
+base_url：https://script-426.pages.dev
+
+### 修复要点
+- `POST /api/projects` 解析改为 `arrayBuffer + TextDecoder`，容忍 UTF-16/UTF-8，并保持 400/500 语义清晰。
+- 读取 D1 binding 改为直接访问 `globalThis[Symbol.for("__cloudflare-request-context__")]`，避开 nodejs_compat 下 `getRequestContext` 抛错。
+- 线上验收脚本改为 `--data-binary` 发送 JSON，避免 PowerShell/curl 破坏引号导致非 JSON。
+
+### API 闭环复验结果
+| 接口 | 实际 | 结论 |
+|---|---|---|
+| GET /api/health | 200 | 通过 |
+| GET /health | 200 | 通过 |
+| POST /api/projects | 201（返回 projectId） | 通过 |
+| GET /api/projects/:id | 200 | 通过 |
+| PUT /api/projects/:id/truth | 200 | 通过 |
+| POST /api/projects/:id/truth/lock | 200 | 通过 |
+| POST /api/projects/:id/ai/derive/roles | 200 | 通过 |
+| POST /api/projects/:id/ai/check/consistency | 200 | 通过 |
+| GET /api/projects/:id/issues | 200 | 通过 |
+| POST /api/projects/:id/community/feedback | 200 | 通过 |
+| GET /api/projects/:id/community/feedback | 200 | 通过 |
+
+### 稳定性回归（20 次创建 + 读取）
+- 成功：20
+- 失败：0
+- 总耗时：14.790s
+
+### 可观测结论
+- 线上 4xx/5xx 已具备可读错误信息，JSON 解析异常与 DB 绑定缺失均可定位。
+- 若后续仍出现 500，建议补充 requestId 到响应头，便于关联日志检索。

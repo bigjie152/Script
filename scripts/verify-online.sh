@@ -97,7 +97,7 @@ request "consistency check" "POST" "$BASE_URL/api/projects/$project_id/ai/check/
 
 request "list issues" "GET" "$BASE_URL/api/projects/$project_id/issues?truthSnapshotId=$truth_snapshot_id" "" "200"
 
-feedback_body='{"content":"线上 smoke 反馈","type":"comment"}'
+feedback_body='{"content":"online smoke feedback","type":"comment"}'
 request "create feedback" "POST" "$BASE_URL/api/projects/$project_id/community/feedback" "$feedback_body" "200"
 request "list feedback" "GET" "$BASE_URL/api/projects/$project_id/community/feedback" "" "200"
 

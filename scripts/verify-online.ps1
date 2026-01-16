@@ -105,7 +105,7 @@ Invoke-Request -Title "consistency check" -Method "POST" -Url "$BaseUrl/api/proj
 
 Invoke-Request -Title "list issues" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/issues?truthSnapshotId=$truthSnapshotId" -ExpectedStatus @("200") | Out-Null
 
-$feedbackBody = '{"content":"线上 smoke 反馈","type":"comment"}'
+$feedbackBody = '{"content":"online smoke feedback","type":"comment"}'
 Invoke-Request -Title "create feedback" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/community/feedback" -Body $feedbackBody -ExpectedStatus @("200") | Out-Null
 Invoke-Request -Title "list feedback" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/community/feedback" -ExpectedStatus @("200") | Out-Null
 
@@ -134,21 +134,21 @@ for ($i = 1; $i -le 20; $i++) {
     break
   }
 
-  $pid = ""
+  $roundProjectId = ""
   try {
     $j = $bodyOnly | ConvertFrom-Json
-    $pid = $j.projectId
-    if (-not $pid -and $j.project) { $pid = $j.project.id }
+    $roundProjectId = $j.projectId
+    if (-not $roundProjectId -and $j.project) { $roundProjectId = $j.project.id }
   } catch {
-    $pid = ""
+    $roundProjectId = ""
   }
-  if (-not $pid) {
+  if (-not $roundProjectId) {
     Write-Host ("FAIL: projectId missing in round {0}" -f $i)
     $fail++
     break
   }
 
-  $readResp = & curl.exe -s -X GET -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" "$BaseUrl/api/projects/$pid"
+  $readResp = & curl.exe -s -X GET -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" "$BaseUrl/api/projects/$roundProjectId"
   $readStatus = ($readResp | Select-String -Pattern "^HTTP_STATUS:" | ForEach-Object { $_.Line.Replace("HTTP_STATUS:","") }).Trim()
   $readTime = ($readResp | Select-String -Pattern "^TIME_TOTAL:" | ForEach-Object { $_.Line.Replace("TIME_TOTAL:","") }).Trim()
   if ($readStatus -ne "200") {
