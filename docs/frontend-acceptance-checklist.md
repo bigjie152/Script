@@ -36,3 +36,13 @@ API Base：`https://script-426.pages.dev`（本地后端未提供 D1 binding）
 ## 5) 可演示路径
 
 打开 `/workspace` → 新建项目 → 进入 `/projects/{id}/editor/overview` → 切换到 `truth` → 保存 → 锁定 → 生成角色 → 一致性检查 → 问题列表查看 issues
+
+---
+
+## 6) 线上复验（部署后）
+
+复验时间：2026-01-16 17:33:03 +08:00  
+Base URL：`https://script-426.pages.dev`  
+
+- health / workflow 全部通过  
+- 稳定性回归（20 次创建 + 读取）：成功 20，失败 0，总耗时 23.807s  
