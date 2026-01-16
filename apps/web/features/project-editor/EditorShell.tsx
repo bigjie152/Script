@@ -8,6 +8,7 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { TabGroup } from "../../components/common/TabGroup";
 import { useTruthDocument } from "../../hooks/useTruthDocument";
+import { useMockAiTasks } from "../../hooks/useMockAi";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
 
@@ -45,6 +46,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     lock,
     unlock
   } = useTruthDocument(projectId);
+  const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
 
   const moduleLabel = useMemo(() => {
@@ -75,11 +77,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   };
 
   const handleDeriveRoles = () => {
-    window.alert("生成角色即将上线");
+    if (!locked) return;
+    deriveRoles.run();
   };
 
   const handleReviewLogic = () => {
-    window.alert("一致性检查即将上线");
+    if (!locked) return;
+    reviewLogic.run();
   };
 
   const handleNav = (next: ModuleKey) => {
@@ -222,7 +226,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               onLock={lock}
               onUnlock={handleUnlock}
               onDeriveRoles={handleDeriveRoles}
+              deriveStatus={deriveRoles.status}
+              deriveMessage={deriveRoles.message}
               onReviewLogic={handleReviewLogic}
+              reviewStatus={reviewLogic.status}
+              reviewMessage={reviewLogic.message}
             />
           ) : (
             <IssuePanel

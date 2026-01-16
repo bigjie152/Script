@@ -1,69 +1,21 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { updateTruth } from "../services/truthApi";
 import { useProject } from "./useProject";
+import {
+  EditorDocument,
+  fromTruthContent,
+  toTruthContent
+} from "../lib/editorDocument";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
 const LOCK_STORAGE_PREFIX = "script-truth-lock:";
 
-function collectText(node: any): string {
-  if (!node) return "";
-  if (typeof node.text === "string") return node.text;
-  if (Array.isArray(node.content)) {
-    return node.content.map(collectText).join("");
-  }
-  return "";
-}
-
-function extractText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!content || typeof content !== "object") return "";
-
-  const node = content as { type?: string; content?: unknown; text?: unknown };
-
-  if (typeof node.text === "string") return node.text;
-
-  if (node.type === "doc" && Array.isArray(node.content)) {
-    const paragraphs = node.content
-      .map((child) => collectText(child))
-      .filter((item) => item.trim().length > 0);
-    if (paragraphs.length) return paragraphs.join("\n\n");
-  }
-
-  if (Array.isArray(node.content)) {
-    const pieces = node.content
-      .map((child) => collectText(child))
-      .filter((item) => item.trim().length > 0);
-    if (pieces.length) return pieces.join("\n\n");
-  }
-
-  return "";
-}
-
-function buildDocFromText(text: string): Record<string, unknown> {
-  const lines = text
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!lines.length) {
-    return { type: "doc", content: [] };
-  }
-
-  return {
-    type: "doc",
-    content: lines.map((line) => ({
-      type: "paragraph",
-      content: [{ type: "text", text: line }]
-    }))
-  };
-}
-
 export function useTruthDocument(projectId: string) {
   const { project, truth, latestSnapshotId, loading, error, refresh } =
     useProject(projectId);
-  const [text, setText] = useState("");
-  const [baseline, setBaseline] = useState("");
+  const [document, setDocument] = useState<EditorDocument>({ text: "" });
+  const [baselineText, setBaselineText] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
@@ -88,9 +40,9 @@ export function useTruthDocument(projectId: string) {
   }, [lockReady, locked, projectId]);
 
   useEffect(() => {
-    const nextText = extractText(truth?.content);
-    setText(nextText);
-    setBaseline(nextText);
+    const nextDoc = fromTruthContent(truth?.content);
+    setDocument(nextDoc);
+    setBaselineText(nextDoc.text);
     setSaveState("idle");
     setSaveError(null);
   }, [truth?.id, truth?.content]);
@@ -103,7 +55,7 @@ export function useTruthDocument(projectId: string) {
 
   const updateText = useCallback(
     (next: string) => {
-      setText(next);
+      setDocument({ text: next });
       if (saveState === "error") {
         setSaveState("idle");
         setSaveError(null);
@@ -112,7 +64,10 @@ export function useTruthDocument(projectId: string) {
     [saveState]
   );
 
-  const hasUnsaved = useMemo(() => text !== baseline, [text, baseline]);
+  const hasUnsaved = useMemo(
+    () => document.text !== baselineText,
+    [document.text, baselineText]
+  );
 
   const save = useCallback(async () => {
     if (locked) {
@@ -125,8 +80,8 @@ export function useTruthDocument(projectId: string) {
     setSaveError(null);
 
     try {
-      await updateTruth(projectId, buildDocFromText(text));
-      setBaseline(text);
+      await updateTruth(projectId, toTruthContent(document));
+      setBaselineText(document.text);
       setSaveState("success");
       refresh();
       return true;
@@ -135,7 +90,7 @@ export function useTruthDocument(projectId: string) {
       setSaveError(err instanceof Error ? err.message : "保存失败，请重试");
       return false;
     }
-  }, [locked, projectId, refresh, text]);
+  }, [locked, projectId, refresh, document]);
 
   const lock = useCallback(() => setLocked(true), []);
   const unlock = useCallback(() => setLocked(false), []);
@@ -146,7 +101,8 @@ export function useTruthDocument(projectId: string) {
     latestSnapshotId,
     loading,
     error,
-    text,
+    document,
+    text: document.text,
     setText: updateText,
     save,
     saveState,

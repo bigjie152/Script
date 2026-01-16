@@ -2,12 +2,18 @@
 
 import { Button } from "../../components/common/Button";
 
+type AiStatus = "idle" | "pending" | "success" | "error";
+
 type AIPanelProps = {
   locked: boolean;
   onLock: () => void;
   onUnlock: () => void;
   onDeriveRoles: () => void;
+  deriveStatus?: AiStatus;
+  deriveMessage?: string | null;
   onReviewLogic: () => void;
+  reviewStatus?: AiStatus;
+  reviewMessage?: string | null;
 };
 
 export function AIPanel({
@@ -15,9 +21,15 @@ export function AIPanel({
   onLock,
   onUnlock,
   onDeriveRoles,
-  onReviewLogic
+  deriveStatus,
+  deriveMessage,
+  onReviewLogic,
+  reviewStatus,
+  reviewMessage
 }: AIPanelProps) {
   const statusLabel = locked ? "已锁定（Locked）" : "草稿（Draft）";
+  const deriveHint = deriveMessage || (locked ? "功能即将上线" : "请先锁定真相");
+  const reviewHint = reviewMessage || (locked ? "功能即将上线" : "请先锁定真相");
 
   return (
     <div className="space-y-4">
@@ -44,11 +56,20 @@ export function AIPanel({
           派生能力依赖已锁定的 Truth。
         </div>
         <div className="mt-4 space-y-2">
-          <Button variant="primary" onClick={onDeriveRoles} disabled={!locked}>
+          <Button
+            variant="primary"
+            onClick={onDeriveRoles}
+            disabled={!locked}
+            loading={deriveStatus === "pending"}
+          >
             生成角色
           </Button>
-          <div className="text-xs text-muted">
-            {locked ? "功能即将上线" : "请先锁定真相"}
+          <div
+            className={`text-xs ${
+              deriveStatus === "error" ? "text-red-500" : "text-muted"
+            }`}
+          >
+            {deriveHint}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
@@ -73,11 +94,20 @@ export function AIPanel({
           对当前真相进行一致性检查并同步问题列表。
         </div>
         <div className="mt-4 space-y-2">
-          <Button variant="primary" onClick={onReviewLogic} disabled={!locked}>
+          <Button
+            variant="primary"
+            onClick={onReviewLogic}
+            disabled={!locked}
+            loading={reviewStatus === "pending"}
+          >
             运行一致性检查
           </Button>
-          <div className="text-xs text-muted">
-            {locked ? "功能即将上线" : "请先锁定真相"}
+          <div
+            className={`text-xs ${
+              reviewStatus === "error" ? "text-red-500" : "text-muted"
+            }`}
+          >
+            {reviewHint}
           </div>
         </div>
       </div>
