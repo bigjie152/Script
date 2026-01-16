@@ -78,6 +78,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     window.alert("生成角色即将上线");
   };
 
+  const handleReviewLogic = () => {
+    window.alert("一致性检查即将上线");
+  };
+
   const handleNav = (next: ModuleKey) => {
     router.push(`/projects/${projectId}/editor/${next}`);
   };
@@ -218,6 +222,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               onLock={lock}
               onUnlock={handleUnlock}
               onDeriveRoles={handleDeriveRoles}
+              onReviewLogic={handleReviewLogic}
             />
           ) : (
             <IssuePanel

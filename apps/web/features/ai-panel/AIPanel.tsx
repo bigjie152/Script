@@ -7,13 +7,15 @@ type AIPanelProps = {
   onLock: () => void;
   onUnlock: () => void;
   onDeriveRoles: () => void;
+  onReviewLogic: () => void;
 };
 
 export function AIPanel({
   locked,
   onLock,
   onUnlock,
-  onDeriveRoles
+  onDeriveRoles,
+  onReviewLogic
 }: AIPanelProps) {
   const statusLabel = locked ? "已锁定（Locked）" : "草稿（Draft）";
 
@@ -62,9 +64,20 @@ export function AIPanel({
             DM 手册
             <div className="mt-1 text-[11px] text-muted">即将上线</div>
           </div>
-          <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            逻辑审查
-            <div className="mt-1 text-[11px] text-muted">即将上线</div>
+        </div>
+      </div>
+
+      <div className="glass-panel-strong p-5">
+        <div className="text-sm font-semibold">逻辑审查</div>
+        <div className="mt-2 text-xs text-muted">
+          对当前真相进行一致性检查并同步问题列表。
+        </div>
+        <div className="mt-4 space-y-2">
+          <Button variant="primary" onClick={onReviewLogic} disabled={!locked}>
+            运行一致性检查
+          </Button>
+          <div className="text-xs text-muted">
+            {locked ? "功能即将上线" : "请先锁定真相"}
           </div>
         </div>
       </div>
