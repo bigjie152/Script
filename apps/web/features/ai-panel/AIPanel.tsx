@@ -24,15 +24,15 @@ export function AIPanel({
   loading
 }: AIPanelProps) {
   const isLocked = truthStatus === "LOCKED";
-  const statusLabel = isLocked ? "Locked" : "Draft";
+  const statusLabel = isLocked ? "已锁定" : "草稿";
   const canDerive = isLocked;
 
   return (
     <div className="space-y-4">
       <div className="glass-panel-strong p-5">
-        <div className="text-sm font-semibold">Truth Core</div>
+        <div className="text-sm font-semibold">Truth 核心控制</div>
         <div className="mt-2 text-xs text-muted">
-          Status: <span className="font-medium text-ink">{statusLabel}</span>
+          当前状态：<span className="font-medium text-ink">{statusLabel}</span>
         </div>
         <div className="mt-4 space-y-2">
           <Button
@@ -41,20 +41,20 @@ export function AIPanel({
             loading={loading?.lock}
             disabled={isLocked ? !onUnlock : false}
           >
-            {isLocked ? "Unlock Truth" : "Lock Truth"}
+            {isLocked ? "解锁真相" : "锁定真相"}
           </Button>
           {isLocked && !onUnlock ? (
             <div className="text-xs text-muted">
-              Unlock not supported yet (backend missing).
+              后端尚未提供解锁接口（暂不可用）
             </div>
           ) : null}
         </div>
       </div>
 
       <div className="glass-panel-strong p-5">
-        <div className="text-sm font-semibold">Derivations</div>
+        <div className="text-sm font-semibold">派生生成</div>
         <div className="mt-2 text-xs text-muted">
-          Derivations require locked Truth.
+          派生生成依赖已锁定的 Truth。
         </div>
         <div className="mt-4 space-y-2">
           <Button
@@ -63,29 +63,29 @@ export function AIPanel({
             loading={loading?.derive}
             disabled={!canDerive}
           >
-            Generate Roles
+            生成角色
           </Button>
           {!canDerive ? (
-            <div className="text-xs text-muted">Lock Truth first.</div>
+            <div className="text-xs text-muted">请先锁定真相</div>
           ) : null}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            Clues
+            线索 Clues
           </div>
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            Timeline
+            时间线 Timeline
           </div>
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            DM Guide
+            DM 手册
           </div>
         </div>
       </div>
 
       <div className="glass-panel-strong p-5">
-        <div className="text-sm font-semibold">Consistency Check</div>
+        <div className="text-sm font-semibold">逻辑审查</div>
         <div className="mt-2 text-xs text-muted">
-          Run a consistency check for the latest snapshot.
+          对当前版本进行一致性检查。
         </div>
         <div className="mt-4">
           <Button
@@ -93,7 +93,7 @@ export function AIPanel({
             onClick={onCheckConsistency}
             loading={loading?.check}
           >
-            Run Check
+            一致性检查
           </Button>
         </div>
       </div>
