@@ -1,5 +1,7 @@
 import { EditorShell } from "../../../../../features/project-editor/EditorShell";
 
+export const runtime = "edge";
+
 const MODULES = ["overview", "truth", "roles", "clues", "timeline", "dm"] as const;
 
 type ModuleKey = (typeof MODULES)[number];
