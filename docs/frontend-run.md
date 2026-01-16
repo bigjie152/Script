@@ -10,13 +10,13 @@ cd apps/web
 npm install
 ```
 
-设置 API 基础地址（本地后端默认 3001）：
+设置 API 基础地址（推荐指向线上 API，以避免本地 D1 绑定问题）：
 ```bash
 # macOS / Linux
-export NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+export NEXT_PUBLIC_API_BASE_URL=https://script-426.pages.dev
 
 # Windows PowerShell
-$env:NEXT_PUBLIC_API_BASE_URL="http://localhost:3001"
+$env:NEXT_PUBLIC_API_BASE_URL="https://script-426.pages.dev"
 ```
 
 启动前端：
@@ -27,13 +27,13 @@ npm run dev
 访问：
 - http://localhost:3000/workspace
 
-## 连接线上 API
+## 连接本地后端（可选）
 ```bash
-export NEXT_PUBLIC_API_BASE_URL=https://script-426.pages.dev
+export NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 ```
 
 ## 注意事项
-- 本地后端需要 D1 binding（`DB`）才能创建项目；若未配置，可直接使用线上 API 作为开发后端。
+- 本地后端需要 D1 binding（`DB`）才能创建项目；若未配置，请直接使用线上 API 作为开发后端。
 - 如需本地后端，请确保 `apps/api` 按 D1 方式启动或通过 Wrangler 提供绑定。
 
 ## 说明

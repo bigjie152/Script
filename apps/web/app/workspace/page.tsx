@@ -10,17 +10,14 @@ import { createProject } from "../../services/projectApi";
 
 const MOCK_PROJECTS = [
   {
-    id: "demo-1",
     name: "静谧回响",
     description: "发生在未来东京的悬疑探秘故事。"
   },
   {
-    id: "demo-2",
     name: "代号：联合体",
     description: "涉及基因拼接与政治阴谋的 RPG 战役设定。"
   },
   {
-    id: "demo-3",
     name: "午夜快车",
     description: "一场在列车上展开的密室推理。"
   }
@@ -52,6 +49,27 @@ export default function WorkspacePage() {
           name: result.project?.name || "未命名剧本",
           description: result.project?.description || "新建项目"
         },
+        ...prev
+      ]);
+      router.push(`/projects/${projectId}/editor/overview`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "创建失败，请重试");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleOpenTemplate = async (name: string, description: string) => {
+    setError(null);
+    setCreating(true);
+    try {
+      const result = await createProject({ name, description });
+      const projectId = result.projectId || result.project?.id;
+      if (!projectId) {
+        throw new Error("创建失败，请重试");
+      }
+      setRecent((prev) => [
+        { id: projectId, name, description },
         ...prev
       ]);
       router.push(`/projects/${projectId}/editor/overview`);
@@ -102,10 +120,8 @@ export default function WorkspacePage() {
             <div className="grid gap-4 lg:grid-cols-3">
               {MOCK_PROJECTS.map((item) => (
                 <button
-                  key={item.id}
-                  onClick={() =>
-                    router.push(`/projects/${item.id}/editor/overview`)
-                  }
+                  key={item.name}
+                  onClick={() => handleOpenTemplate(item.name, item.description)}
                   className="glass-panel-strong px-5 py-4 text-left transition hover:-translate-y-1"
                 >
                   <div className="text-sm text-muted">示例项目</div>

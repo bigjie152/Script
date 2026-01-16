@@ -23,12 +23,14 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   timeoutMs = DEFAULT_TIMEOUT
 ): Promise<T> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://script-426.pages.dev";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl}${path}`, {
+    const url = resolveUrl(baseUrl, path);
+    const response = await fetch(url, {
       ...options,
       signal: controller.signal,
       headers: {
@@ -67,5 +69,15 @@ function safeJsonParse(value: string) {
     return JSON.parse(value);
   } catch {
     return null;
+  }
+}
+
+function resolveUrl(base: string, path: string) {
+  if (!base) return path;
+  if (base.startsWith("/")) return `${base}${path}`;
+  try {
+    return new URL(path, base).toString();
+  } catch {
+    return `${base}${path}`;
   }
 }
