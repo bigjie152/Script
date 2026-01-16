@@ -25,7 +25,7 @@ export type D1DatabaseLike = {
 class LocalPreparedStatement implements D1PreparedStatement {
   private params: unknown[] = [];
 
-  constructor(private statement: Database.Statement) {}
+  constructor(private statement: any) {}
 
   bind(...params: unknown[]) {
     const bound = new LocalPreparedStatement(this.statement);
@@ -67,7 +67,7 @@ class LocalPreparedStatement implements D1PreparedStatement {
 }
 
 class LocalD1Database implements D1DatabaseLike {
-  constructor(private database: Database.Database) {}
+  constructor(private database: any) {}
 
   prepare(sql: string) {
     return new LocalPreparedStatement(this.database.prepare(sql));

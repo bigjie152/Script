@@ -14,14 +14,14 @@
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.36.0",
     "next": "15.0.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
     "@types/better-sqlite3": "^7.6.10",
     "@types/node": "^22.0.0",
-    "@types/react": "19.2.8",
+    "@types/react": "18.2.66",
     "tsx": "^4.7.0",
     "typescript": "^5.7.0"
   }

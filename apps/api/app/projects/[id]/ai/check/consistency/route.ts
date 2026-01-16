@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await Promise.resolve(params);
   const body = await request.json().catch(() => ({}));
@@ -45,12 +45,13 @@ export async function POST(
     return jsonError(404, "truth snapshot not found");
   }
 
-  const storedRoles = await db
+  type RoleRow = typeof schema.roles.$inferSelect;
+  const storedRoles = (await db
     .select()
     .from(schema.roles)
-    .where(eq(schema.roles.truthSnapshotId, snapshot.id));
+    .where(eq(schema.roles.truthSnapshotId, snapshot.id))) as RoleRow[];
 
-  const roles = storedRoles.map((role) => ({
+  const roles = storedRoles.map((role: RoleRow) => ({
     name: role.name,
     summary: role.summary ?? undefined,
     meta: role.meta ?? undefined
