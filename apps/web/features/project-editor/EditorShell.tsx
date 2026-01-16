@@ -14,12 +14,12 @@ import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
 
 const MODULES = [
-  { key: "overview", label: "概览" },
-  { key: "truth", label: "真相" },
-  { key: "roles", label: "角色" },
-  { key: "clues", label: "线索" },
-  { key: "timeline", label: "时间线" },
-  { key: "dm", label: "DM 手册" }
+  { key: "overview", label: "Overview" },
+  { key: "truth", label: "Truth" },
+  { key: "roles", label: "Roles" },
+  { key: "clues", label: "Clues" },
+  { key: "timeline", label: "Timeline" },
+  { key: "dm", label: "DM Guide" }
 ] as const;
 
 type ModuleKey = (typeof MODULES)[number]["key"];
@@ -48,32 +48,59 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     check: false
   });
   const [issueRefresh, setIssueRefresh] = useState(0);
+  const [baselineContent, setBaselineContent] = useState("");
+  const [hasUnsaved, setHasUnsaved] = useState(false);
 
   useEffect(() => {
-    if (truth?.content) {
-      setContent(truth.content as Record<string, unknown>);
-    }
-    if (truth?.status) {
-      setTruthStatus(truth.status);
-    }
-    if (latestSnapshotId) {
-      setSnapshotId(latestSnapshotId);
-    }
+    const nextContent = truth?.content ?? { type: "doc", content: [] };
+    setContent(nextContent as Record<string, unknown>);
+    if (truth?.status) setTruthStatus(truth.status);
+    if (latestSnapshotId) setSnapshotId(latestSnapshotId);
+    const nextBaseline = JSON.stringify(nextContent ?? {});
+    setBaselineContent(nextBaseline);
+    setHasUnsaved(false);
   }, [truth, latestSnapshotId]);
 
+  useEffect(() => {
+    if (module !== "truth") {
+      setHasUnsaved(false);
+      return;
+    }
+    const current = JSON.stringify(content ?? {});
+    setHasUnsaved(current !== baselineContent);
+  }, [content, baselineContent, module]);
+
   const moduleLabel = useMemo(() => {
-    return MODULES.find((item) => item.key === module)?.label || "概览";
+    return MODULES.find((item) => item.key === module)?.label || "Overview";
   }, [module]);
+
+  const isLocked = truthStatus === "LOCKED";
+
+  const handleBack = () => {
+    if (module === "truth" && hasUnsaved) {
+      const ok = window.confirm("You have unsaved changes. Leave anyway?");
+      if (!ok) return;
+    }
+    router.push("/workspace");
+  };
 
   const handleSave = async () => {
     setActionError(null);
+    if (isLocked) {
+      setActionError("Truth is locked. Unlock to edit.");
+      return;
+    }
     setBusy((s) => ({ ...s, save: true }));
     try {
       const result = await updateTruth(projectId, content);
       setTruthStatus(result.status);
+      setBaselineContent(JSON.stringify(content ?? {}));
+      setHasUnsaved(false);
       refresh();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "保存失败，请重试");
+      setActionError(
+        err instanceof Error ? err.message : "Save failed, please retry"
+      );
     } finally {
       setBusy((s) => ({ ...s, save: false }));
     }
@@ -81,6 +108,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleLock = async () => {
     setActionError(null);
+    if (isLocked) {
+      setActionError("Truth is already locked.");
+      return;
+    }
     setBusy((s) => ({ ...s, lock: true }));
     try {
       const result = await lockTruth(projectId);
@@ -88,7 +119,9 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       setTruthStatus(result.status);
       refresh();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "锁定失败，请重试");
+      setActionError(
+        err instanceof Error ? err.message : "Lock failed, please retry"
+      );
     } finally {
       setBusy((s) => ({ ...s, lock: false }));
     }
@@ -97,7 +130,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const handleDeriveRoles = async () => {
     setActionError(null);
     if (!snapshotId) {
-      setActionError("请先锁定真相再生成角色。");
+      setActionError("Lock Truth first.");
       return;
     }
     setBusy((s) => ({ ...s, derive: true }));
@@ -105,7 +138,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       await deriveRoles(projectId, snapshotId);
     } catch (err) {
       setActionError(
-        err instanceof Error ? err.message : "生成角色失败，请重试"
+        err instanceof Error ? err.message : "Derive failed, please retry"
       );
     } finally {
       setBusy((s) => ({ ...s, derive: false }));
@@ -115,7 +148,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const handleCheckConsistency = async () => {
     setActionError(null);
     if (!snapshotId) {
-      setActionError("请先锁定真相再进行一致性检查。");
+      setActionError("Lock Truth first.");
       return;
     }
     setBusy((s) => ({ ...s, check: true }));
@@ -125,7 +158,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       setTab("issues");
     } catch (err) {
       setActionError(
-        err instanceof Error ? err.message : "一致性检查失败，请重试"
+        err instanceof Error ? err.message : "Check failed, please retry"
       );
     } finally {
       setBusy((s) => ({ ...s, check: false }));
@@ -138,9 +171,21 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-lg font-semibold">
+            {project?.name || "Project"}
+          </div>
+          <div className="text-xs text-muted">
+            {hasUnsaved ? "Unsaved changes" : "All changes saved"}
+          </div>
+        </div>
+        <Button onClick={handleBack}>Back to Workspace</Button>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)_360px]">
         <aside className="glass-panel-strong h-fit p-4">
-          <div className="text-xs text-muted">核心模块</div>
+          <div className="text-xs text-muted">Modules</div>
           <div className="mt-4 space-y-1">
             {MODULES.map((item) => (
               <button
@@ -157,7 +202,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             ))}
           </div>
           <div className="mt-6 text-xs text-muted">
-            项目：{project?.name || "加载中..."}
+            Project: {project?.name || "Loading..."}
           </div>
         </aside>
 
@@ -165,36 +210,36 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="glass-panel-strong flex flex-wrap items-center justify-between gap-3 px-6 py-4">
             <div>
               <div className="text-lg font-semibold">{moduleLabel}</div>
-              <div className="text-xs text-muted">项目编辑区</div>
+              <div className="text-xs text-muted">Editor</div>
             </div>
             {module === "truth" ? (
-              <Button onClick={handleSave} loading={busy.save}>
-                保存真相
+              <Button onClick={handleSave} loading={busy.save} disabled={isLocked}>
+                Save Truth
               </Button>
             ) : null}
           </div>
 
           {loading ? (
-            <EmptyState title="加载中..." description="正在读取项目数据" />
+            <EmptyState title="Loading..." description="Loading project data" />
           ) : error ? (
             <ErrorBanner message={error} />
           ) : module === "overview" ? (
             <div className="glass-panel-strong px-8 py-6">
               <div className="text-xl font-semibold">
-                {project?.name || "未命名项目"}
+                {project?.name || "Untitled"}
               </div>
               <div className="mt-2 text-sm text-muted">
-                {project?.description || "暂无描述"}
+                {project?.description || "No description"}
               </div>
               <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted">
                 <div>
-                  <div className="text-xs">创建时间</div>
+                  <div className="text-xs">Created</div>
                   <div className="mt-1 text-ink">
                     {project?.createdAt || "-"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs">更新时间</div>
+                  <div className="text-xs">Updated</div>
                   <div className="mt-1 text-ink">
                     {project?.updatedAt || "-"}
                   </div>
@@ -202,11 +247,15 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               </div>
             </div>
           ) : module === "truth" ? (
-            <EditorSurface content={content} onChange={setContent} />
+            <EditorSurface
+              content={content}
+              onChange={setContent}
+              editable={!isLocked}
+            />
           ) : (
             <EmptyState
-              title="该模块暂未开放"
-              description="V0.1 版本仅提供 Truth 的完整编辑能力。"
+              title="Module not ready"
+              description="Only Truth editing is enabled for MVP."
             />
           )}
         </main>
@@ -216,8 +265,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             value={tab}
             onChange={setTab}
             tabs={[
-              { key: "ai", label: "AI 面板" },
-              { key: "issues", label: "问题列表" }
+              { key: "ai", label: "AI Panel" },
+              { key: "issues", label: "Issues" }
             ]}
           />
           {actionError ? <ErrorBanner message={actionError} /> : null}
