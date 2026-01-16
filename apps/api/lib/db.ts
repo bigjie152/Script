@@ -1,4 +1,3 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../../../packages/database/schema";
 
@@ -6,6 +5,7 @@ type D1Binding = {
   prepare: (sql: string) => unknown;
 };
 
+const cloudflareContextSymbol = Symbol.for("__cloudflare-request-context__");
 let cachedDb: ReturnType<typeof drizzle> | null = null;
 
 function resolveBinding(): D1Binding | null {
@@ -18,16 +18,16 @@ function resolveBinding(): D1Binding | null {
     return globalBinding as D1Binding;
   }
 
-  try {
-    const ctx = getRequestContext();
-    const env = ctx?.env as Record<string, unknown> | undefined;
-    const binding =
-      env?.[bindingName] ??
-      (bindingName !== "DB" ? env?.DB : undefined);
-    if (binding && typeof (binding as D1Binding).prepare === "function") {
-      return binding as D1Binding;
-    }
-  } catch {}
+  const ctx = (globalThis as Record<symbol, unknown>)[
+    cloudflareContextSymbol
+  ] as { env?: Record<string, unknown> } | undefined;
+  const env = ctx?.env;
+  const binding =
+    env?.[bindingName] ??
+    (bindingName !== "DB" ? env?.DB : undefined);
+  if (binding && typeof (binding as D1Binding).prepare === "function") {
+    return binding as D1Binding;
+  }
 
   return null;
 }
