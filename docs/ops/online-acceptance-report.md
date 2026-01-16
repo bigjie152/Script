@@ -1,6 +1,6 @@
 ﻿# 线上验收报告（Milestone 0 基线）
 
-验收时间：2026-01-17 05:10 +08:00  
+验收时间：2026-01-17 05:22 +08:00  
 base_url：https://script-426.pages.dev  
 commit：05780eb  
 环境：Cloudflare Pages / Production
@@ -30,21 +30,15 @@ commit：05780eb
 - total_time：15.297s
 
 ## 4) 可观测性（requestId + 结构化日志）
-**预期**
-- 每个响应包含 requestId（header 或 body 任一即可）
-- 结构化日志包含：requestId、route、status、latencyMs、error（如有）
+**结果**
+- 请求头含 `x-request-id`
+- 响应体含 `requestId`
+- 服务端日志输出 requestId/route/status/latencyMs/error（如有）
 
-**本次验证结果**
-- 脚本回归通过，但当前生产响应未观测到 requestId（header/body 均未出现）
-- 需要等待本次部署版本生效后再次复验 requestId
-
-**复验命令（示例）**
-```bash
-curl -i -X POST https://script-426.pages.dev/api/projects \
-  -H "Content-Type: application/json" \
-  -d '{"name":"RequestId Check","description":"check","content":{"type":"doc","content":[]}}'
-```
+**示例**
+- header：`x-request-id: 02f18757-d29b-4657-9971-252df737c6b7`
+- body：`{"requestId":"02f18757-d29b-4657-9971-252df737c6b7", ...}`
 
 ## 5) 结论
 - 基线 API 闭环已稳定，回归 20/20 通过
-- requestId 可观测性仍需部署生效后复验
+- requestId 可观测性已生效
