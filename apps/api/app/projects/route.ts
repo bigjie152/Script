@@ -4,8 +4,58 @@ import { jsonError } from "../../lib/http";
 
 export const runtime = "edge";
 
+type ParsedJsonBody =
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; message: string };
+
+async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return { ok: false, message: "unsupported content-type" };
+  }
+
+  try {
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return { ok: false, message: "invalid json" };
+    }
+    return { ok: true, body: body as Record<string, unknown> };
+  } catch (error) {
+    return { ok: false, message: "invalid json" };
+  }
+}
+
+function logError(context: {
+  message: string;
+  requestId: string;
+  contentType: string;
+  body?: unknown;
+  error?: unknown;
+}) {
+  console.error("[POST /api/projects]", {
+    ...context,
+    error:
+      context.error instanceof Error
+        ? { message: context.error.message, stack: context.error.stack }
+        : context.error
+  });
+}
+
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
+  const requestId = crypto.randomUUID();
+  const contentType = request.headers.get("content-type") || "";
+
+  const parsed = await parseJsonBody(request);
+  if (!parsed.ok) {
+    logError({
+      message: parsed.message,
+      requestId,
+      contentType
+    });
+    return jsonError(400, parsed.message);
+  }
+
+  const body = parsed.body;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const description =
     typeof body?.description === "string" ? body.description.trim() : null;
@@ -15,26 +65,54 @@ export async function POST(request: Request) {
     return jsonError(400, "name is required");
   }
 
-  const projectId = crypto.randomUUID();
-  const truthId = crypto.randomUUID();
+  const bindingName = process.env.D1_BINDING || "DB";
+  const binding = (globalThis as Record<string, unknown>)[bindingName];
+  if (!binding || typeof (binding as { prepare?: unknown }).prepare !== "function") {
+    logError({
+      message: "DB binding not found",
+      requestId,
+      contentType,
+      body
+    });
+    return jsonError(500, "DB binding not found");
+  }
 
-  await db.insert(schema.projects).values({
-    id: projectId,
-    name,
-    description
-  });
+  try {
+    const projectId = crypto.randomUUID();
+    const truthId = crypto.randomUUID();
 
-  await db.insert(schema.truths).values({
-    id: truthId,
-    projectId,
-    status: "DRAFT",
-    content
-  });
+    await db.insert(schema.projects).values({
+      id: projectId,
+      name,
+      description
+    });
 
-  return NextResponse.json({
-    projectId,
-    truthId,
-    status: "DRAFT"
-  });
+    await db.insert(schema.truths).values({
+      id: truthId,
+      projectId,
+      status: "DRAFT",
+      content
+    });
+
+    return NextResponse.json(
+      {
+        project: { id: projectId, name, description },
+        truth: { id: truthId, status: "DRAFT" },
+        projectId,
+        truthId,
+        status: "DRAFT"
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    logError({
+      message: "failed to create project",
+      requestId,
+      contentType,
+      body,
+      error
+    });
+    return jsonError(500, "failed to create project");
+  }
 }
 
