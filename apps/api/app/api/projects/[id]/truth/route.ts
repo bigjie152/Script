@@ -1,1 +1,2 @@
-export { runtime, PUT } from "../../../../projects/[id]/truth/route";
+export const runtime = "edge";
+export { PUT } from "../../../../projects/[id]/truth/route";

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { db, schema } from "../../lib/db";
 import { jsonError } from "../../lib/http";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -16,8 +15,8 @@ export async function POST(request: Request) {
     return jsonError(400, "name is required");
   }
 
-  const projectId = randomUUID();
-  const truthId = randomUUID();
+  const projectId = crypto.randomUUID();
+  const truthId = crypto.randomUUID();
 
   await db.insert(schema.projects).values({
     id: projectId,

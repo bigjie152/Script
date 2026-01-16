@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
 import { db, schema } from "../../../../../../lib/db";
 import { jsonError } from "../../../../../../lib/http";
 import { consistencyCheck } from "../../../../../../lib/ai";
 import { loadPrompt } from "../../../../../../lib/prompts";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function POST(
   request: Request,
@@ -72,7 +71,7 @@ export async function POST(
   if (result.issues.length > 0) {
     await db.insert(schema.issues).values(
       result.issues.map((issue) => ({
-        id: randomUUID(),
+        id: crypto.randomUUID(),
         projectId,
         truthSnapshotId: snapshot.id,
         type: issue.type,
@@ -85,7 +84,7 @@ export async function POST(
   }
 
   await db.insert(schema.aiRequestLogs).values({
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     projectId,
     truthSnapshotId: snapshot.id,
     actionType: "consistency_check",

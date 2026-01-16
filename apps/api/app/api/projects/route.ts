@@ -1,1 +1,2 @@
-export { runtime, POST } from "../../projects/route";
+export const runtime = "edge";
+export { POST } from "../../projects/route";

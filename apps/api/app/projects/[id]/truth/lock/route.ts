@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { desc, eq, sql } from "drizzle-orm";
-import { randomUUID } from "crypto";
 import { db, schema } from "../../../../../lib/db";
 import { jsonError } from "../../../../../lib/http";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function POST(
   _request: Request,
@@ -44,7 +43,7 @@ export async function POST(
     .where(eq(schema.truthSnapshots.projectId, projectId));
 
   const version = Number(count || 0) + 1;
-  const snapshotId = randomUUID();
+  const snapshotId = crypto.randomUUID();
 
   await db.insert(schema.truthSnapshots).values({
     id: snapshotId,

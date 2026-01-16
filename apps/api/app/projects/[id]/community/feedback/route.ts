@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
 import { db, schema } from "../../../../../lib/db";
 import { jsonError } from "../../../../../lib/http";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function POST(
   request: Request,
@@ -30,7 +29,7 @@ export async function POST(
     return jsonError(400, "content is required");
   }
 
-  const feedbackId = randomUUID();
+  const feedbackId = crypto.randomUUID();
 
   await db.insert(schema.feedback).values({
     id: feedbackId,

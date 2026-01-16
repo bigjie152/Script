@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
 import { db, schema } from "../../../../lib/db";
 import { jsonError } from "../../../../lib/http";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function PUT(
   request: Request,
@@ -51,7 +50,7 @@ export async function PUT(
     });
   }
 
-  const truthId = randomUUID();
+  const truthId = crypto.randomUUID();
   await db.insert(schema.truths).values({
     id: truthId,
     projectId,

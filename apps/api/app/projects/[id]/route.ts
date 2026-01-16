@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../../../lib/db";
 import { jsonError } from "../../../lib/http";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export async function GET(
   _request: Request,

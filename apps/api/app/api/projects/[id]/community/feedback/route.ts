@@ -1,1 +1,2 @@
-export { runtime, GET, POST } from "../../../../../projects/[id]/community/feedback/route";
+export const runtime = "edge";
+export { GET, POST } from "../../../../../projects/[id]/community/feedback/route";
