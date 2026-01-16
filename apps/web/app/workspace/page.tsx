@@ -53,7 +53,7 @@ export default function WorkspacePage() {
         },
         ...prev
       ]);
-      router.push(`/projects/${projectId}/editor/overview`);
+      router.push(`/projects/${projectId}/editor`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建失败，请重试");
     } finally {
@@ -74,7 +74,7 @@ export default function WorkspacePage() {
         { id: projectId, name, description },
         ...prev
       ]);
-      router.push(`/projects/${projectId}/editor/overview`);
+      router.push(`/projects/${projectId}/editor`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建失败，请重试");
     } finally {
@@ -101,7 +101,7 @@ export default function WorkspacePage() {
                   <button
                     key={item.id}
                     onClick={() =>
-                      router.push(`/projects/${item.id}/editor/overview`)
+                      router.push(`/projects/${item.id}/editor`)
                     }
                     className="glass-panel-strong px-5 py-4 text-left transition hover:-translate-y-1"
                   >
