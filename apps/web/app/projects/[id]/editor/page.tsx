@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function EditorRootPage({
+export default async function EditorRootPage({
   params
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/projects/${params.id}/editor/overview`);
+  const resolved = await params;
+  redirect(`/projects/${resolved.id}/editor/overview`);
 }

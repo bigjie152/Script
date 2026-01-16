@@ -4,14 +4,15 @@ const MODULES = ["overview", "truth", "roles", "clues", "timeline", "dm"] as con
 
 type ModuleKey = (typeof MODULES)[number];
 
-export default function EditorPage({
+export default async function EditorPage({
   params
 }: {
-  params: { id: string; module: string };
+  params: Promise<{ id: string; module: string }>;
 }) {
-  const moduleKey = MODULES.includes(params.module as ModuleKey)
-    ? (params.module as ModuleKey)
+  const resolved = await params;
+  const moduleKey = MODULES.includes(resolved.module as ModuleKey)
+    ? (resolved.module as ModuleKey)
     : "overview";
 
-  return <EditorShell projectId={params.id} module={moduleKey} />;
+  return <EditorShell projectId={resolved.id} module={moduleKey} />;
 }
