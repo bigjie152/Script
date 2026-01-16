@@ -6,7 +6,9 @@
 ## 包含内容
 - `README.md`：文档体系说明与维护规范
 - `api.yaml`：V0.1 API 契约（OpenAPI）
+- `frontend-design.md`：前端实现规范（设计与工程约定）
 - `frontend-integration.md`：前端对接清单
+- `frontend-run.md`：前端启动与开发说明
 - `cloudflare-deploy.md`：Cloudflare staging 部署说明
 - 其他文档：以 Markdown 文件形式存放于 docs/ 根目录（按主题命名）
 
