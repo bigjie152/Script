@@ -13,6 +13,10 @@
 - Cloudflare 部署：`docs/cloudflare-deploy.md`
 - Smoke 脚本：`scripts/smoke/run.mjs`
 
+## Cloudflare Staging 部署
+- 配置入口：`docs/cloudflare-deploy.md`
+- 关键变量：`D1_BINDING=DB`、`AI_PROVIDER=mock`
+
 ## 1. 项目简介
 script-ai-platform 是面向剧本创作与协作的 AI 平台 Monorepo，提供清晰的工程边界与团队协作规范，覆盖应用层、领域层（Domain）、AI 编排（Orchestrator）、Prompt 库、数据库与基础设施文档。
 

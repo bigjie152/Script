@@ -1,5 +1,5 @@
 ﻿name = "script"
-compatibility_date = "2025-01-15"
+compatibility_date = "2025-02-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "apps/api/.vercel/output/static"
 
@@ -10,4 +10,4 @@ D1_BINDING = "DB"
 [[d1_databases]]
 binding = "DB"
 database_name = "script-staging"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_id = ""
