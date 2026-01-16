@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import * as schema from "../../../packages/database/schema";
+import * as schema from "./schema";
 
 type D1Binding = {
   prepare: (sql: string) => unknown;
