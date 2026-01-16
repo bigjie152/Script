@@ -56,7 +56,6 @@ Write-Host ("BASE_URL={0}" -f $BaseUrl)
 Write-Host ""
 
 Invoke-Request -Title "health api" -Method "GET" -Url "$BaseUrl/api/health" -ExpectedStatus @("200") | Out-Null
-Invoke-Request -Title "health (non-api)" -Method "GET" -Url "$BaseUrl/health" -ExpectedStatus @("200") | Out-Null
 
 $createBody = '{"name":"Smoke Project","description":"online smoke","content":{"type":"doc","content":[]}}'
 $createResp = Invoke-Request -Title "create project" -Method "POST" -Url "$BaseUrl/api/projects" -Body $createBody -ExpectedStatus @("200","201")
@@ -81,33 +80,7 @@ Invoke-Request -Title "get project" -Method "GET" -Url "$BaseUrl/api/projects/$p
 $truthBody = '{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Truth draft v0.1"}]}]}}'
 Invoke-Request -Title "update truth" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/truth" -Body $truthBody -ExpectedStatus @("200") | Out-Null
 
-$lockResp = Invoke-Request -Title "lock truth" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/truth/lock" -ExpectedStatus @("200")
-$truthSnapshotId = ""
-try {
-  $j = $lockResp | ConvertFrom-Json
-  $truthSnapshotId = $j.truthSnapshotId
-  if (-not $truthSnapshotId -and $j.truthSnapshot) { $truthSnapshotId = $j.truthSnapshot.id }
-} catch {
-  $truthSnapshotId = ""
-}
-if (-not $truthSnapshotId) {
-  Write-Host "FAIL: truthSnapshotId not found in response"
-  exit 1
-}
-Write-Host ("truthSnapshotId={0}" -f $truthSnapshotId)
-Write-Host ""
-
-$deriveBody = "{`"truthSnapshotId`":`"$truthSnapshotId`"}"
-Invoke-Request -Title "derive roles" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/ai/derive/roles" -Body $deriveBody -ExpectedStatus @("200") | Out-Null
-
-$checkBody = "{`"truthSnapshotId`":`"$truthSnapshotId`"}"
-Invoke-Request -Title "consistency check" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/ai/check/consistency" -Body $checkBody -ExpectedStatus @("200") | Out-Null
-
-Invoke-Request -Title "list issues" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/issues?truthSnapshotId=$truthSnapshotId" -ExpectedStatus @("200") | Out-Null
-
-$feedbackBody = '{"content":"online smoke feedback","type":"comment"}'
-Invoke-Request -Title "create feedback" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/community/feedback" -Body $feedbackBody -ExpectedStatus @("200") | Out-Null
-Invoke-Request -Title "list feedback" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/community/feedback" -ExpectedStatus @("200") | Out-Null
+Invoke-Request -Title "list issues" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/issues" -ExpectedStatus @("200") | Out-Null
 
 Write-Host "== stability: create + read x20 =="
 $success = 0

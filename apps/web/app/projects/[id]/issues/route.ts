@@ -1,14 +1,17 @@
-import { NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../../../lib/db";
-import { jsonError } from "../../../../lib/http";
+import { jsonResponse } from "../../../../lib/http";
 
 export const runtime = "edge";
+
+const routeLabel = "GET /api/projects/:id/issues";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   const { id: projectId } = await Promise.resolve(params);
   const url = new URL(request.url);
   const requestedSnapshotId = url.searchParams.get("truthSnapshotId");
@@ -28,10 +31,19 @@ export async function GET(
     .limit(1);
 
   if (!snapshot) {
-    return NextResponse.json({
-      truthSnapshotId: null,
-      issues: []
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt
     });
+    return jsonResponse(
+      {
+        truthSnapshotId: null,
+        issues: []
+      },
+      { requestId }
+    );
   }
 
   const issues = await db
@@ -40,8 +52,18 @@ export async function GET(
     .where(eq(schema.issues.truthSnapshotId, snapshot.id))
     .orderBy(desc(schema.issues.createdAt));
 
-  return NextResponse.json({
-    truthSnapshotId: snapshot.id,
-    issues
+  console.log(routeLabel, {
+    route: routeLabel,
+    requestId,
+    status: 200,
+    latencyMs: Date.now() - startedAt
   });
+
+  return jsonResponse(
+    {
+      truthSnapshotId: snapshot.id,
+      issues
+    },
+    { requestId }
+  );
 }

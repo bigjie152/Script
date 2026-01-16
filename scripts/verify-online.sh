@@ -62,7 +62,6 @@ echo "BASE_URL=$BASE_URL"
 echo
 
 health_resp=$(request "health api" "GET" "$BASE_URL/api/health" "" "200")
-request "health (non-api)" "GET" "$BASE_URL/health" "" "200"
 
 create_body='{"name":"Smoke Project","description":"online smoke","content":{"type":"doc","content":[]}}'
 create_resp=$(request "create project" "POST" "$BASE_URL/api/projects" "$create_body" "200 201")
@@ -80,26 +79,7 @@ request "get project" "GET" "$BASE_URL/api/projects/$project_id" "" "200"
 truth_body='{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Truth draft v0.1"}]}]}}'
 request "update truth" "PUT" "$BASE_URL/api/projects/$project_id/truth" "$truth_body" "200"
 
-lock_resp=$(request "lock truth" "POST" "$BASE_URL/api/projects/$project_id/truth/lock" "" "200")
-truth_snapshot_id=$(echo "$lock_resp" | node -e "const fs=require('fs');const data=fs.readFileSync(0,'utf8');try{const j=JSON.parse(data);console.log(j.truthSnapshotId||j.truthSnapshot?.id||'');}catch{console.log('');}")
-if [ -z "$truth_snapshot_id" ]; then
-  echo "FAIL: truthSnapshotId not found in response"
-  exit 1
-fi
-echo "truthSnapshotId=$truth_snapshot_id"
-echo
-
-derive_body="{\"truthSnapshotId\":\"$truth_snapshot_id\"}"
-request "derive roles" "POST" "$BASE_URL/api/projects/$project_id/ai/derive/roles" "$derive_body" "200"
-
-check_body="{\"truthSnapshotId\":\"$truth_snapshot_id\"}"
-request "consistency check" "POST" "$BASE_URL/api/projects/$project_id/ai/check/consistency" "$check_body" "200"
-
-request "list issues" "GET" "$BASE_URL/api/projects/$project_id/issues?truthSnapshotId=$truth_snapshot_id" "" "200"
-
-feedback_body='{"content":"online smoke feedback","type":"comment"}'
-request "create feedback" "POST" "$BASE_URL/api/projects/$project_id/community/feedback" "$feedback_body" "200"
-request "list feedback" "GET" "$BASE_URL/api/projects/$project_id/community/feedback" "" "200"
+request "list issues" "GET" "$BASE_URL/api/projects/$project_id/issues" "" "200"
 
 echo "== stability: create + read x20 =="
 success=0

@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { db, getD1Binding, schema } from "../../lib/db";
-import { jsonError } from "../../lib/http";
+import { jsonError, jsonResponse } from "../../lib/http";
 
 export const runtime = "edge";
 
@@ -44,15 +43,21 @@ async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
   return { ok: false, message: "invalid json", raw };
 }
 
+const routeLabel = "POST /api/projects";
+
 function logError(context: {
   message: string;
   requestId: string;
+  status: number;
   contentType: string;
+  startedAt: number;
   body?: unknown;
   error?: unknown;
 }) {
-  console.error("[POST /api/projects]", {
+  console.error(routeLabel, {
+    route: routeLabel,
     ...context,
+    latencyMs: Date.now() - context.startedAt,
     error:
       context.error instanceof Error
         ? { message: context.error.message, stack: context.error.stack }
@@ -62,6 +67,7 @@ function logError(context: {
 
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   const contentType = request.headers.get("content-type") || "";
 
   const parsed = await parseJsonBody(request);
@@ -69,7 +75,9 @@ export async function POST(request: Request) {
     logError({
       message: parsed.message,
       requestId,
+      status: 400,
       contentType,
+      startedAt,
       body: parsed.raw
         ? {
             rawPreview: parsed.raw.slice(0, 200),
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
           }
         : { contentLength: request.headers.get("content-length") || "" }
     });
-    return jsonError(400, parsed.message);
+    return jsonError(400, parsed.message, undefined, requestId);
   }
 
   const body = parsed.body;
@@ -88,7 +96,15 @@ export async function POST(request: Request) {
   const content = body?.content ?? { type: "doc", content: [] };
 
   if (!name) {
-    return jsonError(400, "name is required");
+    logError({
+      message: "name is required",
+      requestId,
+      status: 400,
+      contentType,
+      startedAt,
+      body
+    });
+    return jsonError(400, "name is required", undefined, requestId);
   }
 
   const bindingName = process.env.D1_BINDING || "DB";
@@ -97,10 +113,12 @@ export async function POST(request: Request) {
     logError({
       message: "DB binding not found",
       requestId,
+      status: 500,
       contentType,
+      startedAt,
       body: { bindingName }
     });
-    return jsonError(500, "DB binding not found");
+    return jsonError(500, "DB binding not found", undefined, requestId);
   }
 
   try {
@@ -120,7 +138,13 @@ export async function POST(request: Request) {
       content
     });
 
-    return NextResponse.json(
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 201,
+      latencyMs: Date.now() - startedAt
+    });
+    return jsonResponse(
       {
         project: { id: projectId, name, description },
         truth: { id: truthId, status: "DRAFT" },
@@ -128,17 +152,19 @@ export async function POST(request: Request) {
         truthId,
         status: "DRAFT"
       },
-      { status: 201 }
+      { status: 201, requestId }
     );
   } catch (error) {
     logError({
       message: "failed to create project",
       requestId,
+      status: 500,
       contentType,
+      startedAt,
       body,
       error
     });
-    return jsonError(500, "failed to create project");
+    return jsonError(500, "failed to create project", undefined, requestId);
   }
 }
 

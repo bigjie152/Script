@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../../../../lib/db";
-import { jsonError } from "../../../../lib/http";
+import { jsonError, jsonResponse } from "../../../../lib/http";
 
 export const runtime = "edge";
+
+const routeLabel = "PUT /api/projects/:id/truth";
 
 type ParsedJsonBody =
   | { ok: true; body: Record<string, unknown>; raw: string }
@@ -49,17 +50,34 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   const { id: projectId } = await Promise.resolve(params);
   const parsed = await parseJsonBody(request);
+
   if (!parsed.ok) {
-    return jsonError(400, parsed.message);
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 400,
+      latencyMs: Date.now() - startedAt,
+      error: { message: parsed.message }
+    });
+    return jsonError(400, parsed.message, undefined, requestId);
   }
 
   const body = parsed.body;
   const content = body?.content;
 
   if (!content) {
-    return jsonError(400, "content is required");
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 400,
+      latencyMs: Date.now() - startedAt,
+      error: { message: "content is required" }
+    });
+    return jsonError(400, "content is required", undefined, requestId);
   }
 
   const [project] = await db
@@ -69,7 +87,14 @@ export async function PUT(
     .limit(1);
 
   if (!project) {
-    return jsonError(404, "project not found");
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 404,
+      latencyMs: Date.now() - startedAt,
+      error: { message: "project not found" }
+    });
+    return jsonError(404, "project not found", undefined, requestId);
   }
 
   const [truth] = await db
@@ -80,7 +105,14 @@ export async function PUT(
     .limit(1);
 
   if (truth && truth.status === "LOCKED") {
-    return jsonError(409, "truth is locked");
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 409,
+      latencyMs: Date.now() - startedAt,
+      error: { message: "truth is locked" }
+    });
+    return jsonError(409, "truth is locked", undefined, requestId);
   }
 
   if (truth) {
@@ -89,10 +121,20 @@ export async function PUT(
       .set({ content, updatedAt: new Date().toISOString() })
       .where(eq(schema.truths.id, truth.id));
 
-    return NextResponse.json({
-      truthId: truth.id,
-      status: "DRAFT"
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt
     });
+
+    return jsonResponse(
+      {
+        truthId: truth.id,
+        status: "DRAFT"
+      },
+      { requestId }
+    );
   }
 
   const truthId = crypto.randomUUID();
@@ -103,8 +145,18 @@ export async function PUT(
     content
   });
 
-  return NextResponse.json({
-    truthId,
-    status: "DRAFT"
+  console.log(routeLabel, {
+    route: routeLabel,
+    requestId,
+    status: 200,
+    latencyMs: Date.now() - startedAt
   });
+
+  return jsonResponse(
+    {
+      truthId,
+      status: "DRAFT"
+    },
+    { requestId }
+  );
 }
