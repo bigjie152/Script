@@ -1,15 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EditorSurface } from "../../components/editor/EditorSurface";
 import { Button } from "../../components/common/Button";
-import { ErrorBanner } from "../../components/common/ErrorBanner";
+import { EditorSurface } from "../../components/editor/EditorSurface";
 import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { TabGroup } from "../../components/common/TabGroup";
-import { useProject } from "../../hooks/useProject";
-import { deriveRoles, checkConsistency } from "../../services/aiApi";
-import { lockTruth, updateTruth } from "../../services/truthApi";
+import { useTruthDocument } from "../../hooks/useTruthDocument";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
 
@@ -31,138 +29,53 @@ type EditorShellProps = {
 
 export function EditorShell({ projectId, module }: EditorShellProps) {
   const router = useRouter();
-  const { project, truth, latestSnapshotId, loading, error, refresh } =
-    useProject(projectId);
+  const {
+    project,
+    truth,
+    latestSnapshotId,
+    loading,
+    error,
+    text,
+    setText,
+    save,
+    saveState,
+    saveError,
+    hasUnsaved,
+    locked,
+    lock,
+    unlock
+  } = useTruthDocument(projectId);
   const [tab, setTab] = useState("ai");
-  const [content, setContent] = useState<Record<string, unknown>>({
-    type: "doc",
-    content: []
-  });
-  const [snapshotId, setSnapshotId] = useState<string | null>(null);
-  const [truthStatus, setTruthStatus] = useState<string>("DRAFT");
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState({
-    save: false,
-    lock: false,
-    derive: false,
-    check: false
-  });
-  const [issueRefresh, setIssueRefresh] = useState(0);
-  const [baselineContent, setBaselineContent] = useState("");
-  const [hasUnsaved, setHasUnsaved] = useState(false);
-
-  useEffect(() => {
-    const nextContent = truth?.content ?? { type: "doc", content: [] };
-    setContent(nextContent as Record<string, unknown>);
-    if (truth?.status) setTruthStatus(truth.status);
-    if (latestSnapshotId) setSnapshotId(latestSnapshotId);
-    const nextBaseline = JSON.stringify(nextContent ?? {});
-    setBaselineContent(nextBaseline);
-    setHasUnsaved(false);
-  }, [truth, latestSnapshotId]);
-
-  useEffect(() => {
-    if (module !== "truth") {
-      setHasUnsaved(false);
-      return;
-    }
-    const current = JSON.stringify(content ?? {});
-    setHasUnsaved(current !== baselineContent);
-  }, [content, baselineContent, module]);
 
   const moduleLabel = useMemo(() => {
     return MODULES.find((item) => item.key === module)?.label || "概览";
   }, [module]);
 
-  const isLocked = truthStatus === "LOCKED";
+  const saveLabel = useMemo(() => {
+    switch (saveState) {
+      case "saving":
+        return "保存中…";
+      case "success":
+        return "已保存";
+      case "error":
+        return "保存失败";
+      default:
+        return "保存";
+    }
+  }, [saveState]);
 
   const handleBack = () => {
-    if (module === "truth" && hasUnsaved) {
-      const ok = window.confirm("当前有未保存的修改，确定返回吗？");
-      if (!ok) return;
-    }
     router.push("/workspace");
   };
 
-  const handleSave = async () => {
-    setActionError(null);
-    if (isLocked) {
-      setActionError("真相已锁定，请先解锁再编辑。");
-      return;
-    }
-    setBusy((s) => ({ ...s, save: true }));
-    try {
-      const result = await updateTruth(projectId, content);
-      setTruthStatus(result.status);
-      setBaselineContent(JSON.stringify(content ?? {}));
-      setHasUnsaved(false);
-      refresh();
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "保存失败，请重试"
-      );
-    } finally {
-      setBusy((s) => ({ ...s, save: false }));
-    }
+  const handleUnlock = () => {
+    const ok = window.confirm("解锁后将允许修改真相内容，确定解锁吗？");
+    if (!ok) return;
+    unlock();
   };
 
-  const handleLock = async () => {
-    setActionError(null);
-    if (isLocked) {
-      setActionError("真相已锁定");
-      return;
-    }
-    setBusy((s) => ({ ...s, lock: true }));
-    try {
-      const result = await lockTruth(projectId);
-      setSnapshotId(result.truthSnapshotId);
-      setTruthStatus(result.status);
-      refresh();
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "锁定失败，请重试"
-      );
-    } finally {
-      setBusy((s) => ({ ...s, lock: false }));
-    }
-  };
-
-  const handleDeriveRoles = async () => {
-    setActionError(null);
-    if (!snapshotId) {
-      setActionError("请先锁定真相");
-      return;
-    }
-    setBusy((s) => ({ ...s, derive: true }));
-    try {
-      await deriveRoles(projectId, snapshotId);
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "生成失败，请重试"
-      );
-    } finally {
-      setBusy((s) => ({ ...s, derive: false }));
-    }
-  };
-
-  const handleCheckConsistency = async () => {
-    setActionError(null);
-    if (!snapshotId) {
-      setActionError("请先锁定真相");
-      return;
-    }
-    setBusy((s) => ({ ...s, check: true }));
-    try {
-      await checkConsistency(projectId, snapshotId);
-      setIssueRefresh((v) => v + 1);
-      setTab("issues");
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "一致性检查失败，请重试"
-      );
-    } finally {
-      setBusy((s) => ({ ...s, check: false }));
-    }
+  const handleDeriveRoles = () => {
+    window.alert("生成角色即将上线");
   };
 
   const handleNav = (next: ModuleKey) => {
@@ -177,7 +90,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             {project?.name || "未命名项目"}
           </div>
           <div className="text-xs text-muted">
-            {hasUnsaved ? "有未保存的修改" : "已保存"}
+            {module === "truth"
+              ? locked
+                ? "真相已锁定"
+                : hasUnsaved
+                  ? "有未保存修改"
+                  : "已保存"
+              : "编辑中"}
           </div>
         </div>
         <Button onClick={handleBack}>返回 Workspace</Button>
@@ -202,7 +121,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             ))}
           </div>
           <div className="mt-6 text-xs text-muted">
-            项目：{project?.name || "加载中..."}
+            项目：{project?.name || "加载中…"}
           </div>
         </aside>
 
@@ -210,17 +129,27 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="glass-panel-strong flex flex-wrap items-center justify-between gap-3 px-6 py-4">
             <div>
               <div className="text-lg font-semibold">{moduleLabel}</div>
-              <div className="text-xs text-muted">编辑器</div>
+              <div className="text-xs text-muted">
+                {module === "truth"
+                  ? locked
+                    ? "当前真相已锁定"
+                    : "真相可编辑"
+                  : "模块内容"}
+              </div>
             </div>
             {module === "truth" ? (
-              <Button onClick={handleSave} loading={busy.save} disabled={isLocked}>
-                保存真相
+              <Button
+                onClick={save}
+                loading={saveState === "saving"}
+                disabled={locked}
+              >
+                {saveLabel}
               </Button>
             ) : null}
           </div>
 
           {loading ? (
-            <EmptyState title="加载中..." description="正在读取项目数据" />
+            <EmptyState title="加载中…" description="正在读取项目数据" />
           ) : error ? (
             <ErrorBanner message={error} />
           ) : module === "overview" ? (
@@ -244,18 +173,32 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     {project?.updatedAt || "-"}
                   </div>
                 </div>
+                <div>
+                  <div className="text-xs">Truth ID</div>
+                  <div className="mt-1 text-ink">{truth?.id || "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs">状态</div>
+                  <div className="mt-1 text-ink">
+                    {locked ? "已锁定" : "草稿"}
+                  </div>
+                </div>
               </div>
             </div>
           ) : module === "truth" ? (
-            <EditorSurface
-              content={content}
-              onChange={setContent}
-              editable={!isLocked}
-            />
+            <div className="space-y-3">
+              {saveError ? <ErrorBanner message={saveError} /> : null}
+              {locked ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  当前真相已锁定，编辑区为只读。解锁后可继续修改。
+                </div>
+              ) : null}
+              <EditorSurface value={text} onChange={setText} editable={!locked} />
+            </div>
           ) : (
             <EmptyState
-              title="模块暂未开放"
-              description="当前版本仅提供 Truth 编辑能力"
+              title="该模块即将上线"
+              description="当前版本仅开放真相编辑与问题查看"
             />
           )}
         </main>
@@ -269,24 +212,17 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               { key: "issues", label: "问题列表" }
             ]}
           />
-          {actionError ? <ErrorBanner message={actionError} /> : null}
           {tab === "ai" ? (
             <AIPanel
-              truthStatus={truthStatus}
-              onLock={handleLock}
+              locked={locked}
+              onLock={lock}
+              onUnlock={handleUnlock}
               onDeriveRoles={handleDeriveRoles}
-              onCheckConsistency={handleCheckConsistency}
-              loading={{
-                lock: busy.lock,
-                derive: busy.derive,
-                check: busy.check
-              }}
             />
           ) : (
             <IssuePanel
               projectId={projectId}
-              truthSnapshotId={snapshotId}
-              refreshToken={issueRefresh}
+              truthSnapshotId={latestSnapshotId}
             />
           )}
         </aside>

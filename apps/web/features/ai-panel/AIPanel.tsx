@@ -1,31 +1,21 @@
-"use client";
+﻿"use client";
 
 import { Button } from "../../components/common/Button";
 
 type AIPanelProps = {
-  truthStatus?: string | null;
+  locked: boolean;
   onLock: () => void;
-  onUnlock?: () => void;
+  onUnlock: () => void;
   onDeriveRoles: () => void;
-  onCheckConsistency: () => void;
-  loading?: {
-    lock?: boolean;
-    derive?: boolean;
-    check?: boolean;
-  };
 };
 
 export function AIPanel({
-  truthStatus,
+  locked,
   onLock,
   onUnlock,
-  onDeriveRoles,
-  onCheckConsistency,
-  loading
+  onDeriveRoles
 }: AIPanelProps) {
-  const isLocked = truthStatus === "LOCKED";
-  const statusLabel = isLocked ? "已锁定" : "草稿";
-  const canDerive = isLocked;
+  const statusLabel = locked ? "已锁定（Locked）" : "草稿（Draft）";
 
   return (
     <div className="space-y-4">
@@ -34,67 +24,48 @@ export function AIPanel({
         <div className="mt-2 text-xs text-muted">
           当前状态：<span className="font-medium text-ink">{statusLabel}</span>
         </div>
-        <div className="mt-4 space-y-2">
-          <Button
-            variant="outline"
-            onClick={isLocked ? onUnlock : onLock}
-            loading={loading?.lock}
-            disabled={isLocked ? !onUnlock : false}
-          >
-            {isLocked ? "解锁真相" : "锁定真相"}
+        <div className="mt-2 text-xs text-muted">
+          {locked
+            ? "当前真相已锁定，编辑区为只读。"
+            : "锁定后将进入只读状态，便于派生生成。"}
+        </div>
+        <div className="mt-4">
+          <Button variant="outline" onClick={locked ? onUnlock : onLock}>
+            {locked ? "解锁真相" : "锁定真相"}
           </Button>
-          {isLocked && !onUnlock ? (
-            <div className="text-xs text-muted">
-              后端尚未提供解锁接口（暂不可用）
-            </div>
-          ) : null}
         </div>
       </div>
 
       <div className="glass-panel-strong p-5">
         <div className="text-sm font-semibold">派生生成</div>
         <div className="mt-2 text-xs text-muted">
-          派生生成依赖已锁定的 Truth。
+          派生能力依赖已锁定的 Truth。
         </div>
         <div className="mt-4 space-y-2">
-          <Button
-            variant="primary"
-            onClick={onDeriveRoles}
-            loading={loading?.derive}
-            disabled={!canDerive}
-          >
+          <Button variant="primary" onClick={onDeriveRoles} disabled={!locked}>
             生成角色
           </Button>
-          {!canDerive ? (
-            <div className="text-xs text-muted">请先锁定真相</div>
-          ) : null}
+          <div className="text-xs text-muted">
+            {locked ? "功能即将上线" : "请先锁定真相"}
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            线索 Clues
+            线索
+            <div className="mt-1 text-[11px] text-muted">即将上线</div>
           </div>
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            时间线 Timeline
+            时间线
+            <div className="mt-1 text-[11px] text-muted">即将上线</div>
           </div>
           <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
             DM 手册
+            <div className="mt-1 text-[11px] text-muted">即将上线</div>
           </div>
-        </div>
-      </div>
-
-      <div className="glass-panel-strong p-5">
-        <div className="text-sm font-semibold">逻辑审查</div>
-        <div className="mt-2 text-xs text-muted">
-          对当前版本进行一致性检查。
-        </div>
-        <div className="mt-4">
-          <Button
-            variant="primary"
-            onClick={onCheckConsistency}
-            loading={loading?.check}
-          >
-            一致性检查
-          </Button>
+          <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
+            逻辑审查
+            <div className="mt-1 text-[11px] text-muted">即将上线</div>
+          </div>
         </div>
       </div>
     </div>

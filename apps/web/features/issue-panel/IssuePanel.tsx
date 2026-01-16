@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
@@ -34,9 +34,7 @@ export function IssuePanel({
         }
       } catch (err) {
         if (alive) {
-          setError(
-            err instanceof Error ? err.message : "加载失败，请重试"
-          );
+          setError(err instanceof Error ? err.message : "加载失败，请重试");
         }
       } finally {
         if (alive) setLoading(false);
@@ -57,7 +55,7 @@ export function IssuePanel({
   }
 
   if (!issues.length) {
-    return <EmptyState title="暂无问题" description="运行一致性检查后再试。" />;
+    return <EmptyState title="暂无问题" description="当前真相暂无问题条目" />;
   }
 
   return (
