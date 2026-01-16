@@ -8,7 +8,6 @@ const nextConfig = {
   experimental: {
     externalDir: true
   },
-  basePath: "/api",
   webpack: (config) => {
     const nodeModules = path.resolve(process.cwd(), "node_modules");
     config.resolve = config.resolve || {};

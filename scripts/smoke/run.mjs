@@ -18,6 +18,9 @@ async function request(method, path, body) {
 }
 
 async function main() {
+  console.log("==> Health check");
+  await request("GET", "/health");
+
   console.log("==> Create project");
   const project = await request("POST", "/projects", {
     name: "Demo Project",

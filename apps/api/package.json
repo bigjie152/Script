@@ -6,7 +6,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "db:init": "tsx scripts/migrate.ts"
+    "db:init": "tsx scripts/migrate.ts",
+    "smoke": "node ../../scripts/smoke/run.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
