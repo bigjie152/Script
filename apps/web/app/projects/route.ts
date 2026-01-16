@@ -16,40 +16,30 @@ async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
 
   let raw = "";
   try {
-    const buffer = await request.clone().arrayBuffer();
-    const rawUtf8 = new TextDecoder("utf-8").decode(buffer);
-    raw = rawUtf8;
-    const trimmed = rawUtf8.replace(/^\uFEFF/, "").trim();
-    if (trimmed) {
+    raw = await request.text();
+  } catch {}
+
+  const trimmed = raw.replace(/^\uFEFF/, "").trim();
+  if (trimmed) {
+    try {
+      const body = JSON.parse(trimmed);
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        return { ok: true, body: body as Record<string, unknown>, raw };
+      }
+    } catch {}
+  }
+
+  if (raw.includes("\u0000")) {
+    const compact = raw.replace(/\u0000/g, "").replace(/^\uFEFF/, "").trim();
+    if (compact) {
       try {
-        const body = JSON.parse(trimmed);
+        const body = JSON.parse(compact);
         if (body && typeof body === "object" && !Array.isArray(body)) {
           return { ok: true, body: body as Record<string, unknown>, raw };
         }
       } catch {}
     }
-
-    if (rawUtf8.includes("\u0000")) {
-      const rawUtf16 = new TextDecoder("utf-16le").decode(buffer);
-      raw = rawUtf16;
-      const trimmedUtf16 = rawUtf16.replace(/^\uFEFF/, "").trim();
-      if (trimmedUtf16) {
-        try {
-          const body = JSON.parse(trimmedUtf16);
-          if (body && typeof body === "object" && !Array.isArray(body)) {
-            return { ok: true, body: body as Record<string, unknown>, raw };
-          }
-        } catch {}
-      }
-    }
-  } catch {}
-
-  try {
-    const body = await request.json();
-    if (body && typeof body === "object" && !Array.isArray(body)) {
-      return { ok: true, body: body as Record<string, unknown>, raw };
-    }
-  } catch {}
+  }
 
   return { ok: false, message: "invalid json", raw };
 }
