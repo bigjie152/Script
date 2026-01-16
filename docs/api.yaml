@@ -1,0 +1,490 @@
+openapi: 3.0.3
+info:
+  title: Script AI Platform V0.1 API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3001/api
+    description: Local dev
+paths:
+  /projects:
+    post:
+      summary: Create project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                content:
+                  description: ProseMirror JSON
+                  type: object
+            examples:
+              default:
+                value:
+                  name: Demo Project
+                  description: V0.1 smoke test
+                  content:
+                    type: doc
+                    content: []
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+                  truthId:
+                    type: string
+                  status:
+                    type: string
+              examples:
+                default:
+                  value:
+                    projectId: "uuid"
+                    truthId: "uuid"
+                    status: DRAFT
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /projects/{id}:
+    get:
+      summary: Get project summary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: "#/components/schemas/Project"
+                  truth:
+                    $ref: "#/components/schemas/Truth"
+                  latestSnapshotId:
+                    type: string
+                    nullable: true
+              examples:
+                default:
+                  value:
+                    project:
+                      id: "uuid"
+                      name: Demo Project
+                      description: V0.1 smoke test
+                      createdAt: "2026-01-15 09:00:00"
+                      updatedAt: "2026-01-15 09:00:00"
+                    truth:
+                      id: "uuid"
+                      projectId: "uuid"
+                      status: DRAFT
+                      content: {}
+                      createdAt: "2026-01-15 09:00:00"
+                      updatedAt: "2026-01-15 09:00:00"
+                    latestSnapshotId: null
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{id}/truth:
+    put:
+      summary: Update truth draft
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: object
+            examples:
+              default:
+                value:
+                  content:
+                    type: doc
+                    content:
+                      - type: paragraph
+                        content:
+                          - type: text
+                            text: Draft content
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  truthId:
+                    type: string
+                  status:
+                    type: string
+              examples:
+                default:
+                  value:
+                    truthId: "uuid"
+                    status: DRAFT
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /projects/{id}/truth/lock:
+    post:
+      summary: Lock truth and create snapshot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Locked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  truthSnapshotId:
+                    type: string
+                  version:
+                    type: integer
+                  status:
+                    type: string
+              examples:
+                default:
+                  value:
+                    truthSnapshotId: "uuid"
+                    version: 1
+                    status: LOCKED
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{id}/ai/derive/roles:
+    post:
+      summary: AI derive roles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                truthSnapshotId:
+                  type: string
+      responses:
+        "200":
+          description: Derived roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  truthSnapshotId:
+                    type: string
+                  roles:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Role"
+              examples:
+                default:
+                  value:
+                    truthSnapshotId: "uuid"
+                    roles:
+                      - name: Primary Role
+                        summary: Stable mock role for V0.1 integration.
+                        meta:
+                          source: mock
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{id}/ai/check/consistency:
+    post:
+      summary: AI consistency check
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                truthSnapshotId:
+                  type: string
+      responses:
+        "200":
+          description: Issues generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  truthSnapshotId:
+                    type: string
+                  issues:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Issue"
+              examples:
+                default:
+                  value:
+                    truthSnapshotId: "uuid"
+                    issues:
+                      - type: consistency
+                        severity: low
+                        title: Stable Issue
+                        description: Stable mock issue for V0.1 integration.
+                        refs: []
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{id}/issues:
+    get:
+      summary: List issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: truthSnapshotId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Issue list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  truthSnapshotId:
+                    type: string
+                  issues:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IssueWithId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{id}/community/feedback:
+    post:
+      summary: Create feedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                type:
+                  type: string
+                meta:
+                  type: object
+            examples:
+              default:
+                value:
+                  content: Looks good for V0.1.
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedbackId:
+                    type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      summary: List feedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Feedback list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedback:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Feedback"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                error:
+                  message: name is required
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                error:
+                  message: project not found
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                error:
+                  message: truth is locked
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            details:
+              nullable: true
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    Truth:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        status:
+          type: string
+        content:
+          type: object
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    Role:
+      type: object
+      properties:
+        name:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        meta:
+          type: object
+          nullable: true
+    Issue:
+      type: object
+      properties:
+        type:
+          type: string
+        severity:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        refs:
+          type: array
+          items:
+            type: object
+    IssueWithId:
+      allOf:
+        - $ref: "#/components/schemas/Issue"
+        - type: object
+          properties:
+            id:
+              type: string
+            projectId:
+              type: string
+            truthSnapshotId:
+              type: string
+            createdAt:
+              type: string
+    Feedback:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          nullable: true
+        meta:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
