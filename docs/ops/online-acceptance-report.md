@@ -1,101 +1,50 @@
-# 线上验收报告（MVP-0：API 闭环 + 稳定性 + 可观测）
+﻿# 线上验收报告（Milestone 0 基线）
 
-验收时间：2026-01-16 16:02:25 +08:00  
+验收时间：2026-01-17 05:10 +08:00  
 base_url：https://script-426.pages.dev  
-commit：31623ffce6cb578d3bc64b6ab496d0cc8f82c241  
-部署环境：Cloudflare Pages / Production  
-部署 ID：60cd185e-5bc9-47d1-94c4-37e16037d9f6（wrangler list 显示 8 minutes ago）
+commit：05780eb  
+环境：Cloudflare Pages / Production
 
-## 1) API 闭环结果表
+## 1) 回归脚本
+- scripts/verify-online.ps1
+- scripts/verify-online.sh
+- 覆盖接口：POST /api/projects、GET /api/projects/:id、PUT /api/projects/:id/truth、GET /api/projects/:id/issues
 
-| 接口 | 请求（含 body） | 期望 | 实际 | 结论 |
-|---|---|---|---|---|
-| GET /api/health | 无 | 200 + ok=true | 200，`{"ok":true,"service":"script-api"}` | 通过 |
-| GET /health | 无 | 200 + ok=true | 200，`{"ok":true,"service":"script-api"}` | 通过 |
-| POST /api/projects | `{"name":"Smoke Project","description":"online smoke","content":{"type":"doc","content":[]}}` + `Content-Type: application/json` | 201/200 + 返回 id | 400，`{"error":{"message":"invalid json"}}` | 失败（阻塞后续） |
-| GET /api/projects/:id | 依赖项目 id | 200 | 未执行（因创建失败无 id） | 未验证 |
-| PUT /api/projects/:id/truth | `{"content":{...}}` | 200 | 未执行（前置失败） | 未验证 |
-| POST /api/projects/:id/truth/lock | 无 | 200 | 未执行（前置失败） | 未验证 |
-| POST /api/projects/:id/ai/derive/roles | `{"truthSnapshotId":...}` | 200 | 未执行（前置失败） | 未验证 |
-| POST /api/projects/:id/ai/check/consistency | `{"truthSnapshotId":...}` | 200 | 未执行（前置失败） | 未验证 |
-| GET /api/projects/:id/issues | `?truthSnapshotId=...` | 200 | 未执行（前置失败） | 未验证 |
-| POST /api/projects/:id/community/feedback | `{"content":"...","type":"comment"}` | 200 | 未执行（前置失败） | 未验证 |
-| GET /api/projects/:id/community/feedback | 无 | 200 | 未执行（前置失败） | 未验证 |
+## 2) API 闭环结果（样例）
+| 接口 | 期望 | 实际 | 结论 |
+|---|---|---|---|
+| POST /api/projects | 201 + 返回 projectId | 201 | 通过 |
+| GET /api/projects/:id | 200 + project + truth | 200 | 通过 |
+| PUT /api/projects/:id/truth | 200 | 200 | 通过 |
+| GET /api/projects/:id/issues | 200 + issues[] | 200（issues=[]） | 通过 |
 
-说明：`POST /api/projects` 在 curl（含 `Content-Type: application/json`）下稳定返回 400 invalid json，因此闭环被阻断。
+**示例响应（脱敏）**
+- POST /api/projects → `{"projectId":"76d70592-...","truthId":"ecf45742-...","status":"DRAFT"}`
+- GET /api/projects/:id → `{"project":{...},"truth":{...},"latestSnapshotId":null}`
+- PUT /api/projects/:id/truth → `{"truthId":"ecf45742-...","status":"DRAFT"}`
+- GET /api/projects/:id/issues → `{"truthSnapshotId":null,"issues":[]}`
 
-## 2) 稳定性统计（20 次创建 + 读取）
+## 3) 稳定性回归（20 次 create + read）
+- success：20
+- fail：0
+- total_time：15.297s
 
-执行方式：`scripts/verify-online.ps1`（在创建失败处中止）  
-结果：
-- 计划轮次：20
-- 实际完成：0
-- 失败次数：1
-- 失败原因：`POST /api/projects` 返回 400 invalid json
-- 单次耗时（创建请求）：约 0.44s
+## 4) 可观测性（requestId + 结构化日志）
+**预期**
+- 每个响应包含 requestId（header 或 body 任一即可）
+- 结构化日志包含：requestId、route、status、latencyMs、error（如有）
 
-结论：稳定性测试无法开展，因创建接口在生产环境无法成功。
+**本次验证结果**
+- 脚本回归通过，但当前生产响应未观测到 requestId（header/body 均未出现）
+- 需要等待本次部署版本生效后再次复验 requestId
 
-## 3) 可观测评估
+**复验命令（示例）**
+```bash
+curl -i -X POST https://script-426.pages.dev/api/projects \
+  -H "Content-Type: application/json" \
+  -d '{"name":"RequestId Check","description":"check","content":{"type":"doc","content":[]}}'
+```
 
-### 可定位点
-- 客户端能明确看到 400 + `{"error":{"message":"invalid json"}}`。
-- 失败发生在 body 解析阶段（早于 DB 写入）。
-
-### 不可观测点 / 缺口
-- 当前无法从客户端判断 `invalid json` 的具体解析异常（缺少服务端错误日志展示或 request-id 回溯）。
-- 未抓取到 Pages 函数端日志（需要在控制台或 wrangler tail 查看）。
-
-### 如何获取日志
-- 控制台路径：Cloudflare → Pages → script → Functions → Logs
-- Wrangler：
-  1) `npx wrangler pages deployment list --project-name script`
-  2) `npx wrangler pages deployment tail <deployment-id> --project-name script --status error --format pretty --sampling-rate 1 --ip self`
-
-### 建议的下一步改进（不要求立即实现）
-- 在 `POST /api/projects` 中记录 JSON 解析异常原因（`request.text()` + JSON.parse 的错误信息）。
-- 返回响应携带 `requestId`，便于日志检索与定位。
-- 对请求体进行最大长度/空 body 保护，避免误判。
-
-## 4) 当前最关键阻塞项 Top 3
-
-1) **POST /api/projects 返回 invalid json**（即使 Content-Type: application/json），导致闭环无法开始。  
-2) **后续链路全部被阻塞**（truth/lock/AI/issue/feedback 无法验证）。  
-3) **缺少服务端日志回溯**（无法定位 JSON 解析失败的具体原因）。
-
----
-
-## 5) 修复后复验（2026-01-16 16:41:10 +08:00）
-
-commit：0a7c53e3b778f02348334b53526cc015333aced7  
-部署 ID：4548e265-3b71-4079-a18f-01ff182e7c07  
-base_url：https://script-426.pages.dev
-
-### 修复要点
-- `POST /api/projects` 解析改为 `arrayBuffer + TextDecoder`，容忍 UTF-16/UTF-8，并保持 400/500 语义清晰。
-- 读取 D1 binding 改为直接访问 `globalThis[Symbol.for("__cloudflare-request-context__")]`，避开 nodejs_compat 下 `getRequestContext` 抛错。
-- 线上验收脚本改为 `--data-binary` 发送 JSON，避免 PowerShell/curl 破坏引号导致非 JSON。
-
-### API 闭环复验结果
-| 接口 | 实际 | 结论 |
-|---|---|---|
-| GET /api/health | 200 | 通过 |
-| GET /health | 200 | 通过 |
-| POST /api/projects | 201（返回 projectId） | 通过 |
-| GET /api/projects/:id | 200 | 通过 |
-| PUT /api/projects/:id/truth | 200 | 通过 |
-| POST /api/projects/:id/truth/lock | 200 | 通过 |
-| POST /api/projects/:id/ai/derive/roles | 200 | 通过 |
-| POST /api/projects/:id/ai/check/consistency | 200 | 通过 |
-| GET /api/projects/:id/issues | 200 | 通过 |
-| POST /api/projects/:id/community/feedback | 200 | 通过 |
-| GET /api/projects/:id/community/feedback | 200 | 通过 |
-
-### 稳定性回归（20 次创建 + 读取）
-- 成功：20
-- 失败：0
-- 总耗时：14.790s
-
-### 可观测结论
-- 线上 4xx/5xx 已具备可读错误信息，JSON 解析异常与 DB 绑定缺失均可定位。
-- 若后续仍出现 500，建议补充 requestId 到响应头，便于关联日志检索。
+## 5) 结论
+- 基线 API 闭环已稳定，回归 20/20 通过
+- requestId 可观测性仍需部署生效后复验
