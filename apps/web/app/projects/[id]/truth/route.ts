@@ -5,12 +5,57 @@ import { jsonError } from "../../../../lib/http";
 
 export const runtime = "edge";
 
+type ParsedJsonBody =
+  | { ok: true; body: Record<string, unknown>; raw: string }
+  | { ok: false; message: string; raw?: string };
+
+async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return { ok: false, message: "unsupported content-type" };
+  }
+
+  let raw = "";
+  try {
+    raw = await request.text();
+  } catch {}
+
+  const trimmed = raw.replace(/^\uFEFF/, "").trim();
+  if (trimmed) {
+    try {
+      const body = JSON.parse(trimmed);
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        return { ok: true, body: body as Record<string, unknown>, raw };
+      }
+    } catch {}
+  }
+
+  if (raw.includes("\u0000")) {
+    const compact = raw.replace(/\u0000/g, "").replace(/^\uFEFF/, "").trim();
+    if (compact) {
+      try {
+        const body = JSON.parse(compact);
+        if (body && typeof body === "object" && !Array.isArray(body)) {
+          return { ok: true, body: body as Record<string, unknown>, raw };
+        }
+      } catch {}
+    }
+  }
+
+  return { ok: false, message: "invalid json", raw };
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: projectId } = await Promise.resolve(params);
-  const body = await request.json().catch(() => ({}));
+  const parsed = await parseJsonBody(request);
+  if (!parsed.ok) {
+    return jsonError(400, parsed.message);
+  }
+
+  const body = parsed.body;
   const content = body?.content;
 
   if (!content) {

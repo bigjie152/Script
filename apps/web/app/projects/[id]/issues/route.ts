@@ -28,7 +28,10 @@ export async function GET(
     .limit(1);
 
   if (!snapshot) {
-    return jsonError(404, "truth snapshot not found");
+    return NextResponse.json({
+      truthSnapshotId: null,
+      issues: []
+    });
   }
 
   const issues = await db
