@@ -1,6 +1,14 @@
-name = "script-web"
-compatibility_date = "2025-01-01"
+name = "script"
+compatibility_date = "2025-02-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Next.js on Pages output
 pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+AI_PROVIDER = "mock"
+D1_BINDING = "DB"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "script-staging"
+database_id = "d8526a53-8fda-40f7-b330-e23f6d4c3858"
