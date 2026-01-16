@@ -22,9 +22,13 @@ function Invoke-Request {
   if ($Body) { Write-Host ("Body: {0}" -f $Body) }
 
   if ($Body) {
+    $tmp = [System.IO.Path]::GetTempFileName()
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($tmp, $Body, $utf8NoBom)
     $resp = & curl.exe -s -X $Method -H "Content-Type: application/json" `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
-      --data $Body $Url
+      --data-binary "@$tmp" $Url
+    Remove-Item $tmp -Force
   } else {
     $resp = & curl.exe -s -X $Method `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
@@ -112,9 +116,13 @@ $totalTime = 0.0
 
 for ($i = 1; $i -le 20; $i++) {
   Write-Host ("round {0}" -f $i)
+  $tmp = [System.IO.Path]::GetTempFileName()
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText($tmp, $createBody, $utf8NoBom)
   $resp = & curl.exe -s -X POST -H "Content-Type: application/json" `
     -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
-    --data $createBody "$BaseUrl/api/projects"
+    --data-binary "@$tmp" "$BaseUrl/api/projects"
+  Remove-Item $tmp -Force
   $status = ($resp | Select-String -Pattern "^HTTP_STATUS:" | ForEach-Object { $_.Line.Replace("HTTP_STATUS:","") }).Trim()
   $timeTotal = ($resp | Select-String -Pattern "^TIME_TOTAL:" | ForEach-Object { $_.Line.Replace("TIME_TOTAL:","") }).Trim()
   $bodyOnly = ($resp | Where-Object { $_ -notmatch "^HTTP_STATUS:" -and $_ -notmatch "^TIME_TOTAL:" }) -join "`n"

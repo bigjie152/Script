@@ -5,8 +5,8 @@ import { jsonError } from "../../lib/http";
 export const runtime = "edge";
 
 type ParsedJsonBody =
-  | { ok: true; body: Record<string, unknown> }
-  | { ok: false; message: string };
+  | { ok: true; body: Record<string, unknown>; raw: string }
+  | { ok: false; message: string; raw?: string };
 
 async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
   const contentType = request.headers.get("content-type") || "";
@@ -14,15 +14,44 @@ async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
     return { ok: false, message: "unsupported content-type" };
   }
 
+  let raw = "";
+  try {
+    const buffer = await request.clone().arrayBuffer();
+    const rawUtf8 = new TextDecoder("utf-8").decode(buffer);
+    raw = rawUtf8;
+    const trimmed = rawUtf8.replace(/^\uFEFF/, "").trim();
+    if (trimmed) {
+      try {
+        const body = JSON.parse(trimmed);
+        if (body && typeof body === "object" && !Array.isArray(body)) {
+          return { ok: true, body: body as Record<string, unknown>, raw };
+        }
+      } catch {}
+    }
+
+    if (rawUtf8.includes("\u0000")) {
+      const rawUtf16 = new TextDecoder("utf-16le").decode(buffer);
+      raw = rawUtf16;
+      const trimmedUtf16 = rawUtf16.replace(/^\uFEFF/, "").trim();
+      if (trimmedUtf16) {
+        try {
+          const body = JSON.parse(trimmedUtf16);
+          if (body && typeof body === "object" && !Array.isArray(body)) {
+            return { ok: true, body: body as Record<string, unknown>, raw };
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
   try {
     const body = await request.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return { ok: false, message: "invalid json" };
+    if (body && typeof body === "object" && !Array.isArray(body)) {
+      return { ok: true, body: body as Record<string, unknown>, raw };
     }
-    return { ok: true, body: body as Record<string, unknown> };
-  } catch (error) {
-    return { ok: false, message: "invalid json" };
-  }
+  } catch {}
+
+  return { ok: false, message: "invalid json", raw };
 }
 
 function logError(context: {
@@ -50,7 +79,14 @@ export async function POST(request: Request) {
     logError({
       message: parsed.message,
       requestId,
-      contentType
+      contentType,
+      body: parsed.raw
+        ? {
+            rawPreview: parsed.raw.slice(0, 200),
+            rawLength: parsed.raw.length,
+            contentLength: request.headers.get("content-length") || ""
+          }
+        : { contentLength: request.headers.get("content-length") || "" }
     });
     return jsonError(400, parsed.message);
   }

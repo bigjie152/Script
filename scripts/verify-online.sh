@@ -24,9 +24,9 @@ request() {
   echo "URL: $url"
   if [ -n "$body" ]; then
     echo "Body: $body"
-    resp=$(curl -s -X "$method" -H "Content-Type: application/json" \
+    resp=$(printf "%s" "$body" | curl -s -X "$method" -H "Content-Type: application/json" \
       -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
-      --data "$body" "$url")
+      --data-binary @- "$url")
   else
     resp=$(curl -s -X "$method" \
       -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
@@ -107,9 +107,9 @@ fail=0
 total_time=0
 for i in $(seq 1 20); do
   echo "round $i"
-  resp=$(curl -s -X POST -H "Content-Type: application/json" \
+  resp=$(printf "%s" "$create_body" | curl -s -X POST -H "Content-Type: application/json" \
     -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
-    --data "$create_body" "$BASE_URL/api/projects")
+    --data-binary @- "$BASE_URL/api/projects")
   status=$(echo "$resp" | sed -n 's/^HTTP_STATUS://p')
   time_total=$(echo "$resp" | sed -n 's/^TIME_TOTAL://p')
   body_only=$(echo "$resp" | sed '/^HTTP_STATUS:/d' | sed '/^TIME_TOTAL:/d')
