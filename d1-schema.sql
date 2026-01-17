@@ -2,6 +2,7 @@
   id text primary key,
   name text not null,
   description text,
+  meta text,
   owner_id text,
   created_at text not null default CURRENT_TIMESTAMP,
   updated_at text not null default CURRENT_TIMESTAMP
@@ -93,5 +94,5 @@ create table if not exists feedback (
   created_at text not null default CURRENT_TIMESTAMP
 );
 
--- add owner_id for existing databases (run once if missing)
-alter table projects add column owner_id text;
+-- add meta for existing databases (run once if missing)
+alter table projects add column meta text;

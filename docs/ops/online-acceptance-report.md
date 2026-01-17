@@ -264,3 +264,49 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 - Workspace 列表已由后端权威接口驱动
 - 刷新后项目不丢失，updatedAt 与排序符合预期
 - 只读预览路径可访问
+
+---
+
+# Milestone 8 Gate 8 验收（编辑器定型期）
+
+验收时间：2026-01-17 23:02 +08:00  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 生产 D1 schema 应用
+执行：
+```powershell
+npx wrangler d1 execute script-staging --remote --file=../../d1-schema.sql
+```
+校验：
+```powershell
+npx wrangler d1 execute script-staging --remote --command "PRAGMA table_info(projects);"
+```
+结果摘要：`projects.meta` 已存在（生产 D1）。
+
+## 2) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201（projectId=eeebf33f-e5b3-4169-b25e-e477cf5bb532）
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- stability 20/20 成功
+
+## 3) Block Editor 全模块一致性（UI）
+说明：需要在浏览器侧执行编辑与保存验证（overview / truth / roles / clues / timeline / dm）。
+当前尚未完成 UI 侧 Gate 8 验收，待人工补充以下证据：
+- 各模块连续保存 ≥20 次
+- 刷新后一致
+- 跨模块切换后一致
+
+## 4) 实体关联（@/#）验证
+说明：需在浏览器侧验证 @角色 / #线索 插入与点击定位效果。
+
+## 5) 结论
+- 生产 D1 已完成 schema 应用（meta 字段）
+- 基线回归未回退
+- UI 层 Gate 8 仍待人工验证与固化
