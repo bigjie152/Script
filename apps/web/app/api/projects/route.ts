@@ -1,7 +1,7 @@
 ﻿import { and, desc, eq, like, or } from "drizzle-orm";
-import { db, getD1Binding, schema } from "../../lib/db";
-import { jsonError, jsonResponse } from "../../lib/http";
-import { getAuthUser } from "../../lib/auth";
+import { db, getD1Binding, schema } from "../../../lib/db";
+import { jsonError, jsonResponse } from "../../../lib/http";
+import { getAuthUser } from "../../../lib/auth";
 
 export const runtime = "edge";
 
