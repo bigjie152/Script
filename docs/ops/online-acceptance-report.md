@@ -55,3 +55,45 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 - 生产 D1 已完成 schema 更新
 - modules API 五个模块 PUT/GET 回读一致
 - 基线接口未回退
+
+---
+
+# Milestone 3 门禁验收（结构准备期）
+
+验收时间：2026-01-17 20:29:19 +08:00  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- stability 20/20 成功
+
+## 2) 新壳层模块验证（overview / roles）
+项目：`projectId=bdea25e0-c3f0-4afd-bca2-d62b12e21bbb`
+
+- overview：PUT → GET 回读一致  
+  content.text = `模块 overview 回读测试`
+- roles：PUT → GET 回读一致  
+  content.text = `模块 roles 回读测试`
+
+## 3) 旧实现模块回归（clues / timeline / dm）
+同项目：
+
+- clues：PUT → GET 回读一致  
+  content.text = `模块 clues 回读测试`
+- timeline：PUT → GET 回读一致  
+  content.text = `模块 timeline 回读测试`
+- dm：PUT → GET 回读一致  
+  content.text = `模块 dm 回读测试`
+
+## 4) 结论
+- verify-online 基线未回退
+- DocumentEditor 与旧 EditorSurface 共存稳定

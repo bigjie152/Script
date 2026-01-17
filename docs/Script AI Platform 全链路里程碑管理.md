@@ -13,11 +13,11 @@
 | M0 | 稳定基线固化 | 回归脚本 20 次 100% 成功；5 分钟内验证基线 | 已完成 |
 | M1 | 编辑器状态机与面板结构对齐 | 锁定/解锁一致；派生区/逻辑审查独立 | 已完成 |
 | M2 | 角色/线索/时间线/DM/概览可编辑闭环 | 4 个模块闭环稳定 | 已完成 |
-| M3 | TipTap 接入准备（适配层） | Adapter 稳定 + DocumentEditor 复用 | 待执行 |
-| M4 | TipTap 首次接入（仅 Truth） | 保存 50 次无损坏 | 待执行 |
+| M3 | TipTap 接入准备（适配层） | Adapter 稳定 + DocumentEditor 复用 | 已完成（准备期） |
+| M4 | TipTap 全模块接入（结构增强） | 保存 ≥50 次无损坏 | 进行中 |
 | M5 | AI 工作流外壳（Mock） | 全流程 mock 可跑通 | 待执行 |
-| M6 | 真实模型接入（仅生成真相） | 成功率 >95% | 待执行 |
-| M7 | 真实模型接入（生成角色） | 可重复生成不崩溃 | 待执行 |
+| M6 | 真实模型接入 | 成功率 >95% | 待执行 |
+| M7 | 真实模型接入 | 可重复生成不崩溃 | 待执行 |
 | M8 | 真实逻辑审查 | issues 结构稳定 | 待执行 |
 | M9 | 内测准备 | 账号 + 可观测 + SOP | 待执行 |
 
@@ -67,11 +67,21 @@
 **验收方式**：模块复用与接口稳定性检查。  
 **产出物**：adapter + modules config + 文档说明。
 
-## Milestone 4 — TipTap 首次接入（仅 Truth）
-**目标**：Truth 替换为 TipTap，确保数据兼容。  
-**Gate 4**：保存 50 次无损坏、跨刷新一致、输入性能可接受。  
-**验收方式**：重复保存与回读一致性回归。  
-**产出物**：Truth 编辑器实现 + 兼容策略记录。
+**当前进展**：
+- 已落地 EditorDocument + Adapter（serialize/deserialize/update）
+- DocumentEditor 已复用至 overview / roles
+- 模块导航与端点由 modules.config 驱动
+- 文档已补充：`docs/editor-architecture.md`
+**Gate 证据**：
+- 见 `docs/ops/online-acceptance-report.md` 中 “Milestone 3 门禁验收（结构准备期）”
+
+## Milestone 4 — TipTap 首次接入（全模块）
+**目标**：overview / truth / roles / clues / timeline / dm 全部切换为 TipTap，保证旧数据兼容并提供高级但克制的编辑能力。  
+**范围**：统一编辑内核 + Database-like block / Slash Command / Mention。  
+**Gate 4**：保存 ≥50 次无损坏、跨刷新一致、输入性能可接受。  
+**验收方式**：多次保存回读 + 跨模块切换回归 + verify-online 基线不回退。  
+**产出物**：全模块 TipTap 编辑器实现 + 兼容策略记录 + 接入说明文档。
+**说明文档**：`docs/tiptap-integration.md`
 
 ## Milestone 5 — AI 工作流外壳（Mock）
 **目标**：Mock 工作流完整跑通。  

@@ -145,3 +145,10 @@ apps/web/
 
 - Workspace 项目列表：缺少 `GET /api/projects`，仅在文档标记需求，不改后端
 - 编辑器侧栏：未来可加入版本记录、操作历史
+
+## 11. 可替换编辑器架构（Milestone 3）
+
+- 统一文档类型：`EditorDocument`（跨模块复用）
+- Adapter 负责序列化边界：`serialize/deserialize`
+- `DocumentEditor` 作为唯一编辑器入口，未来替换 TipTap 只改内部实现
+- 模块导航与端点由 `modules.config.ts` 驱动，避免硬编码分散

@@ -1,18 +1,22 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { lockTruth, unlockTruth, updateTruth } from "../services/truthApi";
 import { useProject } from "./useProject";
+import { EditorDocument } from "../types/editorDocument";
 import {
-  EditorDocument,
-  fromTruthContent,
-  toTruthContent
-} from "../lib/editorDocument";
+  createEmptyDocument,
+  deserializeDocument,
+  serializeDocument,
+  updateDocumentText
+} from "../editors/adapters/plainTextAdapter";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
 export function useTruthDocument(projectId: string) {
   const { project, truth, latestSnapshotId, loading, error, refresh } =
     useProject(projectId);
-  const [document, setDocument] = useState<EditorDocument>({ text: "" });
+  const [document, setDocument] = useState<EditorDocument>(() =>
+    createEmptyDocument(projectId, "truth")
+  );
   const [baselineText, setBaselineText] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -23,12 +27,16 @@ export function useTruthDocument(projectId: string) {
   }, [truth?.status]);
 
   useEffect(() => {
-    const nextDoc = fromTruthContent(truth?.content);
+    const nextDoc = deserializeDocument(truth?.content, {
+      projectId,
+      module: "truth",
+      updatedAt: truth?.updatedAt ?? null
+    });
     setDocument(nextDoc);
     setBaselineText(nextDoc.text);
     setSaveState("idle");
     setSaveError(null);
-  }, [truth?.id, truth?.content]);
+  }, [projectId, truth?.id, truth?.content, truth?.updatedAt]);
 
   useEffect(() => {
     if (saveState !== "success") return;
@@ -38,7 +46,18 @@ export function useTruthDocument(projectId: string) {
 
   const updateText = useCallback(
     (next: string) => {
-      setDocument({ text: next });
+      setDocument((prev) => updateDocumentText(prev, next));
+      if (saveState === "error") {
+        setSaveState("idle");
+        setSaveError(null);
+      }
+    },
+    [saveState]
+  );
+
+  const updateDocument = useCallback(
+    (next: EditorDocument) => {
+      setDocument(next);
       if (saveState === "error") {
         setSaveState("idle");
         setSaveError(null);
@@ -63,7 +82,7 @@ export function useTruthDocument(projectId: string) {
     setSaveError(null);
 
     try {
-      await updateTruth(projectId, toTruthContent(document));
+      await updateTruth(projectId, serializeDocument(document));
       setBaselineText(document.text);
       setSaveState("success");
       refresh();
@@ -96,6 +115,7 @@ export function useTruthDocument(projectId: string) {
     loading,
     error,
     document,
+    setDocument: updateDocument,
     text: document.text,
     setText: updateText,
     save,

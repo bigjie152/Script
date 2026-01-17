@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DocumentModuleKey, EditorDocument } from "../types/editorDocument";
 import {
-  ModuleKey,
   getModuleDocument,
   updateModuleDocument
 } from "../services/moduleApi";
-import { EditorDocument, fromTruthContent, toTruthContent } from "../lib/editorDocument";
+import {
+  createEmptyDocument,
+  deserializeDocument,
+  serializeDocument,
+  updateDocumentText
+} from "../editors/adapters/plainTextAdapter";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
 export function useModuleDocument(
   projectId: string,
-  moduleKey?: ModuleKey | null
+  moduleKey?: DocumentModuleKey | null
 ) {
-  const [document, setDocument] = useState<EditorDocument>({ text: "" });
+  const [document, setDocument] = useState<EditorDocument>(() =>
+    createEmptyDocument(projectId, moduleKey ?? "overview")
+  );
   const [baselineText, setBaselineText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,13 +27,21 @@ export function useModuleDocument(
   const [saveError, setSaveError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
+  useEffect(() => {
+    if (!moduleKey) return;
+    setDocument(createEmptyDocument(projectId, moduleKey));
+    setBaselineText("");
+    setSaveState("idle");
+    setSaveError(null);
+  }, [projectId, moduleKey]);
+
   const refresh = useCallback(() => {
     setVersion((v) => v + 1);
   }, []);
 
   useEffect(() => {
     if (!projectId || !moduleKey) return;
-    const activeModule: ModuleKey = moduleKey;
+    const activeModule: DocumentModuleKey = moduleKey;
     let alive = true;
     async function run() {
       setLoading(true);
@@ -34,7 +49,10 @@ export function useModuleDocument(
       try {
         const data = await getModuleDocument(projectId, activeModule);
         if (!alive) return;
-        const nextDoc = fromTruthContent(data.content);
+        const nextDoc = deserializeDocument(data.content, {
+          projectId,
+          module: activeModule
+        });
         setDocument(nextDoc);
         setBaselineText(nextDoc.text);
         setSaveState("idle");
@@ -60,7 +78,18 @@ export function useModuleDocument(
 
   const updateText = useCallback(
     (next: string) => {
-      setDocument({ text: next });
+      setDocument((prev) => updateDocumentText(prev, next));
+      if (saveState === "error") {
+        setSaveState("idle");
+        setSaveError(null);
+      }
+    },
+    [saveState]
+  );
+
+  const updateDocument = useCallback(
+    (next: EditorDocument) => {
+      setDocument(next);
       if (saveState === "error") {
         setSaveState("idle");
         setSaveError(null);
@@ -76,7 +105,7 @@ export function useModuleDocument(
 
   const save = useCallback(async () => {
     if (!projectId || !moduleKey) return false;
-    const activeModule: ModuleKey = moduleKey;
+    const activeModule: DocumentModuleKey = moduleKey;
     setSaveState("saving");
     setSaveError(null);
 
@@ -84,7 +113,7 @@ export function useModuleDocument(
       await updateModuleDocument(
         projectId,
         activeModule,
-        toTruthContent(document)
+        serializeDocument(document)
       );
       setBaselineText(document.text);
       setSaveState("success");
@@ -99,6 +128,7 @@ export function useModuleDocument(
 
   return {
     document,
+    setDocument: updateDocument,
     text: document.text,
     setText: updateText,
     loading,

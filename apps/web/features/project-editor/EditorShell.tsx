@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/common/Button";
 import { EditorSurface } from "../../components/editor/EditorSurface";
+import { DocumentEditor } from "../../editors/DocumentEditor";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { TabGroup } from "../../components/common/TabGroup";
@@ -12,22 +13,16 @@ import { useModuleDocument } from "../../hooks/useModuleDocument";
 import { useMockAiTasks } from "../../hooks/useMockAi";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
-import { ModuleKey as DocModuleKey } from "../../services/moduleApi";
-
-const MODULES = [
-  { key: "overview", label: "概览" },
-  { key: "truth", label: "真相" },
-  { key: "roles", label: "角色" },
-  { key: "clues", label: "线索" },
-  { key: "timeline", label: "时间线" },
-  { key: "dm", label: "DM 手册" }
-] as const;
-
-type ModuleKey = (typeof MODULES)[number]["key"];
+import {
+  MODULE_CONFIGS,
+  MODULE_CONFIG_MAP,
+  isDocumentModuleKey
+} from "../../modules/modules.config";
+import { DocumentModuleKey, EditorModuleKey } from "../../types/editorDocument";
 
 type EditorShellProps = {
   projectId: string;
-  module: ModuleKey;
+  module: EditorModuleKey;
 };
 
 export function EditorShell({ projectId, module }: EditorShellProps) {
@@ -38,8 +33,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     latestSnapshotId,
     loading,
     error,
+    document,
     text,
     setText,
+    setDocument,
     save,
     saveState,
     saveError,
@@ -48,15 +45,27 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     lock,
     unlock
   } = useTruthDocument(projectId);
-  const moduleDocKey = (module === "truth" ? null : module) as DocModuleKey | null;
+  const moduleDocKey = isDocumentModuleKey(module)
+    ? (module as DocumentModuleKey)
+    : null;
   const moduleDoc = useModuleDocument(projectId, moduleDocKey);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
   const [panelError, setPanelError] = useState<string | null>(null);
 
   const moduleLabel = useMemo(() => {
-    return MODULES.find((item) => item.key === module)?.label || "概览";
+    return MODULE_CONFIG_MAP[module]?.label || "概览";
   }, [module]);
+
+  const moduleHint = useMemo(() => {
+    if (module === "truth") {
+      return locked ? "当前真相已锁定" : "真相可编辑";
+    }
+    if (MODULE_CONFIG_MAP[module]?.requiresTruthLocked && !locked) {
+      return "建议先锁定真相后再编辑派生模块";
+    }
+    return "模块内容";
+  }, [module, locked]);
 
   const saveLabel = useMemo(() => {
     const state = module === "truth" ? saveState : moduleDoc.saveState;
@@ -109,7 +118,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     reviewLogic.run();
   };
 
-  const handleNav = (next: ModuleKey) => {
+  const handleNav = (next: EditorModuleKey) => {
     router.push(`/projects/${projectId}/editor/${next}`);
   };
 
@@ -118,6 +127,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const activeText = module === "truth" ? text : moduleDoc.text;
   const activeSaveError = module === "truth" ? saveError : moduleDoc.saveError;
   const activeHasUnsaved = module === "truth" ? hasUnsaved : moduleDoc.hasUnsaved;
+  const useDocumentEditor =
+    module !== "truth" && MODULE_CONFIG_MAP[module]?.editorType === "document";
 
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
@@ -145,7 +156,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         <aside className="glass-panel-strong h-fit p-4">
           <div className="text-xs text-muted">模块导航</div>
           <div className="mt-4 space-y-1">
-            {MODULES.map((item) => (
+            {MODULE_CONFIGS.map((item) => (
               <button
                 key={item.key}
                 onClick={() => handleNav(item.key)}
@@ -168,13 +179,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="glass-panel-strong flex flex-wrap items-center justify-between gap-3 px-6 py-4">
             <div>
               <div className="text-lg font-semibold">{moduleLabel}</div>
-              <div className="text-xs text-muted">
-                {module === "truth"
-                  ? locked
-                    ? "当前真相已锁定"
-                    : "真相可编辑"
-                  : "模块内容"}
-              </div>
+              <div className="text-xs text-muted">{moduleHint}</div>
             </div>
             <Button
               onClick={module === "truth" ? save : moduleDoc.save}
@@ -228,10 +233,17 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 </div>
               </div>
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              <EditorSurface
-                value={activeText}
-                onChange={moduleDoc.setText}
-              />
+              {useDocumentEditor ? (
+                <DocumentEditor
+                  value={moduleDoc.document}
+                  onChange={moduleDoc.setDocument}
+                />
+              ) : (
+                <EditorSurface
+                  value={activeText}
+                  onChange={moduleDoc.setText}
+                />
+              )}
             </div>
           ) : module === "truth" ? (
             <div className="space-y-3">
@@ -241,12 +253,26 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   当前真相已锁定，编辑区为只读。解锁后可继续修改。
                 </div>
               ) : null}
-              <EditorSurface value={text} onChange={setText} editable={!locked} />
+              <DocumentEditor
+                value={document}
+                onChange={setDocument}
+                readonly={locked}
+              />
             </div>
           ) : (
             <div className="space-y-3">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              <EditorSurface value={activeText} onChange={moduleDoc.setText} />
+              {useDocumentEditor ? (
+                <DocumentEditor
+                  value={moduleDoc.document}
+                  onChange={moduleDoc.setDocument}
+                />
+              ) : (
+                <EditorSurface
+                  value={activeText}
+                  onChange={moduleDoc.setText}
+                />
+              )}
             </div>
           )}
         </main>
