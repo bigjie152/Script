@@ -83,6 +83,11 @@
 **产出物**：全模块 TipTap 编辑器实现 + 兼容策略记录 + 接入说明文档。
 **说明文档**：`docs/tiptap-integration.md`
 
+**Gate 证据**：
+- 见 `docs/ops/online-acceptance-report.md` 中 “Milestone 4 Gate 4 验收（TipTap 全模块）”
+**注意**：
+- UI 输入性能需在浏览器侧主观确认后方可关闭 Gate 4
+
 ## Milestone 5 — AI 工作流外壳（Mock）
 **目标**：Mock 工作流完整跑通。  
 **Gate 5**：Mock 全流程可跑通，具备运行态与可重试。  

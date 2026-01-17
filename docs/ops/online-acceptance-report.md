@@ -97,3 +97,55 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 ## 4) 结论
 - verify-online 基线未回退
 - DocumentEditor 与旧 EditorSurface 共存稳定
+
+---
+
+# Milestone 4 Gate 4 验收（TipTap 全模块）
+
+验收时间：2026-01-17 21:20 +08:00  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- stability 20/20 成功
+
+## 2) TipTap 全模块一致性（PUT → GET）
+项目：`projectId=d50cf527-88cd-4369-8e51-618afc805747`
+
+每个模块连续保存 10 次（含 heading / mention / databaseLike），共计 60 次：
+- overview：10/10
+- truth：10/10
+- roles：10/10
+- clues：10/10
+- timeline：10/10
+- dm：10/10
+
+样例（第 1 次保存的回读内容）：
+- overview：`module-overview-save-1`
+- truth：`module-truth-save-1`
+- roles：`module-roles-save-1`
+- clues：`module-clues-save-1`
+- timeline：`module-timeline-save-1`
+- dm：`module-dm-save-1`
+
+## 3) 旧数据兼容性（M4 之前）
+旧项目：`projectId=9a9679f9-979a-4958-9b99-8d9f3da985a7`  
+- GET /api/projects/:id → 200  
+- GET /api/projects/:id/modules/overview → content.text = `overview-content-194451`
+
+## 4) 性能主观验证
+备注：本次仅完成 API 层回归，UI 输入性能需在浏览器侧主观确认。
+
+## 5) 结论
+- TipTap 全模块保存/回读一致
+- 基线回归未回退
+- 旧数据可正常回读
