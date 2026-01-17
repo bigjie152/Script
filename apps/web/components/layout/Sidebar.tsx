@@ -1,4 +1,4 @@
-import { cn } from "../../utils/cn";
+﻿import { cn } from "../../utils/cn";
 
 type SidebarItem = {
   key: string;
@@ -45,9 +45,7 @@ export function Sidebar({ activeKey = "workspace" }: SidebarProps) {
         ))}
       </div>
 
-      <div className="mt-auto pt-6 text-xs text-muted">
-        版本：V0.1（前端演示）
-      </div>
+      <div className="mt-auto pt-6 text-xs text-muted">版本：V0.1（前端演示）</div>
     </aside>
   );
 }

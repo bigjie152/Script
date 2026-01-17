@@ -4,6 +4,7 @@ import { db, schema } from "../../../../../../lib/db";
 import { jsonError } from "../../../../../../lib/http";
 import { deriveRoles } from "../../../../../../lib/ai";
 import { loadPrompt } from "../../../../../../lib/prompts";
+import { getAuthUser } from "../../../../../../lib/auth";
 
 export const runtime = "edge";
 
@@ -16,6 +17,11 @@ export async function POST(
   const requestedSnapshotId =
     typeof body?.truthSnapshotId === "string" ? body.truthSnapshotId : null;
 
+  const user = await getAuthUser(request);
+  if (!user) {
+    return jsonError(401, "login required");
+  }
+
   const [project] = await db
     .select()
     .from(schema.projects)
@@ -24,6 +30,17 @@ export async function POST(
 
   if (!project) {
     return jsonError(404, "project not found");
+  }
+
+  if (project.ownerId && project.ownerId !== user.id) {
+    return jsonError(403, "forbidden");
+  }
+
+  if (!project.ownerId) {
+    await db
+      .update(schema.projects)
+      .set({ ownerId: user.id, updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
   }
 
   const [snapshot] = await db

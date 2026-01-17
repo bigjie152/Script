@@ -2,6 +2,12 @@ param(
   [string]$BaseUrl = "https://script-426.pages.dev"
 )
 
+$AuthUsername = $env:AUTH_USERNAME
+if (-not $AuthUsername) { $AuthUsername = "smoke_user" }
+$AuthPassword = $env:AUTH_PASSWORD
+if (-not $AuthPassword) { $AuthPassword = "smoke_pass_123" }
+$CookieJar = [System.IO.Path]::GetTempFileName()
+
 function Truncate-Body {
   param([string]$Text)
   if ($Text.Length -le 800) { return $Text }
@@ -26,11 +32,13 @@ function Invoke-Request {
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($tmp, $Body, $utf8NoBom)
     $resp = & curl.exe -s -X $Method -H "Content-Type: application/json" `
+      -b $CookieJar -c $CookieJar `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
       --data-binary "@$tmp" $Url
     Remove-Item $tmp -Force
   } else {
     $resp = & curl.exe -s -X $Method `
+      -b $CookieJar -c $CookieJar `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
       $Url
   }
@@ -53,7 +61,18 @@ function Invoke-Request {
 }
 
 Write-Host ("BASE_URL={0}" -f $BaseUrl)
+Write-Host ("AUTH_USERNAME={0}" -f $AuthUsername)
 Write-Host ""
+
+$registerBody = @{ username = $AuthUsername; password = $AuthPassword } | ConvertTo-Json -Compress
+Invoke-Request -Title "auth register" -Method "POST" -Url "$BaseUrl/api/auth/register" `
+  -Body $registerBody `
+  -ExpectedStatus @("200","201","409") | Out-Null
+
+$loginBody = @{ username = $AuthUsername; password = $AuthPassword } | ConvertTo-Json -Compress
+Invoke-Request -Title "auth login" -Method "POST" -Url "$BaseUrl/api/auth/login" `
+  -Body $loginBody `
+  -ExpectedStatus @("200") | Out-Null
 
 Invoke-Request -Title "health api" -Method "GET" -Url "$BaseUrl/api/health" -ExpectedStatus @("200") | Out-Null
 
@@ -93,6 +112,7 @@ for ($i = 1; $i -le 20; $i++) {
   $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
   [System.IO.File]::WriteAllText($tmp, $createBody, $utf8NoBom)
   $resp = & curl.exe -s -X POST -H "Content-Type: application/json" `
+    -b $CookieJar -c $CookieJar `
     -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
     --data-binary "@$tmp" "$BaseUrl/api/projects"
   Remove-Item $tmp -Force
@@ -121,7 +141,7 @@ for ($i = 1; $i -le 20; $i++) {
     break
   }
 
-  $readResp = & curl.exe -s -X GET -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" "$BaseUrl/api/projects/$roundProjectId"
+  $readResp = & curl.exe -s -X GET -b $CookieJar -c $CookieJar -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" "$BaseUrl/api/projects/$roundProjectId"
   $readStatus = ($readResp | Select-String -Pattern "^HTTP_STATUS:" | ForEach-Object { $_.Line.Replace("HTTP_STATUS:","") }).Trim()
   $readTime = ($readResp | Select-String -Pattern "^TIME_TOTAL:" | ForEach-Object { $_.Line.Replace("TIME_TOTAL:","") }).Trim()
   if ($readStatus -ne "200") {
@@ -139,3 +159,5 @@ for ($i = 1; $i -le 20; $i++) {
 Write-Host ("stability_success={0}" -f $success)
 Write-Host ("stability_fail={0}" -f $fail)
 Write-Host ("stability_total_time={0}s" -f $totalTime.ToString("F3"))
+
+Remove-Item $CookieJar -Force

@@ -2,6 +2,7 @@
   id text primary key,
   name text not null,
   description text,
+  owner_id text,
   created_at text not null default CURRENT_TIMESTAMP,
   updated_at text not null default CURRENT_TIMESTAMP
 );
@@ -55,6 +56,23 @@ create table if not exists module_documents (
   updated_at text not null default CURRENT_TIMESTAMP
 );
 
+create table if not exists users (
+  id text primary key,
+  username text not null,
+  password_hash text not null,
+  password_salt text not null,
+  created_at text not null default CURRENT_TIMESTAMP,
+  updated_at text not null default CURRENT_TIMESTAMP
+);
+
+create table if not exists sessions (
+  id text primary key,
+  user_id text not null,
+  token text not null,
+  expires_at text not null,
+  created_at text not null default CURRENT_TIMESTAMP
+);
+
 create table if not exists ai_request_logs (
   id text primary key,
   project_id text not null,
@@ -74,3 +92,6 @@ create table if not exists feedback (
   meta text,
   created_at text not null default CURRENT_TIMESTAMP
 );
+
+-- add owner_id for existing databases (run once if missing)
+alter table projects add column owner_id text;

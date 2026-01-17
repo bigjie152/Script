@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -6,13 +6,14 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { TopNav } from "../../components/layout/TopNav";
+import { useAuth } from "../../hooks/useAuth";
 import { getApiBase } from "../../services/apiClient";
 import { createProject } from "../../services/projectApi";
 
 const MOCK_PROJECTS = [
   {
     name: "静谧回响",
-    description: "发生在未来东京的悬疑探秘故事。"
+    description: "发生在未来东京的悬疑探秘故事，沉默即是货币。"
   },
   {
     name: "代号：联合体",
@@ -26,6 +27,7 @@ const MOCK_PROJECTS = [
 
 export default function WorkspacePage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<
@@ -33,7 +35,16 @@ export default function WorkspacePage() {
   >([]);
   const apiBase = getApiBase();
 
+  const requireLogin = () => {
+    setError("请先登录后再创建项目");
+    router.push("/login");
+  };
+
   const handleCreate = async () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
     setError(null);
     setCreating(true);
     try {
@@ -62,6 +73,10 @@ export default function WorkspacePage() {
   };
 
   const handleOpenTemplate = async (name: string, description: string) => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
     setError(null);
     setCreating(true);
     try {
@@ -70,10 +85,7 @@ export default function WorkspacePage() {
       if (!projectId) {
         throw new Error("创建失败，请重试");
       }
-      setRecent((prev) => [
-        { id: projectId, name, description },
-        ...prev
-      ]);
+      setRecent((prev) => [{ id: projectId, name, description }, ...prev]);
       router.push(`/projects/${projectId}/editor/overview`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建失败，请重试");
@@ -87,14 +99,28 @@ export default function WorkspacePage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <Sidebar activeKey="workspace" />
         <main className="space-y-6">
-          <TopNav onCreate={handleCreate} creating={creating} />
+          <TopNav
+            onCreate={handleCreate}
+            creating={creating}
+            user={user}
+            onLogin={() => router.push("/login")}
+            onLogout={logout}
+          />
           <div className="text-xs text-muted">API Base: {apiBase}</div>
+          {!user ? (
+            <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+              当前未登录，仅可浏览示例项目。登录后可创建与编辑项目。
+            </div>
+          ) : null}
           {error ? <ErrorBanner message={error} /> : null}
 
           <section className="space-y-4">
             <div className="text-lg font-semibold">最近编辑</div>
             {recent.length === 0 ? (
-              <EmptyState title="暂无项目" description="点击右上角新建项目。" />
+              <EmptyState
+                title="暂无项目"
+                description="点击右上角新建项目"
+              />
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
                 {recent.map((item) => (

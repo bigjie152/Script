@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Noto_Sans_SC, Sora } from "next/font/google";
 import "../styles/globals.css";
 

@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../../../../lib/db";
 import { jsonError, jsonResponse } from "../../../../lib/http";
+import { getAuthUser } from "../../../../lib/auth";
 
 export const runtime = "edge";
 
@@ -80,6 +81,18 @@ export async function PUT(
     return jsonError(400, "content is required", undefined, requestId);
   }
 
+  const user = await getAuthUser(request);
+  if (!user) {
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 401,
+      latencyMs: Date.now() - startedAt,
+      error: { message: "login required" }
+    });
+    return jsonError(401, "login required", undefined, requestId);
+  }
+
   const [project] = await db
     .select()
     .from(schema.projects)
@@ -95,6 +108,24 @@ export async function PUT(
       error: { message: "project not found" }
     });
     return jsonError(404, "project not found", undefined, requestId);
+  }
+
+  if (project.ownerId && project.ownerId !== user.id) {
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 403,
+      latencyMs: Date.now() - startedAt,
+      error: { message: "forbidden" }
+    });
+    return jsonError(403, "forbidden", undefined, requestId);
+  }
+
+  if (!project.ownerId) {
+    await db
+      .update(schema.projects)
+      .set({ ownerId: user.id, updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
   }
 
   const [truth] = await db

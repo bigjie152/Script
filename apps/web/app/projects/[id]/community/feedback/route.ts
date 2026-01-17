@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../../../../../lib/db";
 import { jsonError } from "../../../../../lib/http";
+import { getAuthUser } from "../../../../../lib/auth";
 
 export const runtime = "edge";
 
@@ -23,6 +24,22 @@ export async function POST(
 
   if (!project) {
     return jsonError(404, "project not found");
+  }
+
+  const user = await getAuthUser(request);
+  if (!user) {
+    return jsonError(401, "login required");
+  }
+
+  if (project.ownerId && project.ownerId !== user.id) {
+    return jsonError(403, "forbidden");
+  }
+
+  if (!project.ownerId) {
+    await db
+      .update(schema.projects)
+      .set({ ownerId: user.id, updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
   }
 
   if (!content) {

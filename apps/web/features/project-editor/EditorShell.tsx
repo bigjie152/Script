@@ -10,6 +10,7 @@ import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { TabGroup } from "../../components/common/TabGroup";
 import { useTruthDocument } from "../../hooks/useTruthDocument";
 import { useModuleDocument } from "../../hooks/useModuleDocument";
+import { useAuth } from "../../hooks/useAuth";
 import { useMockAiTasks } from "../../hooks/useMockAi";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
@@ -27,6 +28,7 @@ type EditorShellProps = {
 
 export function EditorShell({ projectId, module }: EditorShellProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     project,
     truth,
@@ -86,6 +88,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   };
 
   const handleLock = async () => {
+    if (!canWrite) {
+      setPanelError("请先登录后再操作");
+      return;
+    }
     setPanelError(null);
     try {
       await lock();
@@ -95,6 +101,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   };
 
   const handleUnlock = async () => {
+    if (!canWrite) {
+      setPanelError("请先登录后再操作");
+      return;
+    }
     const ok = window.confirm(
       "解锁后将允许修改真相内容，可能影响派生结果一致性，确定解锁吗？"
     );
@@ -108,12 +118,20 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   };
 
   const handleDeriveRoles = () => {
+    if (!canWrite) {
+      setPanelError("请先登录后再操作");
+      return;
+    }
     if (!locked) return;
     setPanelError(null);
     deriveRoles.run();
   };
 
   const handleReviewLogic = () => {
+    if (!canWrite) {
+      setPanelError("请先登录后再操作");
+      return;
+    }
     setPanelError(null);
     reviewLogic.run();
   };
@@ -129,6 +147,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const activeHasUnsaved = module === "truth" ? hasUnsaved : moduleDoc.hasUnsaved;
   const useDocumentEditor =
     module !== "truth" && MODULE_CONFIG_MAP[module]?.editorType === "document";
+  const canWrite = Boolean(user);
 
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
@@ -182,13 +201,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               <div className="text-xs text-muted">{moduleHint}</div>
             </div>
             <Button
-              onClick={module === "truth" ? save : moduleDoc.save}
+              onClick={canWrite ? (module === "truth" ? save : moduleDoc.save) : undefined}
               loading={
                 module === "truth"
                   ? saveState === "saving"
                   : moduleDoc.saveState === "saving"
               }
-              disabled={module === "truth" ? locked : false}
+              disabled={module === "truth" ? locked || !canWrite : !canWrite}
             >
               {saveLabel}
             </Button>
@@ -233,15 +252,22 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 </div>
               </div>
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              {!canWrite ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
+                </div>
+              ) : null}
               {useDocumentEditor ? (
                 <DocumentEditor
                   value={moduleDoc.document}
                   onChange={moduleDoc.setDocument}
+                  readonly={!canWrite}
                 />
               ) : (
                 <EditorSurface
                   value={activeText}
                   onChange={moduleDoc.setText}
+                  editable={canWrite}
                 />
               )}
             </div>
@@ -253,24 +279,36 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   当前真相已锁定，编辑区为只读。解锁后可继续修改。
                 </div>
               ) : null}
+              {!canWrite ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
+                </div>
+              ) : null}
               <DocumentEditor
                 value={document}
                 onChange={setDocument}
-                readonly={locked}
+                readonly={locked || !canWrite}
               />
             </div>
           ) : (
             <div className="space-y-3">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              {!canWrite ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
+                </div>
+              ) : null}
               {useDocumentEditor ? (
                 <DocumentEditor
                   value={moduleDoc.document}
                   onChange={moduleDoc.setDocument}
+                  readonly={!canWrite}
                 />
               ) : (
                 <EditorSurface
                   value={activeText}
                   onChange={moduleDoc.setText}
+                  editable={canWrite}
                 />
               )}
             </div>

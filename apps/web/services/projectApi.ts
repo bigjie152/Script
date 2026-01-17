@@ -4,6 +4,7 @@ export type Project = {
   id: string;
   name: string;
   description?: string | null;
+  ownerId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

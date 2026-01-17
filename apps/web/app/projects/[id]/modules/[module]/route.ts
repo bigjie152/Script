@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../../../../lib/db";
 import { jsonError, jsonResponse } from "../../../../../lib/http";
+import { getAuthUser } from "../../../../../lib/auth";
 
 export const runtime = "edge";
 
@@ -123,6 +124,32 @@ export async function PUT(
 
   if (!content) {
     return jsonError(400, "content is required", undefined, requestId);
+  }
+
+  const user = await getAuthUser(request);
+  if (!user) {
+    return jsonError(401, "login required", undefined, requestId);
+  }
+
+  const [project] = await db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.id, projectId))
+    .limit(1);
+
+  if (!project) {
+    return jsonError(404, "project not found", undefined, requestId);
+  }
+
+  if (project.ownerId && project.ownerId !== user.id) {
+    return jsonError(403, "forbidden", undefined, requestId);
+  }
+
+  if (!project.ownerId) {
+    await db
+      .update(schema.projects)
+      .set({ ownerId: user.id, updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
   }
 
   const [existing] = await db

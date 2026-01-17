@@ -2,6 +2,9 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-${1:-https://script-426.pages.dev}}"
+AUTH_USERNAME="${AUTH_USERNAME:-smoke_user}"
+AUTH_PASSWORD="${AUTH_PASSWORD:-smoke_pass_123}"
+COOKIE_JAR="$(mktemp)"
 
 truncate() {
   local input="$1"
@@ -25,10 +28,12 @@ request() {
   if [ -n "$body" ]; then
     echo "Body: $body"
     resp=$(printf "%s" "$body" | curl -s -X "$method" -H "Content-Type: application/json" \
+      -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
       --data-binary @- "$url")
   else
     resp=$(curl -s -X "$method" \
+      -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
       -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
       "$url")
   fi
@@ -59,7 +64,14 @@ request() {
 }
 
 echo "BASE_URL=$BASE_URL"
+echo "AUTH_USERNAME=$AUTH_USERNAME"
 echo
+
+register_body=$(printf '{"username":"%s","password":"%s"}' "$AUTH_USERNAME" "$AUTH_PASSWORD")
+request "auth register" "POST" "$BASE_URL/api/auth/register" "$register_body" "200 201 409" >/dev/null
+
+login_body=$(printf '{"username":"%s","password":"%s"}' "$AUTH_USERNAME" "$AUTH_PASSWORD")
+request "auth login" "POST" "$BASE_URL/api/auth/login" "$login_body" "200" >/dev/null
 
 health_resp=$(request "health api" "GET" "$BASE_URL/api/health" "" "200")
 
@@ -88,6 +100,7 @@ total_time=0
 for i in $(seq 1 20); do
   echo "round $i"
   resp=$(printf "%s" "$create_body" | curl -s -X POST -H "Content-Type: application/json" \
+    -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
     -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
     --data-binary @- "$BASE_URL/api/projects")
   status=$(echo "$resp" | sed -n 's/^HTTP_STATUS://p')
@@ -108,7 +121,7 @@ for i in $(seq 1 20); do
     break
   fi
 
-  read_resp=$(curl -s -X GET -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
+  read_resp=$(curl -s -X GET -b "$COOKIE_JAR" -c "$COOKIE_JAR" -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
     "$BASE_URL/api/projects/$pid")
   read_status=$(echo "$read_resp" | sed -n 's/^HTTP_STATUS://p')
   read_time=$(echo "$read_resp" | sed -n 's/^TIME_TOTAL://p')
@@ -126,3 +139,5 @@ done
 echo "stability_success=$success"
 echo "stability_fail=$fail"
 echo "stability_total_time=${total_time}s"
+
+rm -f "$COOKIE_JAR"

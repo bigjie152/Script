@@ -1,5 +1,6 @@
 import { db, getD1Binding, schema } from "../../lib/db";
 import { jsonError, jsonResponse } from "../../lib/http";
+import { getAuthUser } from "../../lib/auth";
 
 export const runtime = "edge";
 
@@ -122,13 +123,27 @@ export async function POST(request: Request) {
   }
 
   try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      logError({
+        message: "login required",
+        requestId,
+        status: 401,
+        contentType,
+        startedAt,
+        body
+      });
+      return jsonError(401, "login required", undefined, requestId);
+    }
+
     const projectId = crypto.randomUUID();
     const truthId = crypto.randomUUID();
 
     await db.insert(schema.projects).values({
       id: projectId,
       name,
-      description
+      description,
+      ownerId: user.id
     });
 
     await db.insert(schema.truths).values({

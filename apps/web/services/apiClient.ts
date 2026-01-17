@@ -42,6 +42,7 @@ export async function apiRequest<T>(
     const url = resolveUrl(baseUrl, path);
     const response = await fetch(url, {
       ...options,
+      credentials: "include",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
