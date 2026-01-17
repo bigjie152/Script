@@ -26,12 +26,13 @@ export function useModuleDocument(
 
   useEffect(() => {
     if (!projectId || !moduleKey) return;
+    const activeModule: ModuleKey = moduleKey;
     let alive = true;
     async function run() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getModuleDocument(projectId, moduleKey);
+        const data = await getModuleDocument(projectId, activeModule);
         if (!alive) return;
         const nextDoc = fromTruthContent(data.content);
         setDocument(nextDoc);
@@ -75,11 +76,16 @@ export function useModuleDocument(
 
   const save = useCallback(async () => {
     if (!projectId || !moduleKey) return false;
+    const activeModule: ModuleKey = moduleKey;
     setSaveState("saving");
     setSaveError(null);
 
     try {
-      await updateModuleDocument(projectId, moduleKey, toTruthContent(document));
+      await updateModuleDocument(
+        projectId,
+        activeModule,
+        toTruthContent(document)
+      );
       setBaselineText(document.text);
       setSaveState("success");
       refresh();
