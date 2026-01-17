@@ -28,12 +28,12 @@ export function DocumentEditor({
     () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        bulletList: true,
-        orderedList: true,
-        listItem: true,
-        blockquote: true,
-        hardBreak: true,
-        history: true,
+        bulletList: {},
+        orderedList: {},
+        listItem: {},
+        blockquote: {},
+        hardBreak: {},
+        history: {},
         bold: false,
         italic: false,
         strike: false,
