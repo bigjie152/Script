@@ -30,12 +30,14 @@
 - M2 模块可编辑闭环：overview/roles/clues/timeline/dm PUT→GET + D1 schema 已应用
 - M3 TipTap/AI 准备期：EditorDocument + DocumentEditor + Adapter + modules.config 配置驱动
 - M4 TipTap 全模块接入：全模块 TipTap 内核 + Database-like + Slash + Mention（编辑层）+ 文档更新
+- M5 账号/登录登出：注册/登录/会话保持完成（Gate 5 已通过）
+- M6 账号与数据归属：Project ownerId + 写接口权限校验（Gate 6 已通过）
 
 > 备注：若 Gate4（≥50 次保存一致性/性能/基线不回退）尚未记录为“已完成”，则 M4 仍处于“进行中/待验收”；若已记录并固化证据，则 M4=已完成。
 
 ### 1.2 当前所处阶段
-- AI 之前的“产品可用性闭环阶段”即将开始。
-- 核心任务：账号/登录、数据归属、Workspace/只读预览、编辑器顶栏与多实体、Overview Meta、实体链接（@/#）。
+- 已进入 M7：Workspace/我的项目可用化阶段。
+- 核心任务：项目列表/排序/搜索/只读预览、编辑器顶栏与多实体、Overview Meta、实体链接（@/#）。
 
 ---
 

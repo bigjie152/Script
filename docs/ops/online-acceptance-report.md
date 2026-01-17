@@ -149,3 +149,58 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 - TipTap 全模块保存/回读一致
 - 基线回归未回退
 - 旧数据可正常回读
+
+---
+
+# Milestone 5/6 门禁验收（账号与归属）
+
+验收时间：2026-01-18 04:44 +08:00  
+base_url：https://script-426.pages.dev  
+commit：69dd4ff  
+环境：Cloudflare Pages / Production
+
+## 1) Gate 5 — 账号系统
+账号 A：`gate_a_2633`
+
+- POST /api/auth/register → 201  
+  `{"user":{"id":"5db2d23c-2b66-499f-9176-32db6ff9d8fe","username":"gate_a_2633"}}`
+- POST /api/auth/login → 200  
+  `{"user":{"id":"5db2d23c-2b66-499f-9176-32db6ff9d8fe","username":"gate_a_2633"}}`
+- GET /api/auth/me（登录态）→ 200  
+  `{"user":{"id":"5db2d23c-2b66-499f-9176-32db6ff9d8fe","username":"gate_a_2633"}}`
+- POST /api/auth/logout → 200  
+  `{"status":"ok"}`
+- GET /api/auth/me（登出后）→ 200  
+  `{"user":null}`
+- 未登录创建项目：POST /api/projects → 401  
+  `{"error":{"message":"login required"}}`
+
+## 2) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201（projectId=a66c7ffa-e110-49db-b34a-bc15a9720d28）
+- GET /api/projects/:id 200（ownerId=65037eb3-2209-45e3-9aca-bad30c5e2844）
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- stability 20/20 成功
+
+## 3) Gate 6 — 数据归属与权限
+账号 Owner：`gate_owner_6527`  
+账号 Other：`gate_other_6527`
+
+- Owner 创建项目 → 201  
+  `projectId=2a07c690-35eb-4586-82a1-7acd46436846`
+- GET /api/projects/:id → 200  
+  `ownerId=695e94c2-88f9-46ba-a2c4-1f0b11f7c68a`
+- Other 对 Owner 项目 PUT /truth → 403  
+  `{"error":{"message":"forbidden"}}`
+
+备注：项目列表接口尚未实现，因此 “A 看不到 B 的私有项目” 仅做写入权限校验。
+
+## 4) 结论
+- Gate 5 通过：注册/登录/登出与会话保持正常
+- Gate 6 通过：Project 归属与写权限校验生效
+- verify-online 回归不回退
