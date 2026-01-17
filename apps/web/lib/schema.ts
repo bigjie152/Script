@@ -49,6 +49,15 @@ export const issues = sqliteTable("issues", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
 
+export const moduleDocuments = sqliteTable("module_documents", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  module: text("module").notNull(),
+  content: text("content", { mode: "json" }).notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
 export const feedback = sqliteTable("feedback", {
   id: text("id").primaryKey(),
   projectId: text("project_id").notNull(),

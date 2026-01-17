@@ -46,6 +46,15 @@ create table if not exists issues (
   created_at text not null default CURRENT_TIMESTAMP
 );
 
+create table if not exists module_documents (
+  id text primary key,
+  project_id text not null,
+  module text not null,
+  content text not null,
+  created_at text not null default CURRENT_TIMESTAMP,
+  updated_at text not null default CURRENT_TIMESTAMP
+);
+
 create table if not exists ai_request_logs (
   id text primary key,
   project_id text not null,

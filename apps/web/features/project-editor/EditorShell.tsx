@@ -8,9 +8,11 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { TabGroup } from "../../components/common/TabGroup";
 import { useTruthDocument } from "../../hooks/useTruthDocument";
+import { useModuleDocument } from "../../hooks/useModuleDocument";
 import { useMockAiTasks } from "../../hooks/useMockAi";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
+import { ModuleKey as DocModuleKey } from "../../services/moduleApi";
 
 const MODULES = [
   { key: "overview", label: "概览" },
@@ -46,6 +48,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     lock,
     unlock
   } = useTruthDocument(projectId);
+  const moduleDocKey = (module === "truth" ? null : module) as DocModuleKey | null;
+  const moduleDoc = useModuleDocument(projectId, moduleDocKey);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
   const [panelError, setPanelError] = useState<string | null>(null);
@@ -55,7 +59,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   }, [module]);
 
   const saveLabel = useMemo(() => {
-    switch (saveState) {
+    const state = module === "truth" ? saveState : moduleDoc.saveState;
+    switch (state) {
       case "saving":
         return "保存中…";
       case "success":
@@ -65,7 +70,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       default:
         return "保存";
     }
-  }, [saveState]);
+  }, [module, saveState, moduleDoc.saveState]);
 
   const handleBack = () => {
     router.push("/workspace");
@@ -108,6 +113,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     router.push(`/projects/${projectId}/editor/${next}`);
   };
 
+  const activeLoading = module === "truth" ? loading : moduleDoc.loading;
+  const activeError = module === "truth" ? error : moduleDoc.error;
+  const activeText = module === "truth" ? text : moduleDoc.text;
+  const activeSaveError = module === "truth" ? saveError : moduleDoc.saveError;
+  const activeHasUnsaved = module === "truth" ? hasUnsaved : moduleDoc.hasUnsaved;
+
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -122,7 +133,9 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 : hasUnsaved
                   ? "有未保存修改"
                   : "已保存"
-              : "编辑中"}
+              : activeHasUnsaved
+                ? "有未保存修改"
+                : "已保存"}
           </div>
         </div>
         <Button onClick={handleBack}>返回 Workspace</Button>
@@ -163,53 +176,62 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   : "模块内容"}
               </div>
             </div>
-            {module === "truth" ? (
-              <Button
-                onClick={save}
-                loading={saveState === "saving"}
-                disabled={locked}
-              >
-                {saveLabel}
-              </Button>
-            ) : null}
+            <Button
+              onClick={module === "truth" ? save : moduleDoc.save}
+              loading={
+                module === "truth"
+                  ? saveState === "saving"
+                  : moduleDoc.saveState === "saving"
+              }
+              disabled={module === "truth" ? locked : false}
+            >
+              {saveLabel}
+            </Button>
           </div>
 
-          {loading ? (
+          {activeLoading ? (
             <EmptyState title="加载中…" description="正在读取项目数据" />
-          ) : error ? (
-            <ErrorBanner message={error} />
+          ) : activeError ? (
+            <ErrorBanner message={activeError} />
           ) : module === "overview" ? (
-            <div className="glass-panel-strong px-8 py-6">
-              <div className="text-xl font-semibold">
-                {project?.name || "未命名项目"}
-              </div>
-              <div className="mt-2 text-sm text-muted">
-                {project?.description || "暂无描述"}
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted">
-                <div>
-                  <div className="text-xs">创建时间</div>
-                  <div className="mt-1 text-ink">
-                    {project?.createdAt || "-"}
+            <div className="space-y-4">
+              <div className="glass-panel-strong px-8 py-6">
+                <div className="text-xl font-semibold">
+                  {project?.name || "未命名项目"}
+                </div>
+                <div className="mt-2 text-sm text-muted">
+                  {project?.description || "暂无描述"}
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted">
+                  <div>
+                    <div className="text-xs">创建时间</div>
+                    <div className="mt-1 text-ink">
+                      {project?.createdAt || "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs">更新时间</div>
+                    <div className="mt-1 text-ink">
+                      {project?.updatedAt || "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs">Truth ID</div>
+                    <div className="mt-1 text-ink">{truth?.id || "-"}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs">状态</div>
+                    <div className="mt-1 text-ink">
+                      {locked ? "已锁定" : "草稿"}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs">更新时间</div>
-                  <div className="mt-1 text-ink">
-                    {project?.updatedAt || "-"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs">Truth ID</div>
-                  <div className="mt-1 text-ink">{truth?.id || "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs">状态</div>
-                  <div className="mt-1 text-ink">
-                    {locked ? "已锁定" : "草稿"}
-                  </div>
-                </div>
               </div>
+              {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              <EditorSurface
+                value={activeText}
+                onChange={moduleDoc.setText}
+              />
             </div>
           ) : module === "truth" ? (
             <div className="space-y-3">
@@ -222,10 +244,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               <EditorSurface value={text} onChange={setText} editable={!locked} />
             </div>
           ) : (
-            <EmptyState
-              title="该模块即将上线"
-              description="当前版本仅开放真相编辑与问题查看"
-            />
+            <div className="space-y-3">
+              {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              <EditorSurface value={activeText} onChange={moduleDoc.setText} />
+            </div>
           )}
         </main>
 
