@@ -204,3 +204,63 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 - Gate 5 通过：注册/登录/登出与会话保持正常
 - Gate 6 通过：Project 归属与写权限校验生效
 - verify-online 回归不回退
+
+---
+
+# Milestone 7 Gate 7 验收（Workspace 列表/预览）
+
+验收时间：2026-01-18 05:47 +08:00  
+base_url：https://script-426.pages.dev  
+commit：5ad0ef9  
+环境：Cloudflare Pages / Production
+
+## 1) 列表权威性（GET /api/projects?scope=mine）
+登录用户：`smoke_user`
+
+- GET /api/projects?scope=mine&sort=updatedAt → 200  
+  返回示例（截断）：
+  ```json
+  {
+    "projects": [
+      { "id": "6abfec4b-fbad-432b-ac1b-e5ef55d6b090", "name": "List B", "updatedAt": "2026-01-17 21:12:51", "truthStatus": "Draft" },
+      { "id": "a273be61-873b-4ace-bbef-5f65bad7c65f", "name": "List C", "updatedAt": "2026-01-17 21:12:51", "truthStatus": "Draft" },
+      { "id": "73a83dd0-6a3d-469e-98c5-9a9912ccb54e", "name": "List A", "updatedAt": "2026-01-17 21:12:50", "truthStatus": "Draft" }
+    ]
+  }
+  ```
+
+## 2) 搜索与排序
+- GET /api/projects?scope=mine&sort=updatedAt&q=List → 200  
+  返回仅包含 List A/B/C（与 q 匹配）
+
+## 3) 刷新一致性（updatedAt 更新）
+- 对 List A 执行 PUT /api/projects/{id}/truth 后再查询列表  
+  List A updatedAt 更新并排至首位：
+  ```json
+  { "id": "73a83dd0-6a3d-469e-98c5-9a9912ccb54e", "updatedAt": "2026-01-17T21:45:23.625Z" }
+  ```
+
+## 4) 只读预览
+- 访问 `/projects/{id}/preview` 返回 200（示例项目：73a83dd0-6a3d-469e-98c5-9a9912ccb54e）
+- 预览页为只读模式；owner 可见“进入编辑器”入口
+
+## 5) 权限（非 owner 列表）
+- 新注册用户 list_user_xxxx：GET /api/projects?scope=mine → 200  
+  返回 `projects: []`
+
+## 6) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200
+- stability 20/20 成功
+
+## 7) 结论
+- Workspace 列表已由后端权威接口驱动
+- 刷新后项目不丢失，updatedAt 与排序符合预期
+- 只读预览路径可访问
