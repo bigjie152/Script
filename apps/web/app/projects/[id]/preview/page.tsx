@@ -11,6 +11,8 @@ import { useProject } from "../../../../hooks/useProject";
 import { DocumentEditor } from "../../../../editors/DocumentEditor";
 import { deserializeDocument, createEmptyDocument } from "../../../../editors/adapters/plainTextAdapter";
 
+export const runtime = "edge";
+
 export default function ProjectPreviewPage() {
   const router = useRouter();
   const params = useParams();
