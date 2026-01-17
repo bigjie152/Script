@@ -11,6 +11,11 @@ export type LockTruthResponse = {
   status: string;
 };
 
+export type UnlockTruthResponse = {
+  truthId: string;
+  status: string;
+};
+
 export async function updateTruth(
   projectId: string,
   content: Record<string, unknown>
@@ -25,4 +30,13 @@ export async function lockTruth(projectId: string) {
   return apiRequest<LockTruthResponse>(`/api/projects/${projectId}/truth/lock`, {
     method: "POST"
   });
+}
+
+export async function unlockTruth(projectId: string) {
+  return apiRequest<UnlockTruthResponse>(
+    `/api/projects/${projectId}/truth/unlock`,
+    {
+      method: "POST"
+    }
+  );
 }

@@ -48,6 +48,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   } = useTruthDocument(projectId);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
+  const [panelError, setPanelError] = useState<string | null>(null);
 
   const moduleLabel = useMemo(() => {
     return MODULES.find((item) => item.key === module)?.label || "概览";
@@ -70,19 +71,36 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     router.push("/workspace");
   };
 
-  const handleUnlock = () => {
-    const ok = window.confirm("解锁后将允许修改真相内容，确定解锁吗？");
+  const handleLock = async () => {
+    setPanelError(null);
+    try {
+      await lock();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "锁定失败，请重试");
+    }
+  };
+
+  const handleUnlock = async () => {
+    const ok = window.confirm(
+      "解锁后将允许修改真相内容，可能影响派生结果一致性，确定解锁吗？"
+    );
     if (!ok) return;
-    unlock();
+    setPanelError(null);
+    try {
+      await unlock();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "解锁失败，请重试");
+    }
   };
 
   const handleDeriveRoles = () => {
     if (!locked) return;
+    setPanelError(null);
     deriveRoles.run();
   };
 
   const handleReviewLogic = () => {
-    if (!locked) return;
+    setPanelError(null);
     reviewLogic.run();
   };
 
@@ -221,17 +239,20 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             ]}
           />
           {tab === "ai" ? (
-            <AIPanel
-              locked={locked}
-              onLock={lock}
-              onUnlock={handleUnlock}
-              onDeriveRoles={handleDeriveRoles}
-              deriveStatus={deriveRoles.status}
-              deriveMessage={deriveRoles.message}
-              onReviewLogic={handleReviewLogic}
-              reviewStatus={reviewLogic.status}
-              reviewMessage={reviewLogic.message}
-            />
+            <>
+              {panelError ? <ErrorBanner message={panelError} /> : null}
+              <AIPanel
+                locked={locked}
+                onLock={handleLock}
+                onUnlock={handleUnlock}
+                onDeriveRoles={handleDeriveRoles}
+                deriveStatus={deriveRoles.status}
+                deriveMessage={deriveRoles.message}
+                onReviewLogic={handleReviewLogic}
+                reviewStatus={reviewLogic.status}
+                reviewMessage={reviewLogic.message}
+              />
+            </>
           ) : (
             <IssuePanel
               projectId={projectId}

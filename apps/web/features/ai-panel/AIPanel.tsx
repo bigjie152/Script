@@ -29,7 +29,9 @@ export function AIPanel({
 }: AIPanelProps) {
   const statusLabel = locked ? "已锁定（Locked）" : "草稿（Draft）";
   const deriveHint = deriveMessage || (locked ? "功能即将上线" : "请先锁定真相");
-  const reviewHint = reviewMessage || (locked ? "功能即将上线" : "请先锁定真相");
+  const reviewHint =
+    reviewMessage ||
+    (locked ? "可进行逻辑审查（Mock）" : "未锁定也可检查，锁定后更有意义");
 
   return (
     <div className="space-y-4">
@@ -97,7 +99,6 @@ export function AIPanel({
           <Button
             variant="primary"
             onClick={onReviewLogic}
-            disabled={!locked}
             loading={reviewStatus === "pending"}
           >
             运行一致性检查

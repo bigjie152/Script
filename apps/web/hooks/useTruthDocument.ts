@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { updateTruth } from "../services/truthApi";
+import { lockTruth, unlockTruth, updateTruth } from "../services/truthApi";
 import { useProject } from "./useProject";
 import {
   EditorDocument,
@@ -9,8 +9,6 @@ import {
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
-const LOCK_STORAGE_PREFIX = "script-truth-lock:";
-
 export function useTruthDocument(projectId: string) {
   const { project, truth, latestSnapshotId, loading, error, refresh } =
     useProject(projectId);
@@ -19,25 +17,10 @@ export function useTruthDocument(projectId: string) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
-  const [lockReady, setLockReady] = useState(false);
 
   useEffect(() => {
-    if (!projectId || typeof window === "undefined") return;
-    const key = `${LOCK_STORAGE_PREFIX}${projectId}`;
-    const stored = window.localStorage.getItem(key);
-    if (stored === "LOCKED" || stored === "DRAFT") {
-      setLocked(stored === "LOCKED");
-    } else if (truth?.status) {
-      setLocked(truth.status === "LOCKED");
-    }
-    setLockReady(true);
-  }, [projectId, truth?.status]);
-
-  useEffect(() => {
-    if (!lockReady || !projectId || typeof window === "undefined") return;
-    const key = `${LOCK_STORAGE_PREFIX}${projectId}`;
-    window.localStorage.setItem(key, locked ? "LOCKED" : "DRAFT");
-  }, [lockReady, locked, projectId]);
+    setLocked(truth?.status === "LOCKED");
+  }, [truth?.status]);
 
   useEffect(() => {
     const nextDoc = fromTruthContent(truth?.content);
@@ -92,8 +75,19 @@ export function useTruthDocument(projectId: string) {
     }
   }, [locked, projectId, refresh, document]);
 
-  const lock = useCallback(() => setLocked(true), []);
-  const unlock = useCallback(() => setLocked(false), []);
+  const lock = useCallback(async () => {
+    const result = await lockTruth(projectId);
+    setLocked(result.status === "LOCKED");
+    refresh();
+    return result;
+  }, [projectId, refresh]);
+
+  const unlock = useCallback(async () => {
+    const result = await unlockTruth(projectId);
+    setLocked(result.status === "LOCKED");
+    refresh();
+    return result;
+  }, [projectId, refresh]);
 
   return {
     project,
