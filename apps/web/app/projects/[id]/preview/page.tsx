@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "../../../components/common/Button";
-import { EmptyState } from "../../../components/common/EmptyState";
-import { ErrorBanner } from "../../../components/common/ErrorBanner";
-import { Sidebar } from "../../../components/layout/Sidebar";
-import { useAuth } from "../../../hooks/useAuth";
-import { useProject } from "../../../hooks/useProject";
-import { DocumentEditor } from "../../../editors/DocumentEditor";
-import { deserializeDocument, createEmptyDocument } from "../../../editors/adapters/plainTextAdapter";
+import { Button } from "../../../../components/common/Button";
+import { EmptyState } from "../../../../components/common/EmptyState";
+import { ErrorBanner } from "../../../../components/common/ErrorBanner";
+import { Sidebar } from "../../../../components/layout/Sidebar";
+import { useAuth } from "../../../../hooks/useAuth";
+import { useProject } from "../../../../hooks/useProject";
+import { DocumentEditor } from "../../../../editors/DocumentEditor";
+import { deserializeDocument, createEmptyDocument } from "../../../../editors/adapters/plainTextAdapter";
 
 export default function ProjectPreviewPage() {
   const router = useRouter();

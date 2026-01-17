@@ -205,12 +205,13 @@ export async function GET(request: Request) {
   const filters = [eq(schema.projects.ownerId, user.id)];
   if (q) {
     const keyword = `%${q}%`;
-    filters.push(
-      or(
-        like(schema.projects.name, keyword),
-        like(schema.projects.description, keyword)
-      )
+    const searchCondition = or(
+      like(schema.projects.name, keyword),
+      like(schema.projects.description, keyword)
     );
+    if (searchCondition) {
+      filters.push(searchCondition);
+    }
   }
 
   const orderBy = sort === "updatedAt" ? desc(schema.projects.updatedAt) : desc(schema.projects.updatedAt);
