@@ -52,7 +52,7 @@ export const DatabaseLikeBlock = Node.create({
   },
 
   addNodeView() {
-    return ({ node, editor, getPos, updateAttributes }) => {
+    return ({ node, editor, getPos }) => {
       let currentNode = node;
       const dom = document.createElement("div");
       dom.className = "database-like-block";
@@ -147,12 +147,6 @@ export const DatabaseLikeBlock = Node.create({
           "可选备注（用于说明用途）",
           attrs.metadata || ""
         );
-
-        updateAttributes({
-          columns,
-          rows,
-          metadata: metadata || null
-        });
 
         if (typeof getPos === "function") {
           editor.view.dispatch(
