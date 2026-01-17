@@ -151,6 +151,10 @@ export async function PUT(
       .update(schema.truths)
       .set({ content, updatedAt: new Date().toISOString() })
       .where(eq(schema.truths.id, truth.id));
+    await db
+      .update(schema.projects)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
 
     console.log(routeLabel, {
       route: routeLabel,
@@ -175,6 +179,10 @@ export async function PUT(
     status: "DRAFT",
     content
   });
+  await db
+    .update(schema.projects)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(schema.projects.id, projectId));
 
   console.log(routeLabel, {
     route: routeLabel,

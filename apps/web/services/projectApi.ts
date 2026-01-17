@@ -38,6 +38,19 @@ export type CreateProjectResponse = {
   truth?: { id: string; status: string };
 };
 
+export type ProjectListItem = {
+  id: string;
+  name: string;
+  description?: string;
+  updatedAt?: string;
+  status?: string;
+  truthStatus?: string;
+};
+
+export type ProjectListResponse = {
+  projects: ProjectListItem[];
+};
+
 export async function createProject(payload: CreateProjectPayload) {
   return apiRequest<CreateProjectResponse>("/api/projects", {
     method: "POST",
@@ -47,4 +60,18 @@ export async function createProject(payload: CreateProjectPayload) {
 
 export async function getProject(projectId: string) {
   return apiRequest<ProjectDetail>(`/api/projects/${projectId}`);
+}
+
+export async function listProjects(params: {
+  scope?: "mine";
+  sort?: "updatedAt";
+  q?: string;
+}) {
+  const search = new URLSearchParams();
+  if (params.scope) search.set("scope", params.scope);
+  if (params.sort) search.set("sort", params.sort);
+  if (params.q) search.set("q", params.q);
+  const query = search.toString();
+  const path = query ? `/api/projects?${query}` : "/api/projects";
+  return apiRequest<ProjectListResponse>(path);
 }

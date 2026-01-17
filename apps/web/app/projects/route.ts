@@ -1,3 +1,4 @@
+import { and, desc, eq, like, or } from "drizzle-orm";
 import { db, getD1Binding, schema } from "../../lib/db";
 import { jsonError, jsonResponse } from "../../lib/http";
 import { getAuthUser } from "../../lib/auth";
@@ -45,6 +46,7 @@ async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
 }
 
 const routeLabel = "POST /api/projects";
+const listLabel = "GET /api/projects";
 
 function logError(context: {
   message: string;
@@ -181,5 +183,82 @@ export async function POST(request: Request) {
     });
     return jsonError(500, "failed to create project", undefined, requestId);
   }
+}
+
+export async function GET(request: Request) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+  const url = new URL(request.url);
+  const scope = (url.searchParams.get("scope") || "mine").trim();
+  const sort = (url.searchParams.get("sort") || "updatedAt").trim();
+  const q = (url.searchParams.get("q") || "").trim();
+
+  const user = await getAuthUser(request);
+  if (!user) {
+    return jsonError(401, "login required", undefined, requestId);
+  }
+
+  if (scope !== "mine") {
+    return jsonError(400, "unsupported scope", undefined, requestId);
+  }
+
+  const filters = [eq(schema.projects.ownerId, user.id)];
+  if (q) {
+    const keyword = `%${q}%`;
+    filters.push(
+      or(
+        like(schema.projects.name, keyword),
+        like(schema.projects.description, keyword)
+      )
+    );
+  }
+
+  const orderBy = sort === "updatedAt" ? desc(schema.projects.updatedAt) : desc(schema.projects.updatedAt);
+  const projects = await db
+    .select()
+    .from(schema.projects)
+    .where(and(...filters))
+    .orderBy(orderBy)
+    .limit(200);
+
+  const truthStatuses = await Promise.all(
+    projects.map(async (project) => {
+      const [truth] = await db
+        .select()
+        .from(schema.truths)
+        .where(eq(schema.truths.projectId, project.id))
+        .orderBy(desc(schema.truths.createdAt))
+        .limit(1);
+      return {
+        projectId: project.id,
+        truthStatus: truth?.status === "LOCKED" ? "Locked" : "Draft"
+      };
+    })
+  );
+
+  const statusMap = new Map(
+    truthStatuses.map((item) => [item.projectId, item.truthStatus])
+  );
+
+  console.log(listLabel, {
+    route: listLabel,
+    requestId,
+    status: 200,
+    latencyMs: Date.now() - startedAt
+  });
+
+  return jsonResponse(
+    {
+      projects: projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        description: project.description ?? "",
+        updatedAt: project.updatedAt,
+        status: "Draft",
+        truthStatus: statusMap.get(project.id) ?? "Draft"
+      }))
+    },
+    { requestId }
+  );
 }
 

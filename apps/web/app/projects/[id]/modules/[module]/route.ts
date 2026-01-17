@@ -178,6 +178,10 @@ export async function PUT(
       content
     });
   }
+  await db
+    .update(schema.projects)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(schema.projects.id, projectId));
 
   console.log(routeLabel, {
     route: routeLabel,

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Extension } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";

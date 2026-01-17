@@ -1,48 +1,63 @@
 ﻿"use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { TopNav } from "../../components/layout/TopNav";
 import { useAuth } from "../../hooks/useAuth";
-import { getApiBase } from "../../services/apiClient";
-import { createProject } from "../../services/projectApi";
-
-const MOCK_PROJECTS = [
-  {
-    name: "静谧回响",
-    description: "发生在未来东京的悬疑探秘故事，沉默即是货币。"
-  },
-  {
-    name: "代号：联合体",
-    description: "涉及基因拼接与政治阴谋的 RPG 战役设定。"
-  },
-  {
-    name: "午夜快车",
-    description: "一场在列车上展开的密室推理。"
-  }
-];
+import { createProject, listProjects, ProjectListItem } from "../../services/projectApi";
 
 export default function WorkspacePage() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [creating, setCreating] = useState(false);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<
-    Array<{ id: string; name: string; description?: string | null }>
-  >([]);
-  const apiBase = getApiBase();
+  const [creating, setCreating] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const requireLogin = () => {
-    setError("请先登录后再创建项目");
-    router.push("/login");
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (!user) {
+      setProjects([]);
+      return;
+    }
+
+    let alive = true;
+    async function run() {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await listProjects({ scope: "mine", sort: "updatedAt", q: searchQuery });
+        if (!alive) return;
+        setProjects(result.projects || []);
+      } catch (err) {
+        if (!alive) return;
+        setError(err instanceof Error ? err.message : "加载失败，请重试");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    run();
+
+    return () => {
+      alive = false;
+    };
+  }, [user, searchQuery]);
 
   const handleCreate = async () => {
     if (!user) {
-      requireLogin();
+      setError("请先登录后再创建项目");
+      router.push("/login");
       return;
     }
     setError(null);
@@ -56,14 +71,6 @@ export default function WorkspacePage() {
       if (!projectId) {
         throw new Error("创建失败，请重试");
       }
-      setRecent((prev) => [
-        {
-          id: projectId,
-          name: result.project?.name || "未命名剧本",
-          description: result.project?.description || "新建项目"
-        },
-        ...prev
-      ]);
       router.push(`/projects/${projectId}/editor/overview`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建失败，请重试");
@@ -72,27 +79,14 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleOpenTemplate = async (name: string, description: string) => {
-    if (!user) {
-      requireLogin();
-      return;
-    }
-    setError(null);
-    setCreating(true);
-    try {
-      const result = await createProject({ name, description });
-      const projectId = result.projectId || result.project?.id;
-      if (!projectId) {
-        throw new Error("创建失败，请重试");
-      }
-      setRecent((prev) => [{ id: projectId, name, description }, ...prev]);
-      router.push(`/projects/${projectId}/editor/overview`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败，请重试");
-    } finally {
-      setCreating(false);
-    }
+  const handlePreview = (projectId: string) => {
+    router.push(`/projects/${projectId}/preview`);
   };
+
+  const listMeta = useMemo(() => {
+    if (!projects.length) return "暂无项目";
+    return `共 ${projects.length} 个项目`;
+  }, [projects.length]);
 
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
@@ -105,71 +99,74 @@ export default function WorkspacePage() {
             user={user}
             onLogin={() => router.push("/login")}
             onLogout={logout}
+            searchValue={searchInput}
+            onSearchChange={setSearchInput}
           />
-          <div className="text-xs text-muted">API Base: {apiBase}</div>
+
           {!user ? (
             <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-              当前未登录，仅可浏览示例项目。登录后可创建与编辑项目。
+              当前未登录，请先登录后查看你的项目列表。
             </div>
           ) : null}
           {error ? <ErrorBanner message={error} /> : null}
 
           <section className="space-y-4">
-            <div className="text-lg font-semibold">最近编辑</div>
-            {recent.length === 0 ? (
-              <EmptyState
-                title="暂无项目"
-                description="点击右上角新建项目"
-              />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-lg font-semibold">我的项目</div>
+              <div className="text-xs text-muted">{listMeta}</div>
+            </div>
+            {loading ? (
+              <EmptyState title="加载中…" description="正在读取项目列表" />
+            ) : projects.length === 0 ? (
+              <EmptyState title="暂无项目" description="点击右上角新建项目" />
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
-                {recent.map((item) => (
+                {projects.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() =>
-                      router.push(`/projects/${item.id}/editor/overview`)
-                    }
-                    className="glass-panel-strong px-5 py-4 text-left transition hover:-translate-y-1"
+                    onClick={() => handlePreview(item.id)}
+                    className="glass-panel-strong flex flex-col gap-3 px-5 py-4 text-left transition hover:-translate-y-1"
                   >
-                    <div className="text-sm text-muted">剧本</div>
-                    <div className="mt-2 text-lg font-semibold">
-                      {item.name}
+                    <div className="flex items-center justify-between text-xs text-muted">
+                      <span>{formatStatus(item.status)}</span>
+                      <span>{formatDate(item.updatedAt)}</span>
                     </div>
-                    <div className="mt-2 text-sm text-muted">
-                      {item.description || "暂无描述"}
+                    <div className="text-lg font-semibold">
+                      {item.name || "未命名项目"}
+                    </div>
+                    <div className="text-sm text-muted">
+                      {item.description || "暂无简介"}
+                    </div>
+                    <div className="mt-auto text-xs text-muted">
+                      Truth 状态：{formatTruthStatus(item.truthStatus)}
                     </div>
                   </button>
                 ))}
               </div>
             )}
           </section>
-
-          <section className="space-y-4">
-            <div className="text-lg font-semibold">项目卡片</div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {MOCK_PROJECTS.map((item) => (
-                <button
-                  key={item.name}
-                  onClick={() => handleOpenTemplate(item.name, item.description)}
-                  className="glass-panel-strong px-5 py-4 text-left transition hover:-translate-y-1"
-                >
-                  <div className="text-sm text-muted">示例项目</div>
-                  <div className="mt-2 text-lg font-semibold">{item.name}</div>
-                  <div className="mt-2 text-sm text-muted">
-                    {item.description}
-                  </div>
-                </button>
-              ))}
-              <button
-                onClick={handleCreate}
-                className="glass-panel flex items-center justify-center border border-dashed border-white/60 px-5 py-4 text-sm text-muted"
-              >
-                + 创建新项目
-              </button>
-            </div>
-          </section>
         </main>
       </div>
     </div>
   );
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const normalized = value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatStatus(status?: string) {
+  if (status === "Completed") return "已完成";
+  if (status === "In Progress") return "进行中";
+  return "草稿";
+}
+
+function formatTruthStatus(status?: string) {
+  if (status === "Locked") return "已锁定";
+  return "草稿";
 }

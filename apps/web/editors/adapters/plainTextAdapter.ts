@@ -1,4 +1,4 @@
-import { EditorDocument, EditorModuleKey } from "../../types/editorDocument";
+﻿import { EditorDocument, EditorModuleKey } from "../../types/editorDocument";
 
 type TruthNode = {
   type?: string;
@@ -22,7 +22,7 @@ function collectText(node: TruthNode | undefined): string {
     return label ? `@${label}` : "@提及";
   }
   if (node.type === "databaseLike") {
-    return "〔数据库块〕";
+    return "【结构化表】";
   }
   if (typeof node.text === "string") return node.text;
   if (Array.isArray(node.content)) {

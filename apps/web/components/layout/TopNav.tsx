@@ -6,6 +6,8 @@ type TopNavProps = {
   user?: { username: string } | null;
   onLogin?: () => void;
   onLogout?: () => void;
+  searchValue?: string;
+  onSearchChange?: (next: string) => void;
 };
 
 export function TopNav({
@@ -13,7 +15,9 @@ export function TopNav({
   creating,
   user,
   onLogin,
-  onLogout
+  onLogout,
+  searchValue,
+  onSearchChange
 }: TopNavProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -24,7 +28,12 @@ export function TopNav({
       <div className="flex flex-wrap items-center gap-3">
         <div className="glass-panel-strong hidden items-center gap-2 rounded-full px-4 py-2 text-sm text-muted lg:flex">
           <span className="text-xs">搜索</span>
-          <span>搜索项目...</span>
+          <input
+            className="bg-transparent text-sm text-ink outline-none"
+            placeholder="搜索项目..."
+            value={searchValue || ""}
+            onChange={(event) => onSearchChange?.(event.target.value)}
+          />
         </div>
         <button
           className="glass-panel-strong flex h-10 w-10 items-center justify-center rounded-full text-muted"

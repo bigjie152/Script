@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -143,7 +143,7 @@ export function DocumentEditor({
           数据库块
         </button>
         <span className="text-xs text-muted">
-          输入 “/” 可呼出命令，输入 “@” 可插入提及
+          输入 / 可呼出命令，输入 “@” 可插入提及
         </span>
       </div>
       <EditorContent editor={editor} />
