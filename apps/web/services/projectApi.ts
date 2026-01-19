@@ -4,6 +4,7 @@ export type Project = {
   id: string;
   name: string;
   description?: string | null;
+  meta?: Record<string, unknown> | null;
   ownerId?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -60,6 +61,20 @@ export async function createProject(payload: CreateProjectPayload) {
 
 export async function getProject(projectId: string) {
   return apiRequest<ProjectDetail>(`/api/projects/${projectId}`);
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: {
+    name?: string;
+    description?: string;
+    meta?: Record<string, unknown>;
+  }
+) {
+  return apiRequest<{ project: Project }>(`/api/projects/${projectId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function listProjects(params: {

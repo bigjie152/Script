@@ -310,3 +310,37 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 - 生产 D1 已完成 schema 应用（meta 字段）
 - 基线回归未回退
 - UI 层 Gate 8 仍待人工验证与固化
+
+---
+
+# Milestone 8.5 Gate 8.5 验收（Block Editor 体验收敛）
+
+验收时间：2026-01-19 09:52 +08:00  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：
+- POST /api/projects 201（projectId=b556a5c1-ffff-4547-b4c3-5bb491c23997）
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- stability 20/20 成功
+
+## 2) Block Editor 可见 UI 验证（待补）
+需在浏览器侧完成以下走查，并补充截图/说明：
+- Bubble Menu：选中文本可用
+- Slash Menu：输入 “/” 可插入块
+- Block 菜单入口：块级菜单可转换/删除/插入
+- 旧演示条已移除（不再出现“标题/列表/输入提示”按钮条）
+
+## 3) 全模块入口一致性（待补）
+需验证：overview / truth / timeline / dm / roles / clues 均使用同一 Block Editor 体验，条目切换无 UI 跳变。
+
+## 4) 结论
+- 基线回归未回退
+- UI 侧 Gate 8.5 验收待人工补充

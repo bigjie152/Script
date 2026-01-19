@@ -6,7 +6,7 @@ type SuggestionItem = {
   description?: string;
 };
 
-export function createSuggestionRenderer(className: string) {
+export function createSuggestionRenderer(className: string, emptyText = "无匹配结果") {
   return () => {
     let container: HTMLDivElement | null = null;
     let items: SuggestionItem[] = [];
@@ -20,7 +20,7 @@ export function createSuggestionRenderer(className: string) {
       if (!items.length) {
         const empty = document.createElement("div");
         empty.className = "suggestion-item is-empty";
-        empty.textContent = "无匹配结果";
+        empty.textContent = emptyText;
         container.appendChild(empty);
         return;
       }

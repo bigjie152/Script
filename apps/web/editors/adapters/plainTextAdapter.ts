@@ -17,12 +17,20 @@ const EMPTY_DOC = { type: "doc", content: [] } as Record<string, unknown>;
 
 function collectText(node: TruthNode | undefined): string {
   if (!node) return "";
+  if (node.type === "roleMention") {
+    const label = node.attrs?.label;
+    return label ? `@${label}` : "@角色";
+  }
+  if (node.type === "clueMention") {
+    const label = node.attrs?.label;
+    return label ? `#${label}` : "#线索";
+  }
   if (node.type === "mention") {
     const label = node.attrs?.label;
     return label ? `@${label}` : "@提及";
   }
   if (node.type === "databaseLike") {
-    return "【结构化表】";
+    return "〔结构化区块〕";
   }
   if (typeof node.text === "string") return node.text;
   if (Array.isArray(node.content)) {

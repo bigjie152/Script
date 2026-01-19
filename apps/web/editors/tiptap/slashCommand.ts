@@ -47,6 +47,20 @@ const SLASH_ITEMS: SlashItem[] = [
     }
   },
   {
+    title: "代码块",
+    description: "插入代码片段",
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+    }
+  },
+  {
+    title: "分割线",
+    description: "插入段落分割",
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+    }
+  },
+  {
     title: "数据库块",
     description: "插入结构化信息表",
     command: ({ editor, range }) => {
@@ -103,7 +117,7 @@ export const SlashCommand = Extension.create({
         command: ({ editor, range, props }: any) => {
           props.command({ editor, range });
         },
-        render: createSuggestionRenderer("slash-command-menu")
+        render: createSuggestionRenderer("slash-command-menu", "无可用命令")
       }
     };
   },

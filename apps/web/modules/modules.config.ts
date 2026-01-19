@@ -1,11 +1,14 @@
 import { EditorModuleKey, DocumentModuleKey } from "../types/editorDocument";
 
+export type ModuleEntryMode = "single" | "collection";
+
 export type ModuleConfig = {
   key: EditorModuleKey;
   label: string;
   apiEndpoint: (projectId: string) => string;
   requiresTruthLocked: boolean;
-  editorType: "truth" | "document" | "surface";
+  editorType: "truth" | "document";
+  entryMode?: ModuleEntryMode;
 };
 
 export const MODULE_CONFIGS: ModuleConfig[] = [
@@ -14,7 +17,8 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: "概览",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/overview`,
     requiresTruthLocked: false,
-    editorType: "document"
+    editorType: "document",
+    entryMode: "single"
   },
   {
     key: "truth",
@@ -28,28 +32,32 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: "角色",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/roles`,
     requiresTruthLocked: true,
-    editorType: "document"
+    editorType: "document",
+    entryMode: "collection"
   },
   {
     key: "clues",
     label: "线索",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/clues`,
     requiresTruthLocked: true,
-    editorType: "document"
+    editorType: "document",
+    entryMode: "collection"
   },
   {
     key: "timeline",
     label: "时间线",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/timeline`,
     requiresTruthLocked: true,
-    editorType: "document"
+    editorType: "document",
+    entryMode: "single"
   },
   {
     key: "dm",
     label: "DM 手册",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/dm`,
     requiresTruthLocked: true,
-    editorType: "document"
+    editorType: "document",
+    entryMode: "single"
   }
 ];
 

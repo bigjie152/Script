@@ -255,7 +255,12 @@ export async function GET(request: Request) {
         name: project.name,
         description: project.description ?? "",
         updatedAt: project.updatedAt,
-        status: "Draft",
+        status:
+          project.meta &&
+          typeof project.meta === "object" &&
+          typeof (project.meta as Record<string, unknown>).status === "string"
+            ? (project.meta as Record<string, unknown>).status
+            : "Draft",
         truthStatus: statusMap.get(project.id) ?? "Draft"
       }))
     },

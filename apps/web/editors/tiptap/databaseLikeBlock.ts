@@ -44,7 +44,8 @@ export const DatabaseLikeBlock = Node.create({
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-type": "database-like",
-        class: "database-like-block"
+        "data-block-node": "true",
+        class: "database-like-block block-node"
       }),
       ["div", { class: "database-like-title" }, "数据库块"],
       [
@@ -59,7 +60,13 @@ export const DatabaseLikeBlock = Node.create({
     return ({ node, editor, getPos }) => {
       let currentNode = node;
       const dom = document.createElement("div");
-      dom.className = "database-like-block";
+      dom.className = "database-like-block block-node";
+      dom.setAttribute("data-block-node", "true");
+
+      const handle = document.createElement("span");
+      handle.className = "block-handle";
+      handle.setAttribute("contenteditable", "false");
+      dom.appendChild(handle);
 
       const header = document.createElement("div");
       header.className = "database-like-header";
