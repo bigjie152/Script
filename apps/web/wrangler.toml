@@ -7,6 +7,7 @@ pages_build_output_dir = ".vercel/output/static"
 [vars]
 AI_PROVIDER = "mock"
 D1_BINDING = "DB"
+NEXT_PUBLIC_EDITOR_DEBUG = "true"
 
 [[d1_databases]]
 binding = "DB"
