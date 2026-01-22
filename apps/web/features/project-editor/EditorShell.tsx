@@ -100,6 +100,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const activeEntry = activeCollection?.activeEntry ?? null;
   const activeEntryMeta = (activeEntry?.meta || {}) as Record<string, unknown>;
   const activeEntryData = (activeEntry?.data || {}) as Record<string, unknown>;
+  const showCollectionOverview = isCollectionModule && !entryParam;
 
   const mentionItems = useMemo<MentionItem[]>(() => {
     const roles = rolesCollection.entries.map((entry) => ({
@@ -403,17 +404,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleNav = (next: EditorModuleKey) => {
     cancelRename();
-    const collection = collections[next as keyof typeof collections];
-    if (collection) {
-      const entryId = collection.activeEntryId ?? collection.entries[0]?.id;
-      if (entryId) {
-        router.push(
-          `/projects/${projectId}/editor/${next}?entry=${encodeURIComponent(entryId)}`
-        );
-        collection.setActiveEntry(entryId);
-        return;
-      }
-    }
     router.push(`/projects/${projectId}/editor/${next}`);
   };
 
@@ -478,10 +468,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const projectStatus = useMemo(() => {
     const meta = (project?.meta || {}) as Record<string, unknown>;
-    const value = meta.status;
+    const direct = (project as { status?: string } | null)?.status;
+    const value = direct || meta.status;
     if (value === "In Progress" || value === "Completed") return value;
     return "Draft";
-  }, [project?.meta]);
+  }, [project?.meta, project?.id]);
 
   const projectStatusLabel = useMemo(() => {
     switch (projectStatus) {
@@ -505,8 +496,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   }, [projectStatus]);
 
-  const truthStatusLabel = locked ? "真相：已锁定" : "真相：草稿";
-  const truthStatusTone = locked ? "bg-indigo-500" : "bg-slate-400";
+  const truthStatus = truth?.status === "LOCKED" ? "LOCKED" : "DRAFT";
+  const truthLocked = truthStatus === "LOCKED";
+  const truthStatusLabel = truthLocked ? "真相：已锁定" : "真相：草稿";
+  const truthStatusTone = truthLocked ? "bg-indigo-500" : "bg-slate-400";
   const sourceVersion = useMemo(() => {
     const version = projectMeta.form.version?.trim();
     if (version) return version;
@@ -598,7 +591,21 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${truthStatusTone}`} />
-              {locked ? "??" : null}
+              {truthLocked ? (
+                <svg
+                  aria-hidden
+                  className="h-3 w-3 text-amber-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="5" y="10" width="14" height="10" rx="2" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              ) : null}
               {truthStatusLabel}
             </span>
           </div>
