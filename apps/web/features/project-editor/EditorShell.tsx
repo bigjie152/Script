@@ -63,10 +63,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       ? (module as DocumentModuleKey)
       : null;
   const moduleDoc = useModuleDocument(projectId, moduleDocKey);
-  const rolesCollection = useModuleCollection(projectId, "roles", "��ɫ");
-  const cluesCollection = useModuleCollection(projectId, "clues", "����");
-  const timelineCollection = useModuleCollection(projectId, "timeline", "ʱ����");
-  const dmCollection = useModuleCollection(projectId, "dm", "�½�");
+  const rolesCollection = useModuleCollection(projectId, "roles", "角色");
+  const cluesCollection = useModuleCollection(projectId, "clues", "线索");
+  const timelineCollection = useModuleCollection(projectId, "timeline", "时间线");
+  const dmCollection = useModuleCollection(projectId, "dm", "章节");
   const projectMeta = useProjectMeta(projectId, project, refresh);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
@@ -98,13 +98,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       id: entry.id,
       label: entry.name,
       entityType: "role" as const,
-      description: "��ɫ��Ŀ"
+      description: "角色条目"
     }));
     const clues = cluesCollection.entries.map((entry) => ({
       id: entry.id,
       label: entry.name,
       entityType: "clue" as const,
-      description: "������Ŀ"
+      description: "线索条目"
     }));
     return [...roles, ...clues];
   }, [rolesCollection.entries, cluesCollection.entries]);
@@ -119,7 +119,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         setIssueError(null);
       } catch (err) {
         if (!alive) return;
-        setIssueError(err instanceof Error ? err.message : "���յ��ȡʧ��");
+        setIssueError(err instanceof Error ? err.message : "风险点获取失败");
       }
     }
     run();
@@ -164,18 +164,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   );
 
   const moduleLabel = useMemo(
-    () => moduleConfig?.label || "����",
+    () => moduleConfig?.label || "概览",
     [moduleConfig]
   );
 
   const moduleHint = useMemo(() => {
     if (module === "truth") {
-      return locked ? "�������������༭��ֻ��" : "�༭��������";
+      return locked ? "真相已锁定，编辑区只读" : "编辑真相内容";
     }
     if (moduleConfig?.requiresTruthLocked && !locked) {
-      return "��������������ٱ༭����ģ��";
+      return "请先锁定真相后再编辑派生模块";
     }
-    return "ģ������";
+    return "模块内容";
   }, [module, moduleConfig, locked]);
 
   const activeSaveState =
@@ -190,13 +190,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const saveLabel = useMemo(() => {
     switch (activeSaveState) {
       case "saving":
-        return "�����С�";
+        return "保存中…";
       case "success":
-        return "�ѱ���";
+        return "已保存";
       case "error":
-        return "����ʧ��";
+        return "保存失败";
       default:
-        return "����";
+        return "保存";
     }
   }, [activeSaveState]);
 
@@ -206,37 +206,37 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleLock = async () => {
     if (!canWrite) {
-      setPanelError("���ȵ�¼���ٲ���");
+      setPanelError("请先登录后再操作");
       return;
     }
     setPanelError(null);
     try {
       await lock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "����ʧ�ܣ�������");
+      setPanelError(err instanceof Error ? err.message : "锁定失败，请重试");
     }
   };
 
   const handleUnlock = async () => {
     if (!canWrite) {
-      setPanelError("���ȵ�¼���ٲ���");
+      setPanelError("请先登录后再操作");
       return;
     }
     const ok = window.confirm(
-      "�����������޸��������ݣ�����Ӱ���������һ���ԣ�ȷ��������"
+      "解锁后将允许修改真相内容，可能影响派生结果一致性，确定解锁吗？"
     );
     if (!ok) return;
     setPanelError(null);
     try {
       await unlock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "����ʧ�ܣ�������");
+      setPanelError(err instanceof Error ? err.message : "解锁失败，请重试");
     }
   };
 
   const handleDeriveRoles = () => {
     if (!canWrite) {
-      setPanelError("���ȵ�¼���ٲ���");
+      setPanelError("请先登录后再操作");
       return;
     }
     if (!locked) return;
@@ -246,7 +246,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleReviewLogic = () => {
     if (!canWrite) {
-      setPanelError("���ȵ�¼���ٲ���");
+      setPanelError("请先登录后再操作");
       return;
     }
     setPanelError(null);
@@ -362,11 +362,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const projectStatusLabel = useMemo(() => {
     switch (projectStatus) {
       case "In Progress":
-        return "������";
+        return "进行中";
       case "Completed":
-        return "�����";
+        return "已完成";
       default:
-        return "�ݸ�";
+        return "草稿";
     }
   }, [projectStatus]);
 
@@ -381,7 +381,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   }, [projectStatus]);
 
-  const truthStatusLabel = locked ? "���ࣺ������" : "���ࣺ�ݸ�";
+  const truthStatusLabel = locked ? "真相：已锁定" : "真相：草稿";
   const truthStatusTone = locked ? "bg-indigo-500" : "bg-slate-400";
   const sourceVersion = useMemo(() => {
     const version = projectMeta.form.version?.trim();
@@ -411,7 +411,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     (root.content || []).forEach((node) => {
       if (node?.type === "heading") {
         const level = node.attrs?.level ?? 2;
-        const text = collectText(node) || "δ��������";
+        const text = collectText(node) || "未命名标题";
         headings.push({ index, text, level });
         index += 1;
       }
@@ -462,7 +462,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-lg font-semibold">
-              {project?.name || "δ������Ŀ"}
+              {project?.name || "未命名项目"}
             </span>
             <span className="text-muted">/</span>
             <span className="text-muted">{moduleLabel}</span>
@@ -470,7 +470,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${projectStatusTone}`} />
-              ��Ŀ��{projectStatusLabel}
+              项目：{projectStatusLabel}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${truthStatusTone}`} />
@@ -480,13 +480,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           </div>
         </div>
         <Button variant="outline" onClick={handleBack}>
-          ���� Workspace
+          返回 Workspace
         </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)_360px]">
         <aside className="glass-panel-strong h-fit p-4">
-          <div className="text-xs text-muted">ģ�鵼��</div>
+          <div className="text-xs text-muted">模块导航</div>
           <div className="mt-4 space-y-2">
             {MODULE_CONFIGS.map((item) => {
               const collection = collections[item.key as keyof typeof collections];
@@ -527,24 +527,24 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 type="button"
                                 className="rounded px-1 hover:text-ink"
                                 onClick={() => {
-                                  const next = window.prompt("��������Ŀ", entry.name);
+                                  const next = window.prompt("重命名条目", entry.name);
                                   if (next && next.trim()) {
                                     collection.renameEntry(entry.id, next.trim());
                                   }
                                 }}
                               >
-                                ������
+                                重命名
                               </button>
                               <button
                                 type="button"
                                 className="rounded px-1 hover:text-ink"
                                 onClick={() => {
-                                  const ok = window.confirm("ȷ��ɾ������Ŀ��");
+                                  const ok = window.confirm("确定删除该条目吗？");
                                   if (ok) collection.removeEntry(entry.id);
                                 }}
                                 disabled={collection.entries.length <= 1}
                               >
-                                ɾ��
+                                删除
                               </button>
                             </div>
                           ) : null}
@@ -556,7 +556,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           className="mt-1 flex items-center gap-2 text-xs text-muted hover:text-ink"
                           onClick={() => handleCreateEntry(item.key)}
                         >
-                          + ���{item.label}
+                          + 添加{item.label}
                         </button>
                       ) : null}
                     </div>
@@ -566,7 +566,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             })}
           </div>
           <div className="mt-6 text-xs text-muted">
-            ��Ŀ��{project?.name || "�����С�"}
+            项目：{project?.name || "加载中…"}
           </div>
         </aside>
 
@@ -586,7 +586,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           </div>
 
           {activeLoading ? (
-            <EmptyState title="�����С�" description="���ڶ�ȡ��Ŀ����" />
+            <EmptyState title="加载中…" description="正在读取项目数据" />
           ) : activeError ? (
             <ErrorBanner message={activeError} />
           ) : module === "overview" ? (
@@ -594,14 +594,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  δ��¼״̬�½�֧��ֻ����������ȵ�¼��༭��
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "genre",
-                    title: "��Ŀ����",
+                    title: "项目类型",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -611,21 +611,21 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canWrite}
                       >
-                        <option value="">��ѡ��</option>
-                        <option value="����">����</option>
-                        <option value="����">����</option>
-                        <option value="���">���</option>
-                        <option value="�ֲ�">�ֲ�</option>
-                        <option value="���">���</option>
-                        <option value="�ƻ�">�ƻ�</option>
-                        <option value="��ʷ">��ʷ</option>
-                        <option value="����">����</option>
+                        <option value="">请选择</option>
+                        <option value="悬疑">悬疑</option>
+                        <option value="推理">推理</option>
+                        <option value="情感">情感</option>
+                        <option value="恐怖">恐怖</option>
+                        <option value="奇幻">奇幻</option>
+                        <option value="科幻">科幻</option>
+                        <option value="历史">历史</option>
+                        <option value="其他">其他</option>
                       </select>
                     )
                   },
                   {
                     key: "players",
-                    title: "����",
+                    title: "人数",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -635,25 +635,25 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canWrite}
                       >
-                        <option value="">��ѡ��</option>
-                        <option value="3-4 ��">3-4 ��</option>
-                        <option value="4-6 ��">4-6 ��</option>
-                        <option value="6-8 ��">6-8 ��</option>
-                        <option value="8-10 ��">8-10 ��</option>
-                        <option value="����">����</option>
+                        <option value="">请选择</option>
+                        <option value="3-4 人">3-4 人</option>
+                        <option value="4-6 人">4-6 人</option>
+                        <option value="6-8 人">6-8 人</option>
+                        <option value="8-10 人">8-10 人</option>
+                        <option value="不限">不限</option>
                       </select>
                     )
                   },
                   {
                     key: "version",
-                    title: "��ǰ�汾",
+                    title: "当前版本",
                     content: (
                       <div>
                         <div className="text-lg font-semibold text-ink">
                           {sourceVersion}
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          ������£�{project?.updatedAt || "-"}
+                          最近更新：{project?.updatedAt || "-"}
                         </div>
                       </div>
                     )
@@ -663,9 +663,9 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="text-lg font-semibold">�籾���</div>
+                  <div className="text-lg font-semibold">剧本简介</div>
                   <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600">
-                    ����
+                    核心
                   </span>
                 </div>
                 <div className="relative">
@@ -683,7 +683,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   />
                   {!overviewDocument.text?.trim() ? (
                     <div className="pointer-events-none absolute left-8 top-6 text-sm text-muted">
-                      д����Ĺ��±�������������е����...
+                      写下你的故事背景，这里是灵感的起点...
                     </div>
                   ) : null}
                 </div>
@@ -702,33 +702,33 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 cards={[
                   {
                     key: "snapshot",
-                    title: "���¿���",
+                    title: "最新快照",
                     content: (
                       <div>
                         <div className="text-base font-semibold text-ink">
                           {latestSnapshotId || sourceVersion}
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          {latestSnapshotId ? "����������" : "Ĭ�ϰ汾"}
+                          {latestSnapshotId ? "快照已生成" : "默认版本"}
                         </div>
                       </div>
                     )
                   },
                   {
                     key: "coverage",
-                    title: "����������",
+                    title: "派生覆盖率",
                     content: (
                       <div className="text-sm text-muted">
-                        ��������
+                        即将上线
                       </div>
                     )
                   },
                   {
                     key: "lockedAt",
-                    title: "����ʱ��",
+                    title: "锁定时间",
                     content: (
                       <div className="text-sm text-ink">
-                        {locked ? truth?.updatedAt || "������" : "δ����"}
+                        {locked ? truth?.updatedAt || "已锁定" : "未锁定"}
                       </div>
                     )
                   }
@@ -737,12 +737,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {saveError ? <ErrorBanner message={saveError} /> : null}
               {locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  ��ǰ�������������༭��Ϊֻ����������ɼ����޸ġ�
+                  当前真相已锁定，编辑区为只读。解锁后可继续修改。
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  δ��¼״̬�½�֧��ֻ����������ȵ�¼��༭��
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
                 </div>
               ) : null}
               <div
@@ -754,7 +754,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               >
                 {locked ? (
                   <div className="mb-3 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
-                    ��������������Ϊ����Դ
+                    内容已锁定，作为派生源
                   </div>
                 ) : null}
                 <DocumentEditor
@@ -771,12 +771,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  ��ǰ������δ���������������ٱ༭��ģ�顣
+                  当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  δ��¼״̬�½�֧��ֻ����������ȵ�¼��༭��
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
                 </div>
               ) : null}
               <ModuleMetaGrid
@@ -785,7 +785,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     ? [
                         {
                           key: "motivation",
-                          title: "���Ķ���",
+                          title: "核心动机",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -797,13 +797,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="���磺����/����"
+                              placeholder="例如：复仇/赎罪"
                             />
                           )
                         },
                         {
                           key: "progress",
-                          title: "��֪�������",
+                          title: "已知真相进度",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -815,13 +815,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="���磺40%"
+                              placeholder="例如：40%"
                             />
                           )
                         },
                         {
                           key: "secrets",
-                          title: "��������",
+                          title: "秘密数量",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -833,7 +833,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="���磺3 ��"
+                              placeholder="例如：3 个"
                             />
                           )
                         }
@@ -841,7 +841,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     : [
                         {
                           key: "direction",
-                          title: "ָ����",
+                          title: "指向性",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -853,13 +853,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="���磺ָ���ɫ/����"
+                              placeholder="例如：指向角色/场景"
                             />
                           )
                         },
                         {
                           key: "difficulty",
-                          title: "��ȡ�Ѷ�",
+                          title: "获取难度",
                           content: (
                             <select
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -872,18 +872,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               }
                               disabled={!canEditModule}
                             >
-                              <option value="">��ѡ��</option>
-                              <option value="��">��</option>
-                              <option value="���">���</option>
-                              <option value="����">����</option>
-                              <option value="�����">�����</option>
-                              <option value="������">������</option>
+                              <option value="">请选择</option>
+                              <option value="★">★</option>
+                              <option value="★★">★★</option>
+                              <option value="★★★">★★★</option>
+                              <option value="★★★★">★★★★</option>
+                              <option value="★★★★★">★★★★★</option>
                             </select>
                           )
                         },
                         {
                           key: "authenticity",
-                          title: "��ʵ��",
+                          title: "真实度",
                           content: (
                             <select
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -896,10 +896,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               }
                               disabled={!canEditModule}
                             >
-                              <option value="">��ѡ��</option>
-                              <option value="��ʵ">��ʵ</option>
-                              <option value="���">���</option>
-                              <option value="��ȷ��">��ȷ��</option>
+                              <option value="">请选择</option>
+                              <option value="真实">真实</option>
+                              <option value="虚假">虚假</option>
+                              <option value="不确定">不确定</option>
                             </select>
                           )
                         }
@@ -927,7 +927,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   />
                 </div>
               ) : (
-                <EmptyState title="������Ŀ" description="���ȴ�����Ŀ��༭����" />
+                <EmptyState title="暂无条目" description="请先创建条目后编辑内容" />
               )}
             </div>
           ) : module === "timeline" ? (
@@ -935,14 +935,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  ��ǰ������δ���������������ٱ༭��ģ�顣
+                  当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "duration",
-                    title: "��ʱ��",
+                    title: "总时长",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -954,13 +954,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="���磺4.5 Сʱ"
+                        placeholder="例如：4.5 小时"
                       />
                     )
                   },
                   {
                     key: "density",
-                    title: "�¼��ܶ�",
+                    title: "事件密度",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -972,13 +972,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="���磺15 min/node"
+                        placeholder="例如：15 min/node"
                       />
                     )
                   },
                   {
                     key: "twists",
-                    title: "�ؼ���ת",
+                    title: "关键反转",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -990,7 +990,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="���磺3 ��"
+                        placeholder="例如：3 次"
                       />
                     )
                   }
@@ -1003,7 +1003,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       {activeEntry.name}
                     </div>
                     <Button
-                      size="sm"
                       onClick={() => {
                         const events = Array.isArray(activeEntryData.events)
                           ? [...activeEntryData.events]
@@ -1016,8 +1015,9 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         updateActiveData({ ...activeEntryData, events });
                       }}
                       disabled={!canEditModule}
+                      className="px-3 py-1 text-xs"
                     >
-                      ����¼�
+                      添加事件
                     </Button>
                   </div>
                   <div className="space-y-4">
@@ -1037,7 +1037,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         >
                           <div className="grid gap-3 md:grid-cols-[120px_minmax(0,1fr)_160px]">
                             <div>
-                              <div className="text-xs text-muted">ʱ���</div>
+                              <div className="text-xs text-muted">时间点</div>
                               <input
                                 className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-ink outline-none focus:border-ink/40"
                                 value={event.time || ""}
@@ -1049,11 +1049,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                   updateActiveData({ ...activeEntryData, events });
                                 }}
                                 disabled={!canEditModule}
-                                placeholder="���� 18:00"
+                                placeholder="例如 18:00"
                               />
                             </div>
                             <div>
-                              <div className="text-xs text-muted">�¼�����</div>
+                              <div className="text-xs text-muted">事件详情</div>
                               <div className="mt-2">
                                 <DocumentEditor
                                   value={eventDoc}
@@ -1074,7 +1074,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               </div>
                             </div>
                             <div>
-                              <div className="text-xs text-muted">�漰��ɫ</div>
+                              <div className="text-xs text-muted">涉及角色</div>
                               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
                                 {participants.length ? (
                                   participants.map((item) => (
@@ -1094,7 +1094,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                     </button>
                                   ))
                                 ) : (
-                                  <span>���޹���</span>
+                                  <span>暂无关联</span>
                                 )}
                               </div>
                             </div>
@@ -1107,13 +1107,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       : []
                     ).length === 0 ? (
                       <div className="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-xs text-muted">
-                        ������Ͻǡ�����¼�������ʱ���߽ڵ㡣
+                        点击右上角“添加事件”创建时间线节点。
                       </div>
                     ) : null}
                   </div>
                 </div>
               ) : (
-                <EmptyState title="����ʱ����" description="���ȴ���ʱ������Ŀ" />
+                <EmptyState title="暂无时间线" description="请先创建时间线条目" />
               )}
             </div>
           ) : module === "dm" ? (
@@ -1121,14 +1121,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  ��ǰ������δ���������������ٱ༭��ģ�顣
+                  当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "difficulty",
-                    title: "�Ѷ�",
+                    title: "难度",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -1141,16 +1141,16 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canEditModule}
                       >
-                        <option value="">��ѡ��</option>
-                        <option value="����">����</option>
-                        <option value="����">����</option>
-                        <option value="����">����</option>
+                        <option value="">请选择</option>
+                        <option value="初级">初级</option>
+                        <option value="进阶">进阶</option>
+                        <option value="困难">困难</option>
                       </select>
                     )
                   },
                   {
                     key: "players",
-                    title: "��������",
+                    title: "人数限制",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -1162,20 +1162,20 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="���磺5 �˹̶�"
+                        placeholder="例如：5 人固定"
                       />
                     )
                   },
                   {
                     key: "risk",
-                    title: "�����ѵ�",
+                    title: "核心难点",
                     content: (
                       <div>
                         <div className="text-lg font-semibold text-ink">
-                          {p0Issues.length} �����յ�
+                          {p0Issues.length} 个风险点
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          {issueError ? "��ȡʧ��" : "���������б� P0"}
+                          {issueError ? "获取失败" : "来自问题列表 P0"}
                         </div>
                       </div>
                     )
@@ -1205,7 +1205,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       />
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-white px-4 py-4 text-sm">
-                      <div className="text-sm font-semibold">���´��</div>
+                      <div className="text-sm font-semibold">本章大纲</div>
                       <div className="mt-3 space-y-2 text-xs text-muted">
                         {buildOutline(activeCollection?.document.content).length ? (
                           buildOutline(activeCollection?.document.content).map((item) => (
@@ -1227,15 +1227,15 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                             </button>
                           ))
                         ) : (
-                          <div className="text-muted">���ޱ���</div>
+                          <div className="text-muted">暂无标题</div>
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs text-muted">
                     <div className="flex items-center justify-between">
-                      <span>������ʾ��P0��</span>
-                      <span>{p0Issues.length} ��</span>
+                      <span>风险提示（P0）</span>
+                      <span>{p0Issues.length} 条</span>
                     </div>
                     <div className="mt-2 space-y-1 text-[11px]">
                       {p0Issues.length ? (
@@ -1245,13 +1245,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           </div>
                         ))
                       ) : (
-                        <div>���޷��յ�</div>
+                        <div>暂无风险点</div>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <EmptyState title="�����½�" description="���ȴ��� DM �ֲ��½�" />
+                <EmptyState title="暂无章节" description="请先创建 DM 手册章节" />
               )}
             </div>
           ) : (
@@ -1259,12 +1259,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  ��ǰ������δ���������������ٱ༭��ģ�顣
+                  当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  δ��¼״̬�½�֧��ֻ����������ȵ�¼��༭��
+                  未登录状态下仅支持只读浏览，请先登录后编辑。
                 </div>
               ) : null}
               <DocumentEditor
@@ -1283,8 +1283,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             value={tab}
             onChange={setTab}
             tabs={[
-              { key: "ai", label: "AI ���" },
-              { key: "issues", label: "�����б�" }
+              { key: "ai", label: "AI 面板" },
+              { key: "issues", label: "问题列表" }
             ]}
           />
           {tab === "ai" ? (

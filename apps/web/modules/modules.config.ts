@@ -14,7 +14,7 @@ export type ModuleConfig = {
 export const MODULE_CONFIGS: ModuleConfig[] = [
   {
     key: "overview",
-    label: "����",
+    label: "概览",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/overview`,
     requiresTruthLocked: false,
     editorType: "document",
@@ -22,14 +22,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "truth",
-    label: "����",
+    label: "真相",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/truth`,
     requiresTruthLocked: false,
     editorType: "truth"
   },
   {
     key: "roles",
-    label: "��ɫ",
+    label: "角色",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/roles`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -37,7 +37,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "clues",
-    label: "����",
+    label: "线索",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/clues`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -45,7 +45,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "timeline",
-    label: "ʱ����",
+    label: "时间线",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/timeline`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -53,7 +53,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "dm",
-    label: "DM �ֲ�",
+    label: "DM 手册",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/dm`,
     requiresTruthLocked: true,
     editorType: "document",
