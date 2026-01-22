@@ -96,10 +96,27 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const activeCollection = isCollectionModule
     ? collections[module as "roles" | "clues" | "timeline" | "dm"]
     : null;
+  const collectionEntries = activeCollection?.entries ?? [];
   const activeEntry = activeCollection?.activeEntry ?? null;
   const activeEntryMeta = (activeEntry?.meta || {}) as Record<string, unknown>;
   const activeEntryData = (activeEntry?.data || {}) as Record<string, unknown>;
   const showCollectionOverview = isCollectionModule && !entryParam;
+
+  const collectionOverviewLabel = useMemo(() => {
+    if (!showCollectionOverview) return null;
+    switch (module) {
+      case "roles":
+        return "角色概览";
+      case "clues":
+        return "线索库";
+      case "timeline":
+        return "时间线概览";
+      case "dm":
+        return "DM 手册概览";
+      default:
+        return null;
+    }
+  }, [module, showCollectionOverview]);
 
   const roleNameKey = useMemo(
     () =>
@@ -227,14 +244,17 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   );
 
   const moduleLabel = useMemo(
-    () => moduleConfig?.label || "概览",
-    [moduleConfig]
+    () => collectionOverviewLabel || moduleConfig?.label || "概览",
+    [collectionOverviewLabel, moduleConfig]
   );
 
   const truthStatus = truth?.status === "LOCKED" ? "LOCKED" : "DRAFT";
   const truthLocked = truthStatus === "LOCKED";
 
   const moduleHint = useMemo(() => {
+    if (showCollectionOverview) {
+      return "点击卡片进入编辑，或新增条目";
+    }
     if (module === "truth") {
       return truthLocked ? "真相已锁定，编辑区只读" : "编辑真相内容";
     }
@@ -242,7 +262,21 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       return "请先锁定真相后再编辑派生模块";
     }
     return "模块内容";
-  }, [module, moduleConfig, truthLocked]);
+  }, [module, moduleConfig, showCollectionOverview, truthLocked]);
+
+  const parsePercent = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.min(100, Math.max(0, Math.round(value)));
+    }
+    if (typeof value === "string") {
+      const cleaned = value.replace(/%/g, "").trim();
+      const num = Number(cleaned);
+      if (Number.isFinite(num)) {
+        return Math.min(100, Math.max(0, Math.round(num)));
+      }
+    }
+    return 0;
+  };
 
   const activeSaveState =
     module === "truth"
@@ -1009,7 +1043,114 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               </div>
             </div>
           ) : module === "roles" || module === "clues" ? (
-            <div className="space-y-4">
+            showCollectionOverview ? (
+              <div className="space-y-4">
+                <div className="text-xl font-semibold">
+                  {module === "roles" ? "角色概览" : "线索库"}
+                </div>
+                {module === "roles" ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {collectionEntries.map((entry) => {
+                      const meta = (entry.meta || {}) as Record<string, unknown>;
+                      const progress = parsePercent(meta.truthProgress);
+                      return (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          className="flex h-full flex-col justify-between rounded-2xl border border-slate-100 bg-white px-5 py-4 text-left shadow-sm transition hover:border-indigo-200"
+                          onClick={() => handleEntrySelect("roles", entry.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600">
+                              {entry.name?.slice(0, 1) || "角"}
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-ink">
+                                {entry.name}
+                              </div>
+                              <div className="text-xs text-muted">
+                                {(meta.motivation as string) || "暂无标签"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <div className="text-xs text-muted">剧本进度</div>
+                            <div className="mt-2 h-2 w-full rounded-full bg-slate-100">
+                              <div
+                                className="h-2 rounded-full bg-indigo-500"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-muted">
+                              {progress}%
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {canEditModule ? (
+                      <button
+                        type="button"
+                        className="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 text-sm text-muted hover:border-indigo-200 hover:text-ink"
+                        onClick={() => handleCreateEntry("roles")}
+                      >
+                        <div className="text-2xl">+</div>
+                        创建新角色
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {collectionEntries.map((entry) => {
+                      const meta = (entry.meta || {}) as Record<string, unknown>;
+                      const direction =
+                        (meta.direction as string) || "指向未填写";
+                      const authenticity =
+                        (meta.authenticity as string) || "未知";
+                      const difficulty = (meta.difficulty as string) || "";
+                      return (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-4 text-left shadow-sm transition hover:border-indigo-200"
+                          onClick={() => handleEntrySelect("clues", entry.id)}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs text-muted">
+                              线索
+                            </span>
+                            <div>
+                              <div className="text-sm font-semibold text-ink">
+                                {entry.name}
+                              </div>
+                              <div className="text-xs text-muted">
+                                {direction}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted">
+                            {difficulty ? <span>{difficulty}</span> : null}
+                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
+                              {authenticity}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {canEditModule ? (
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 py-4 text-sm text-muted hover:border-indigo-200 hover:text-ink"
+                        onClick={() => handleCreateEntry("clues")}
+                      >
+                        + 添加新线索
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
@@ -1172,8 +1313,47 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 <EmptyState title="暂无条目" description="请先创建条目后编辑内容" />
               )}
             </div>
+            )
           ) : module === "timeline" ? (
-            <div className="space-y-4">
+            showCollectionOverview ? (
+              <div className="space-y-4">
+                <div className="text-xl font-semibold">时间线概览</div>
+                <div className="space-y-3">
+                  {collectionEntries.map((entry) => {
+                    const data = (entry.data || {}) as Record<string, unknown>;
+                    const events = Array.isArray(data.events) ? data.events.length : 0;
+                    return (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-4 text-left shadow-sm transition hover:border-indigo-200"
+                        onClick={() => handleEntrySelect("timeline", entry.id)}
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-ink">
+                            {entry.name}
+                          </div>
+                          <div className="mt-1 text-xs text-muted">
+                            {events} 个事件
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted">进入编辑</div>
+                      </button>
+                    );
+                  })}
+                  {canEditModule ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 py-4 text-sm text-muted hover:border-indigo-200 hover:text-ink"
+                      onClick={() => handleCreateEntry("timeline")}
+                    >
+                      + 添加时间线
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
@@ -1358,8 +1538,47 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 <EmptyState title="暂无时间线" description="请先创建时间线条目" />
               )}
             </div>
+            )
           ) : module === "dm" ? (
-            <div className="space-y-4">
+            showCollectionOverview ? (
+              <div className="space-y-4">
+                <div className="text-xl font-semibold">DM 手册概览</div>
+                <div className="space-y-3">
+                  {collectionEntries.map((entry) => {
+                    const meta = (entry.meta || {}) as Record<string, unknown>;
+                    const difficulty = (meta.difficulty as string) || "未设置";
+                    return (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white px-5 py-4 text-left shadow-sm transition hover:border-indigo-200"
+                        onClick={() => handleEntrySelect("dm", entry.id)}
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-ink">
+                            {entry.name}
+                          </div>
+                          <div className="mt-1 text-xs text-muted">
+                            难度：{difficulty}
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted">进入编辑</div>
+                      </button>
+                    );
+                  })}
+                  {canEditModule ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 py-4 text-sm text-muted hover:border-indigo-200 hover:text-ink"
+                      onClick={() => handleCreateEntry("dm")}
+                    >
+                      + 添加 DM 章节
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
@@ -1496,6 +1715,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 <EmptyState title="暂无章节" description="请先创建 DM 手册章节" />
               )}
             </div>
+            )
           ) : (
             <div className="space-y-3">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
