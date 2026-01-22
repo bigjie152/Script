@@ -11,7 +11,7 @@ import { createProject, listProjects, ProjectListItem } from "../../services/pro
 
 export default function WorkspacePage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,9 +96,6 @@ export default function WorkspacePage() {
           <TopNav
             onCreate={handleCreate}
             creating={creating}
-            user={user}
-            onLogin={() => router.push("/login")}
-            onLogout={logout}
             searchValue={searchInput}
             onSearchChange={setSearchInput}
           />
@@ -125,11 +122,15 @@ export default function WorkspacePage() {
                   <button
                     key={item.id}
                     onClick={() => handlePreview(item.id)}
-                    className="glass-panel-strong flex flex-col gap-3 px-5 py-4 text-left transition hover:-translate-y-1"
+                    className="glass-panel-strong flex flex-col gap-4 px-5 py-4 text-left transition hover:-translate-y-1"
                   >
-                    <div className="flex items-center justify-between text-xs text-muted">
-                      <span>{formatStatus(item.status)}</span>
-                      <span>{formatDate(item.updatedAt)}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-muted">
+                        {formatTruthStatus(item.truthStatus)}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {formatRelativeTime(item.updatedAt)}
+                      </span>
                     </div>
                     <div className="text-lg font-semibold">
                       {item.name || "未命名项目"}
@@ -137,8 +138,17 @@ export default function WorkspacePage() {
                     <div className="text-sm text-muted">
                       {item.description || "暂无简介"}
                     </div>
-                    <div className="mt-auto text-xs text-muted">
-                      Truth 状态：{formatTruthStatus(item.truthStatus)}
+                    <div className="mt-auto space-y-2">
+                      <div className="text-xs text-muted">进度</div>
+                      <div className="h-2 w-full rounded-full bg-slate-100">
+                        <div
+                          className="h-2 rounded-full bg-indigo-500"
+                          style={{ width: `${getProgress(item)}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-muted">
+                        最后编辑于 {formatRelativeTime(item.updatedAt)}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -160,13 +170,29 @@ function formatDate(value?: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function formatStatus(status?: string) {
-  if (status === "Completed") return "已完成";
-  if (status === "In Progress") return "进行中";
-  return "草稿";
-}
-
 function formatTruthStatus(status?: string) {
   if (status === "Locked") return "已锁定";
   return "草稿";
+}
+
+function formatRelativeTime(value?: string) {
+  if (!value) return "-";
+  const normalized = value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  const diff = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "刚刚";
+  if (diff < hour) return `${Math.floor(diff / minute)} 分钟前`;
+  if (diff < day) return `${Math.floor(diff / hour)} 小时前`;
+  return `${Math.floor(diff / day)} 天前`;
+}
+
+function getProgress(item: ProjectListItem) {
+  if (item.status === "Completed") return 100;
+  if (item.status === "In Progress") return 45;
+  if (item.truthStatus === "Locked") return 60;
+  return 12;
 }
