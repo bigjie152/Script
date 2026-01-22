@@ -102,6 +102,20 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const activeEntryData = (activeEntry?.data || {}) as Record<string, unknown>;
   const showCollectionOverview = isCollectionModule && !entryParam;
 
+  const roleNameKey = useMemo(
+    () =>
+      rolesCollection.entries
+        .map((entry) => `${entry.id}:${entry.name}`)
+        .join("|"),
+    [rolesCollection.entries]
+  );
+  const clueNameKey = useMemo(
+    () =>
+      cluesCollection.entries
+        .map((entry) => `${entry.id}:${entry.name}`)
+        .join("|"),
+    [cluesCollection.entries]
+  );
   const mentionItems = useMemo<MentionItem[]>(() => {
     const roles = rolesCollection.entries.map((entry) => ({
       id: entry.id,
@@ -116,7 +130,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       description: "线索条目"
     }));
     return [...roles, ...clues];
-  }, [rolesCollection.entries, cluesCollection.entries]);
+  }, [roleNameKey, clueNameKey]);
 
   useEffect(() => {
     let alive = true;
