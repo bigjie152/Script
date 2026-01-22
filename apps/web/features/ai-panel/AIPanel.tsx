@@ -8,6 +8,9 @@ type AIPanelProps = {
   locked: boolean;
   onLock: () => void;
   onUnlock: () => void;
+  unlockConfirmOpen?: boolean;
+  onUnlockConfirm?: () => void;
+  onUnlockCancel?: () => void;
   onDeriveRoles: () => void;
   deriveStatus?: AiStatus;
   deriveMessage?: string | null;
@@ -20,6 +23,9 @@ export function AIPanel({
   locked,
   onLock,
   onUnlock,
+  unlockConfirmOpen = false,
+  onUnlockConfirm,
+  onUnlockCancel,
   onDeriveRoles,
   deriveStatus,
   deriveMessage,
@@ -46,9 +52,26 @@ export function AIPanel({
             : "锁定后将进入只读状态，便于派生生成。"}
         </div>
         <div className="mt-4">
-          <Button variant="outline" onClick={locked ? onUnlock : onLock}>
-            {locked ? "解锁真相" : "锁定真相"}
-          </Button>
+          {locked ? (
+            unlockConfirmOpen ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="primary" onClick={onUnlockConfirm}>
+                  确认解锁
+                </Button>
+                <Button variant="ghost" onClick={onUnlockCancel}>
+                  取消
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={onUnlock}>
+                解锁真相
+              </Button>
+            )
+          ) : (
+            <Button variant="outline" onClick={onLock}>
+              锁定真相
+            </Button>
+          )}
         </div>
       </div>
 

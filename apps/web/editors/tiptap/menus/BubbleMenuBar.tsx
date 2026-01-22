@@ -6,8 +6,7 @@ type BubbleMenuBarProps = {
   editor: Editor;
 };
 
-const BUTTON_CLASS =
-  "bubble-menu-button";
+const BUTTON_CLASS = "bubble-menu-button";
 
 export function BubbleMenuBar({ editor }: BubbleMenuBarProps) {
   return (

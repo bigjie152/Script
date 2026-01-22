@@ -48,6 +48,7 @@ export function BlockEditor({
   mentionItems = [],
   onMentionClick
 }: BlockEditorProps) {
+  const debugEnabled = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
   const lastContentRef = useRef("");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeBlockRef = useRef<HTMLElement | null>(null);
@@ -166,6 +167,20 @@ export function BlockEditor({
     }
   });
 
+  useEffect(() => {
+    if (!editor || !debugEnabled) return;
+    console.info("[editor] create", {
+      module: value.module,
+      projectId: value.projectId
+    });
+    return () => {
+      console.info("[editor] destroy", {
+        module: value.module,
+        projectId: value.projectId
+      });
+    };
+  }, [editor, debugEnabled, value.module, value.projectId]);
+
   const updateHandle = useCallback(() => {
     if (!editor || !containerRef.current) return;
     const range = getBlockRange(editor);
@@ -210,6 +225,12 @@ export function BlockEditor({
   }, [editor, value.content]);
 
   useEffect(() => {
+    setMenuOpen(false);
+    activeBlockRef.current?.classList.remove("is-active");
+    activeBlockRef.current = null;
+  }, [readonly, value.content]);
+
+  useEffect(() => {
     if (!editor) return;
     updateHandle();
     const onUpdate = () => updateHandle();
@@ -251,11 +272,13 @@ export function BlockEditor({
       ref={containerRef}
       className="relative flex h-full w-full flex-col rounded-2xl border border-slate-100 bg-white/90 shadow-sm"
     >
-      {editor && !readonly ? (
+      {editor ? (
         <BubbleMenu
           editor={editor}
           tippyOptions={{ duration: 120 }}
-          shouldShow={({ editor }) => !editor.state.selection.empty}
+          shouldShow={({ editor }) =>
+            !readonly && !editor.state.selection.empty
+          }
         >
           <BubbleMenuBar editor={editor} />
         </BubbleMenu>

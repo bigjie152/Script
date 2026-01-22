@@ -1,5 +1,6 @@
-"use client";
+ï»¿"use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../common/Button";
 import { ModuleEntry } from "../../editors/adapters/moduleCollection";
 
@@ -24,6 +25,36 @@ export function EntryList({
   onRename,
   onDelete
 }: EntryListProps) {
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!editingEntryId) return;
+    const raf = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [editingEntryId]);
+
+  const cancelRename = () => {
+    setEditingEntryId(null);
+    setEditingValue("");
+  };
+
+  const commitRename = () => {
+    if (!editingEntryId) return;
+    const nextName = editingValue.trim();
+    if (!nextName) {
+      cancelRename();
+      return;
+    }
+    onRename(editingEntryId, nextName);
+    cancelRename();
+  };
+
   return (
     <div className="mt-5 space-y-2">
       <div className="flex items-center justify-between text-xs text-muted">
@@ -34,7 +65,7 @@ export function EntryList({
           onClick={onCreate}
           disabled={!canEdit}
         >
-          ĞÂÔö
+          æ–°å¢
         </Button>
       </div>
       <div className="space-y-1">
@@ -47,44 +78,85 @@ export function EntryList({
                 : "text-muted hover:bg-white/50 hover:text-ink"
             }`}
           >
-            <button
-              type="button"
-              className="flex-1 text-left"
-              onClick={() => onSelect(entry.id)}
-            >
-              {entry.name}
-            </button>
-            <div className="flex items-center gap-1 text-xs">
-              <button
-                type="button"
-                className="rounded-md px-1 text-muted hover:text-ink"
-                onClick={() => {
-                  const next = window.prompt("ÖØÃüÃûÌõÄ¿", entry.name);
-                  if (next && next.trim()) {
-                    onRename(entry.id, next.trim());
+            {editingEntryId === entry.id ? (
+              <input
+                ref={inputRef}
+                className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink/40"
+                value={editingValue}
+                onChange={(event) => setEditingValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitRename();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    cancelRename();
                   }
                 }}
-                disabled={!canEdit}
-              >
-                ÖØÃüÃû
-              </button>
+                onBlur={commitRename}
+              />
+            ) : (
               <button
                 type="button"
-                className="rounded-md px-1 text-muted hover:text-ink"
-                onClick={() => {
-                  const ok = window.confirm("È·¶¨É¾³ı¸ÃÌõÄ¿Âğ£¿");
-                  if (ok) onDelete(entry.id);
-                }}
-                disabled={!canEdit || entries.length <= 1}
+                className="flex-1 text-left"
+                onClick={() => onSelect(entry.id)}
               >
-                É¾³ı
+                {entry.name}
               </button>
-            </div>
+            )}
+            {canEdit ? (
+              <div className="flex items-center gap-1 text-xs">
+                {pendingDeleteId === entry.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-md px-1 text-rose-500 hover:text-rose-600"
+                      onClick={() => {
+                        onDelete(entry.id);
+                        setPendingDeleteId(null);
+                      }}
+                    >
+                      ç¡®è®¤
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md px-1 text-muted hover:text-ink"
+                      onClick={() => setPendingDeleteId(null)}
+                    >
+                      å–æ¶ˆ
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-md px-1 text-muted hover:text-ink"
+                      onClick={() => {
+                        setEditingEntryId(entry.id);
+                        setEditingValue(entry.name);
+                      }}
+                      disabled={!canEdit}
+                    >
+                      é‡å‘½å
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md px-1 text-muted hover:text-ink"
+                      onClick={() => setPendingDeleteId(entry.id)}
+                      disabled={!canEdit || entries.length <= 1}
+                    >
+                      åˆ é™¤
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
         ))}
         {!entries.length ? (
           <div className="rounded-lg border border-dashed border-white/70 px-3 py-2 text-xs text-muted">
-            ÔİÎŞÌõÄ¿£¬µã»÷¡°ĞÂÔö¡±´´½¨¡£
+            æš‚æ— æ¡ç›®ï¼Œç‚¹å‡»â€œæ–°å¢â€åˆ›å»ºã€‚
           </div>
         ) : null}
       </div>

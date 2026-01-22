@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Node, mergeAttributes } from "@tiptap/core";
 
@@ -48,11 +48,7 @@ export const DatabaseLikeBlock = Node.create({
         class: "database-like-block block-node"
       }),
       ["div", { class: "database-like-title" }, "数据库块"],
-      [
-        "div",
-        { class: "database-like-caption" },
-        "用于结构化记录（不含运算）"
-      ]
+      ["div", { class: "database-like-caption" }, "用于结构化记录（不含运算）"]
     ];
   },
 
@@ -98,9 +94,7 @@ export const DatabaseLikeBlock = Node.create({
         const columns = attrs.columns?.length ? attrs.columns : DEFAULT_COLUMNS;
         const rows = attrs.rows?.length ? attrs.rows : DEFAULT_ROWS;
 
-        meta.textContent = attrs.metadata
-          ? `备注：${attrs.metadata}`
-          : "结构化区块";
+        meta.textContent = attrs.metadata ? `备注：${attrs.metadata}` : "结构化区块";
 
         const thead = document.createElement("thead");
         const headRow = document.createElement("tr");
@@ -125,52 +119,107 @@ export const DatabaseLikeBlock = Node.create({
         table.appendChild(tbody);
       };
 
+      let panel: HTMLDivElement | null = null;
+      const closePanel = () => {
+        panel?.remove();
+        panel = null;
+      };
+
       editButton.addEventListener("click", () => {
+        if (panel) {
+          closePanel();
+          return;
+        }
         const attrs = currentNode.attrs as DatabaseAttrs;
-        const nextColumns = window.prompt(
-          "请输入列名（英文逗号分隔）",
-          (attrs.columns || DEFAULT_COLUMNS).join(",")
-        );
-        if (!nextColumns) return;
+        panel = document.createElement("div");
+        panel.className = "database-like-panel";
 
-        const columns = nextColumns
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean);
+        const columnsLabel = document.createElement("div");
+        columnsLabel.className = "database-like-panel-label";
+        columnsLabel.textContent = "列名（逗号分隔）";
 
-        const rowsInput = window.prompt(
-          "请输入行数据（JSON 数组，例如 [[\"角色\",\"动机\"],[\"线索\",\"证据\"]]）",
-          JSON.stringify(attrs.rows || DEFAULT_ROWS)
-        );
-        if (!rowsInput) return;
+        const columnsInput = document.createElement("input");
+        columnsInput.type = "text";
+        columnsInput.className = "database-like-panel-input";
+        columnsInput.value = (attrs.columns || DEFAULT_COLUMNS).join(",");
 
-        let rows: string[][] = DEFAULT_ROWS;
-        try {
-          const parsed = JSON.parse(rowsInput);
-          if (Array.isArray(parsed)) {
-            rows = parsed.map((row) =>
-              Array.isArray(row) ? row.map((cell) => String(cell)) : []
+        const rowsLabel = document.createElement("div");
+        rowsLabel.className = "database-like-panel-label";
+        rowsLabel.textContent = "行数据（JSON 数组）";
+
+        const rowsInput = document.createElement("textarea");
+        rowsInput.className = "database-like-panel-textarea";
+        rowsInput.value = JSON.stringify(attrs.rows || DEFAULT_ROWS);
+
+        const metaLabel = document.createElement("div");
+        metaLabel.className = "database-like-panel-label";
+        metaLabel.textContent = "备注（可选）";
+
+        const metaInput = document.createElement("input");
+        metaInput.type = "text";
+        metaInput.className = "database-like-panel-input";
+        metaInput.value = attrs.metadata || "";
+
+        const actions = document.createElement("div");
+        actions.className = "database-like-panel-actions";
+
+        const cancelButton = document.createElement("button");
+        cancelButton.type = "button";
+        cancelButton.className = "database-like-panel-btn ghost";
+        cancelButton.textContent = "取消";
+        cancelButton.addEventListener("click", closePanel);
+
+        const saveButton = document.createElement("button");
+        saveButton.type = "button";
+        saveButton.className = "database-like-panel-btn";
+        saveButton.textContent = "保存";
+        saveButton.addEventListener("click", () => {
+          const columns = columnsInput.value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+          let rows: string[][] = DEFAULT_ROWS;
+          try {
+            const parsed = JSON.parse(rowsInput.value || "[]");
+            if (Array.isArray(parsed)) {
+              rows = parsed.map((row) =>
+                Array.isArray(row) ? row.map((cell) => String(cell)) : []
+              );
+            }
+          } catch {
+            rows = DEFAULT_ROWS;
+          }
+
+          const metadata = metaInput.value.trim();
+
+          if (typeof getPos === "function") {
+            editor.view.dispatch(
+              editor.view.state.tr.setNodeMarkup(getPos(), undefined, {
+                ...currentNode.attrs,
+                columns: columns.length ? columns : DEFAULT_COLUMNS,
+                rows,
+                metadata: metadata || null
+              })
             );
           }
-        } catch {
-          rows = DEFAULT_ROWS;
-        }
+          closePanel();
+        });
 
-        const metadata = window.prompt(
-          "可选备注（用于说明用途）",
-          attrs.metadata || ""
-        );
+        actions.appendChild(cancelButton);
+        actions.appendChild(saveButton);
 
-        if (typeof getPos === "function") {
-          editor.view.dispatch(
-            editor.view.state.tr.setNodeMarkup(getPos(), undefined, {
-              ...currentNode.attrs,
-              columns,
-              rows,
-              metadata: metadata || null
-            })
-          );
-        }
+        panel.appendChild(columnsLabel);
+        panel.appendChild(columnsInput);
+        panel.appendChild(rowsLabel);
+        panel.appendChild(rowsInput);
+        panel.appendChild(metaLabel);
+        panel.appendChild(metaInput);
+        panel.appendChild(actions);
+
+        dom.appendChild(panel);
+        columnsInput.focus();
+        columnsInput.select();
       });
 
       renderTable();

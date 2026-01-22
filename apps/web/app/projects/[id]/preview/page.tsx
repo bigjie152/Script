@@ -8,8 +8,9 @@ import { ErrorBanner } from "../../../../components/common/ErrorBanner";
 import { Sidebar } from "../../../../components/layout/Sidebar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useProject } from "../../../../hooks/useProject";
+import { useModuleDocument } from "../../../../hooks/useModuleDocument";
 import { DocumentEditor } from "../../../../editors/DocumentEditor";
-import { deserializeDocument, createEmptyDocument } from "../../../../editors/adapters/plainTextAdapter";
+import { createEmptyDocument } from "../../../../editors/adapters/plainTextAdapter";
 
 export const runtime = "edge";
 
@@ -19,17 +20,20 @@ export default function ProjectPreviewPage() {
   const projectId = typeof params?.id === "string" ? params.id : "";
   const { user } = useAuth();
   const { project, truth, loading, error } = useProject(projectId);
+  const overviewDoc = useModuleDocument(projectId, "overview");
 
   const document = useMemo(() => {
     if (!projectId) {
-      return createEmptyDocument("", "truth");
+      return createEmptyDocument("", "overview");
     }
-    return deserializeDocument(truth?.content ?? { type: "doc", content: [] }, {
-      projectId,
-      module: "truth",
-      updatedAt: truth?.updatedAt ?? null
-    });
-  }, [projectId, truth?.content, truth?.updatedAt]);
+    return overviewDoc.document;
+  }, [projectId, overviewDoc.document]);
+
+  const overviewText = useMemo(() => {
+    const text = overviewDoc.document.text?.trim();
+    if (text) return text;
+    return project?.description?.trim() || "暂无简介";
+  }, [overviewDoc.document.text, project?.description]);
 
   const isOwner = Boolean(user && project && user.id === project.ownerId);
 
@@ -57,10 +61,10 @@ export default function ProjectPreviewPage() {
             </div>
           </div>
 
-          {loading ? (
+          {loading || overviewDoc.loading ? (
             <EmptyState title="加载中…" description="正在读取项目信息" />
-          ) : error ? (
-            <ErrorBanner message={error} />
+          ) : error || overviewDoc.error ? (
+            <ErrorBanner message={error || overviewDoc.error || "加载失败"} />
           ) : !project ? (
             <EmptyState title="项目不存在" description="请返回工作台重新选择" />
           ) : (
@@ -68,7 +72,7 @@ export default function ProjectPreviewPage() {
               <div className="glass-panel-strong px-6 py-5">
                 <div className="text-xl font-semibold">{project.name}</div>
                 <div className="mt-2 text-sm text-muted">
-                  {project.description || "暂无简介"}
+                  {overviewText}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted">
                   <div>更新于：{project.updatedAt || "-"}</div>

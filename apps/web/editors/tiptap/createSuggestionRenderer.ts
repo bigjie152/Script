@@ -12,6 +12,7 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
     let items: SuggestionItem[] = [];
     let command: ((item: SuggestionItem) => void) | null = null;
     let selectedIndex = 0;
+    const debugEnabled = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
 
     const renderItems = () => {
       if (!container) return;
@@ -69,6 +70,9 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         renderItems();
         setPosition(props.clientRect?.());
         document.body.appendChild(container);
+        if (debugEnabled) {
+          console.info("[editor] suggestion start", className);
+        }
       },
       onUpdate: (props: any) => {
         items = props.items || [];
@@ -103,6 +107,9 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
       onExit: () => {
         container?.remove();
         container = null;
+        if (debugEnabled) {
+          console.info("[editor] suggestion exit", className);
+        }
       }
     };
   };

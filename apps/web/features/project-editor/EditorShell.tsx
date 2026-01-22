@@ -71,10 +71,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
   const [panelError, setPanelError] = useState<string | null>(null);
+  const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
   const entryParam = searchParams.get("entry");
   const dmEditorRef = useRef<HTMLDivElement | null>(null);
   const [issueList, setIssueList] = useState<IssueItem[]>([]);
   const [issueError, setIssueError] = useState<string | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingEntryValue, setEditingEntryValue] = useState("");
+  const [editingModuleKey, setEditingModuleKey] = useState<EditorModuleKey | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<string | null>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
 
   const collections = useMemo(
     () => ({
@@ -127,6 +135,45 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       alive = false;
     };
   }, [projectId, latestSnapshotId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem("script-ai-editor-nav");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, boolean>;
+      setExpandedModules(parsed);
+    } catch {
+      setExpandedModules({});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("script-ai-editor-nav", JSON.stringify(expandedModules));
+  }, [expandedModules]);
+
+  useEffect(() => {
+    setExpandedModules((prev) => ({ ...prev, [module]: true }));
+  }, [module]);
+
+  useEffect(() => {
+    if (!editingEntryId) return;
+    const raf = window.requestAnimationFrame(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [editingEntryId]);
+
+  useEffect(() => {
+    if (!editingModuleKey || editingModuleKey === module) return;
+    setEditingEntryId(null);
+    setEditingEntryValue("");
+    setEditingModuleKey(null);
+    setRenameError(null);
+    setPendingDeleteEntryId(null);
+  }, [module, editingModuleKey]);
 
   useEffect(() => {
     if (!entryParam) return;
@@ -209,6 +256,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       setPanelError("请先登录后再操作");
       return;
     }
+    setUnlockConfirmOpen(false);
     setPanelError(null);
     try {
       await lock();
@@ -217,21 +265,31 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   };
 
-  const handleUnlock = async () => {
+  const handleUnlockRequest = () => {
     if (!canWrite) {
       setPanelError("请先登录后再操作");
       return;
     }
-    const ok = window.confirm(
-      "解锁后将允许修改真相内容，可能影响派生结果一致性，确定解锁吗？"
-    );
-    if (!ok) return;
+    setPanelError(null);
+    setUnlockConfirmOpen(true);
+  };
+
+  const handleUnlockConfirm = async () => {
+    if (!canWrite) {
+      setPanelError("请先登录后再操作");
+      return;
+    }
     setPanelError(null);
     try {
       await unlock();
+      setUnlockConfirmOpen(false);
     } catch (err) {
       setPanelError(err instanceof Error ? err.message : "解锁失败，请重试");
     }
+  };
+
+  const handleUnlockCancel = () => {
+    setUnlockConfirmOpen(false);
   };
 
   const handleDeriveRoles = () => {
@@ -267,6 +325,41 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   };
 
+  const toggleModule = (target: EditorModuleKey) => {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [target]: !prev[target]
+    }));
+  };
+
+  const startRename = (targetModule: EditorModuleKey, entryId: string, name: string) => {
+    setEditingEntryId(entryId);
+    setEditingModuleKey(targetModule);
+    setEditingEntryValue(name);
+    setRenameError(null);
+  };
+
+  const cancelRename = () => {
+    setEditingEntryId(null);
+    setEditingModuleKey(null);
+    setEditingEntryValue("");
+    setRenameError(null);
+    setPendingDeleteEntryId(null);
+  };
+
+  const commitRename = () => {
+    if (!editingEntryId || !editingModuleKey) return;
+    const collection = collections[editingModuleKey as keyof typeof collections];
+    if (!collection) return;
+    const nextName = editingEntryValue.trim();
+    if (!nextName) {
+      setRenameError("名称不能为空");
+      return;
+    }
+    collection.renameEntry(editingEntryId, nextName);
+    cancelRename();
+  };
+
   const handleEntrySelect = (targetModule: EditorModuleKey, entryId: string) => {
     const collection = collections[targetModule as keyof typeof collections];
     if (!collection) return;
@@ -275,6 +368,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     )}`;
     router.push(nextPath);
     collection.setActiveEntry(entryId);
+    cancelRename();
   };
 
   const handleCreateEntry = (targetModule: EditorModuleKey) => {
@@ -282,11 +376,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     if (!collection) return;
     const entryId = collection.createEntry();
     if (entryId) {
+      const nextLabel = MODULE_CONFIG_MAP[targetModule]?.label || "条目";
+      setExpandedModules((prev) => ({ ...prev, [targetModule]: true }));
+      setEditingEntryId(entryId);
+      setEditingModuleKey(targetModule);
+      setEditingEntryValue(`${nextLabel} ${collection.entries.length + 1}`);
+      setRenameError(null);
       router.push(
         `/projects/${projectId}/editor/${targetModule}?entry=${encodeURIComponent(
           entryId
         )}`
       );
+      collection.setActiveEntry(entryId);
     }
   };
 
@@ -301,6 +402,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   };
 
   const handleNav = (next: EditorModuleKey) => {
+    cancelRename();
+    const collection = collections[next as keyof typeof collections];
+    if (collection) {
+      const entryId = collection.activeEntryId ?? collection.entries[0]?.id;
+      if (entryId) {
+        router.push(
+          `/projects/${projectId}/editor/${next}?entry=${encodeURIComponent(entryId)}`
+        );
+        collection.setActiveEntry(entryId);
+        return;
+      }
+    }
     router.push(`/projects/${projectId}/editor/${next}`);
   };
 
@@ -308,6 +421,17 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const requiresLocked = moduleConfig?.requiresTruthLocked ?? false;
   const canEditModule = canWrite && (!requiresLocked || locked);
   const canEditTruth = canWrite && !locked;
+  const editorDebug = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
+
+  useEffect(() => {
+    if (!editorDebug) return;
+    console.info("[editor] context", {
+      module,
+      entryId: activeEntry?.id ?? null,
+      locked,
+      canEdit: module === "truth" ? canEditTruth : canEditModule
+    });
+  }, [editorDebug, module, activeEntry?.id, locked, canEditModule, canEditTruth]);
 
   const activeLoading =
     module === "truth"
@@ -491,75 +615,170 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             {MODULE_CONFIGS.map((item) => {
               const collection = collections[item.key as keyof typeof collections];
               const canEditEntry = canWrite && (!item.requiresTruthLocked || locked);
+              const isExpanded =
+                item.key === module ? true : Boolean(expandedModules[item.key]);
               return (
                 <div key={item.key} className="space-y-1">
-                  <button
-                    onClick={() => handleNav(item.key)}
-                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
-                      item.key === module
-                        ? "bg-white text-ink shadow-soft"
-                        : "text-muted hover:bg-white/50 hover:text-ink"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => handleNav(item.key)}
+                      className={`flex-1 rounded-xl px-3 py-2 text-left text-sm transition ${
+                        item.key === module
+                          ? "bg-white text-ink shadow-soft"
+                          : "text-muted hover:bg-white/50 hover:text-ink"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                    {collection ? (
+                      <button
+                        type="button"
+                        className="rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/60 hover:text-ink"
+                        onClick={() => toggleModule(item.key)}
+                        aria-label={`${item.label} 展开/折叠`}
+                      >
+                        {isExpanded ? "▾" : "▸"}
+                      </button>
+                    ) : null}
+                  </div>
                   {collection ? (
-                    <div className="space-y-1 pl-4 text-sm">
-                      {collection.entries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className={`flex items-center justify-between rounded-lg px-2 py-1 text-xs ${
-                            entry.id === collection.activeEntryId && item.key === module
-                              ? "bg-white text-ink shadow-soft"
-                              : "text-muted hover:bg-white/50 hover:text-ink"
-                          }`}
-                        >
+                    isExpanded ? (
+                      <div className="space-y-1 pl-4 text-sm">
+                        {collection.entries.map((entry) => {
+                          const isActive =
+                            entry.id === collection.activeEntryId && item.key === module;
+                          const isEditing =
+                            editingEntryId === entry.id && editingModuleKey === item.key;
+                          const isPendingDelete = pendingDeleteEntryId === entry.id;
+                          return (
+                            <div
+                              key={entry.id}
+                              className={`flex items-start justify-between gap-2 rounded-lg px-2 py-1 text-xs ${
+                                isActive
+                                  ? "bg-white text-ink shadow-soft"
+                                  : "text-muted hover:bg-white/50 hover:text-ink"
+                              }`}
+                            >
+                              <div className="flex-1">
+                                {isEditing ? (
+                                  <div className="space-y-1">
+                                    <input
+                                      ref={renameInputRef}
+                                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ink/40"
+                                      value={editingEntryValue}
+                                      onChange={(event) =>
+                                        setEditingEntryValue(event.target.value)
+                                      }
+                                      onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                          event.preventDefault();
+                                          commitRename();
+                                        }
+                                        if (event.key === "Escape") {
+                                          event.preventDefault();
+                                          cancelRename();
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        if (!editingEntryValue.trim()) {
+                                          cancelRename();
+                                          return;
+                                        }
+                                        commitRename();
+                                      }}
+                                    />
+                                    {renameError ? (
+                                      <div className="text-[10px] text-rose-500">
+                                        {renameError}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="w-full text-left"
+                                    onClick={() => handleEntrySelect(item.key, entry.id)}
+                                  >
+                                    {entry.name}
+                                  </button>
+                                )}
+                              </div>
+                              {canEditEntry ? (
+                                <div className="flex items-center gap-1 text-[10px] text-muted">
+                                  {isPendingDelete ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 text-rose-500 hover:text-rose-600"
+                                        onClick={() => {
+                                          collection.removeEntry(entry.id);
+                                          setPendingDeleteEntryId(null);
+                                        }}
+                                      >
+                                        确认
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 hover:text-ink"
+                                        onClick={() => setPendingDeleteEntryId(null)}
+                                      >
+                                        取消
+                                      </button>
+                                    </>
+                                  ) : isEditing ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 hover:text-ink"
+                                        onClick={commitRename}
+                                      >
+                                        保存
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 hover:text-ink"
+                                        onClick={cancelRename}
+                                      >
+                                        取消
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 hover:text-ink"
+                                        onClick={() =>
+                                          startRename(item.key, entry.id, entry.name)
+                                        }
+                                      >
+                                        重命名
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="rounded px-1 hover:text-ink"
+                                        onClick={() => setPendingDeleteEntryId(entry.id)}
+                                        disabled={collection.entries.length <= 1}
+                                      >
+                                        删除
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                        {canEditEntry ? (
                           <button
                             type="button"
-                            className="flex-1 text-left"
-                            onClick={() => handleEntrySelect(item.key, entry.id)}
+                            className="mt-1 flex items-center gap-2 text-xs text-muted hover:text-ink"
+                            onClick={() => handleCreateEntry(item.key)}
                           >
-                            {entry.name}
+                            + 添加{item.label}
                           </button>
-                          {canEditEntry ? (
-                            <div className="flex items-center gap-1 text-[10px] text-muted">
-                              <button
-                                type="button"
-                                className="rounded px-1 hover:text-ink"
-                                onClick={() => {
-                                  const next = window.prompt("重命名条目", entry.name);
-                                  if (next && next.trim()) {
-                                    collection.renameEntry(entry.id, next.trim());
-                                  }
-                                }}
-                              >
-                                重命名
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded px-1 hover:text-ink"
-                                onClick={() => {
-                                  const ok = window.confirm("确定删除该条目吗？");
-                                  if (ok) collection.removeEntry(entry.id);
-                                }}
-                                disabled={collection.entries.length <= 1}
-                              >
-                                删除
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                      {canEditEntry ? (
-                        <button
-                          type="button"
-                          className="mt-1 flex items-center gap-2 text-xs text-muted hover:text-ink"
-                          onClick={() => handleCreateEntry(item.key)}
-                        >
-                          + 添加{item.label}
-                        </button>
-                      ) : null}
-                    </div>
+                        ) : null}
+                      </div>
+                    ) : null
                   ) : null}
                 </div>
               );
@@ -1293,7 +1512,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               <AIPanel
                 locked={locked}
                 onLock={handleLock}
-                onUnlock={handleUnlock}
+                onUnlock={handleUnlockRequest}
+                unlockConfirmOpen={unlockConfirmOpen}
+                onUnlockConfirm={handleUnlockConfirm}
+                onUnlockCancel={handleUnlockCancel}
                 onDeriveRoles={handleDeriveRoles}
                 deriveStatus={deriveRoles.status}
                 deriveMessage={deriveRoles.message}
