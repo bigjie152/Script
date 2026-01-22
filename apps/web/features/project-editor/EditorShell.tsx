@@ -115,7 +115,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const moduleHint = useMemo(() => {
     if (module === "truth") {
-      return locked ? "当前真相已锁定" : "真相可编辑";
+      return locked ? "真相已锁定，编辑区只读" : "编辑真相内容";
     }
     if (moduleConfig?.requiresTruthLocked && !locked) {
       return "请先锁定真相后再编辑派生模块";
@@ -273,28 +273,58 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const saveDisabled =
     module === "truth" ? !canEditTruth : module === "overview" ? !canWrite : !canEditModule;
 
+  const projectStatus = useMemo(() => {
+    const meta = (project?.meta || {}) as Record<string, unknown>;
+    const value = meta.status;
+    if (value === "In Progress" || value === "Completed") return value;
+    return "Draft";
+  }, [project?.meta]);
+
+  const projectStatusLabel = useMemo(() => {
+    switch (projectStatus) {
+      case "In Progress":
+        return "进行中";
+      case "Completed":
+        return "已完成";
+      default:
+        return "草稿";
+    }
+  }, [projectStatus]);
+
+  const projectStatusTone = useMemo(() => {
+    switch (projectStatus) {
+      case "In Progress":
+        return "bg-indigo-500";
+      case "Completed":
+        return "bg-emerald-500";
+      default:
+        return "bg-slate-400";
+    }
+  }, [projectStatus]);
+
+  const truthStatusLabel = locked ? "真相：已锁定" : "真相：草稿";
+  const truthStatusTone = locked ? "bg-indigo-500" : "bg-slate-400";
+
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-lg font-semibold">
-            {project?.name || "未命名项目"}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-lg font-semibold">
+              {project?.name || "未命名项目"}
+            </span>
+            <span className="text-muted">/</span>
+            <span className="text-muted">{moduleLabel}</span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted">
-            <span>模块：{moduleLabel}</span>
-            <span>真相：{locked ? "已锁定" : "草稿"}</span>
-            <span>更新时间：{project?.updatedAt || "-"}</span>
-            <span>
-              保存状态：
-              {activeSaveState === "saving"
-                ? "保存中"
-                : activeSaveState === "success"
-                  ? "已保存"
-                  : activeSaveState === "error"
-                    ? "保存失败"
-                    : activeHasUnsaved
-                      ? "未保存"
-                      : "已保存"}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
+              <span className={`h-2 w-2 rounded-full ${projectStatusTone}`} />
+              项目：{projectStatusLabel}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
+              <span className={`h-2 w-2 rounded-full ${truthStatusTone}`} />
+              {locked ? "🔒" : null}
+              {truthStatusLabel}
             </span>
           </div>
         </div>
@@ -365,119 +395,92 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   未登录状态下仅支持只读浏览，请先登录后编辑。
                 </div>
               ) : null}
-              <div className="glass-panel-strong space-y-4 px-6 py-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="text-xs text-muted">项目标题</div>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                      value={projectMeta.form.name}
-                      onChange={(event) =>
-                        projectMeta.updateField("name", event.target.value)
-                      }
-                      disabled={!canWrite}
-                    />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted">项目类型</div>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                      value={projectMeta.form.genre}
-                      onChange={(event) =>
-                        projectMeta.updateField("genre", event.target.value)
-                      }
-                      placeholder="例如：悬疑/推理/情感"
-                      disabled={!canWrite}
-                    />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted">人数</div>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                      value={projectMeta.form.players}
-                      onChange={(event) =>
-                        projectMeta.updateField("players", event.target.value)
-                      }
-                      placeholder="例如：4-6 人"
-                      disabled={!canWrite}
-                    />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted">项目状态</div>
-                    <select
-                      className="mt-2 w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                      value={projectMeta.form.status}
-                      onChange={(event) =>
-                        projectMeta.updateField(
-                          "status",
-                          event.target.value as "Draft" | "In Progress" | "Completed"
-                        )
-                      }
-                      disabled={!canWrite}
-                    >
-                      <option value="Draft">草稿</option>
-                      <option value="In Progress">进行中</option>
-                      <option value="Completed">已完成</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted">版本</div>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                      value={projectMeta.form.version}
-                      onChange={(event) =>
-                        projectMeta.updateField("version", event.target.value)
-                      }
-                      disabled={!canWrite}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted">项目简介</div>
-                  <textarea
-                    className="mt-2 h-28 w-full resize-none rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                    value={projectMeta.form.description}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
+                  <div className="text-xs text-muted">项目类型</div>
+                  <select
+                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                    value={projectMeta.form.genre}
                     onChange={(event) =>
-                      projectMeta.updateField("description", event.target.value)
+                      projectMeta.updateField("genre", event.target.value)
                     }
-                    placeholder="一句话说明剧情与基调"
                     disabled={!canWrite}
-                  />
+                  >
+                    <option value="">请选择</option>
+                    <option value="悬疑">悬疑</option>
+                    <option value="推理">推理</option>
+                    <option value="情感">情感</option>
+                    <option value="恐怖">恐怖</option>
+                    <option value="奇幻">奇幻</option>
+                    <option value="科幻">科幻</option>
+                    <option value="历史">历史</option>
+                    <option value="其他">其他</option>
+                  </select>
                 </div>
-                <div className="grid gap-4 text-sm text-muted md:grid-cols-3">
-                  <div>
-                    <div className="text-xs">创建时间</div>
-                    <div className="mt-1 text-ink">{project?.createdAt || "-"}</div>
+                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
+                  <div className="text-xs text-muted">人数</div>
+                  <select
+                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                    value={projectMeta.form.players}
+                    onChange={(event) =>
+                      projectMeta.updateField("players", event.target.value)
+                    }
+                    disabled={!canWrite}
+                  >
+                    <option value="">请选择</option>
+                    <option value="3-4 人">3-4 人</option>
+                    <option value="4-6 人">4-6 人</option>
+                    <option value="6-8 人">6-8 人</option>
+                    <option value="8-10 人">8-10 人</option>
+                    <option value="不限">不限</option>
+                  </select>
+                </div>
+                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
+                  <div className="text-xs text-muted">当前版本</div>
+                  <div className="mt-3 text-lg font-semibold text-ink">
+                    {projectMeta.form.version?.trim() ||
+                      latestSnapshotId ||
+                      "v0.1"}
                   </div>
-                  <div>
-                    <div className="text-xs">更新时间</div>
-                    <div className="mt-1 text-ink">{project?.updatedAt || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs">Truth 状态</div>
-                    <div className="mt-1 text-ink">
-                      {locked ? "已锁定" : "草稿"}
-                    </div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    最近更新：{project?.updatedAt || "-"}
                   </div>
                 </div>
               </div>
-              <div className="glass-panel-strong space-y-2 px-6 py-5">
-                <div className="text-sm font-semibold">项目概述</div>
-                <div className="text-xs text-muted">
-                  以块级形式记录剧情概述与结构要点。
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-semibold">剧本简介</div>
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600">
+                    核心
+                  </span>
                 </div>
-                <DocumentEditor
-                  value={overviewDocument}
-                  onChange={(nextDoc) =>
-                    projectMeta.setForm((prev) => ({
-                      ...prev,
-                      overviewDoc: nextDoc.content
-                    }))
-                  }
-                  readonly={!canWrite}
-                  mentionItems={mentionItems}
-                  onMentionClick={handleMentionClick}
-                />
+                <div className="relative">
+                  <DocumentEditor
+                    value={overviewDocument}
+                    onChange={(nextDoc) =>
+                      projectMeta.setForm((prev) => ({
+                        ...prev,
+                        overviewDoc: nextDoc.content
+                      }))
+                    }
+                    readonly={!canWrite}
+                    mentionItems={mentionItems}
+                    onMentionClick={handleMentionClick}
+                  />
+                  {!overviewDocument.text?.trim() ? (
+                    <div className="pointer-events-none absolute left-8 top-6 text-sm text-muted">
+                      写下你的故事背景，这里是灵感的起点...
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex justify-end text-[11px] text-muted">
+                <span>
+                  CREATED: {project?.createdAt || "-"} | UPDATED:{" "}
+                  {project?.updatedAt || "-"}
+                </span>
               </div>
             </div>
           ) : module === "truth" ? (
