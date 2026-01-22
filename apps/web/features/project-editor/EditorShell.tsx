@@ -47,7 +47,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     saveState,
     saveError,
     hasUnsaved,
-    locked,
     lock,
     unlock,
     refresh
@@ -230,15 +229,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     [moduleConfig]
   );
 
+  const truthStatus = truth?.status === "LOCKED" ? "LOCKED" : "DRAFT";
+  const truthLocked = truthStatus === "LOCKED";
+
   const moduleHint = useMemo(() => {
     if (module === "truth") {
-      return locked ? "真相已锁定，编辑区只读" : "编辑真相内容";
+      return truthLocked ? "真相已锁定，编辑区只读" : "编辑真相内容";
     }
-    if (moduleConfig?.requiresTruthLocked && !locked) {
+    if (moduleConfig?.requiresTruthLocked && !truthLocked) {
       return "请先锁定真相后再编辑派生模块";
     }
     return "模块内容";
-  }, [module, moduleConfig, locked]);
+  }, [module, moduleConfig, truthLocked]);
 
   const activeSaveState =
     module === "truth"
@@ -312,7 +314,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       setPanelError("请先登录后再操作");
       return;
     }
-    if (!locked) return;
+    if (!truthLocked) return;
     setPanelError(null);
     deriveRoles.run();
   };
@@ -423,8 +425,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const canWrite = Boolean(user);
   const requiresLocked = moduleConfig?.requiresTruthLocked ?? false;
-  const canEditModule = canWrite && (!requiresLocked || locked);
-  const canEditTruth = canWrite && !locked;
+  const canEditModule = canWrite && (!requiresLocked || truthLocked);
+  const canEditTruth = canWrite && !truthLocked;
   const editorDebug = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
 
   useEffect(() => {
@@ -432,10 +434,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     console.info("[editor] context", {
       module,
       entryId: activeEntry?.id ?? null,
-      locked,
+      truthLocked,
       canEdit: module === "truth" ? canEditTruth : canEditModule
     });
-  }, [editorDebug, module, activeEntry?.id, locked, canEditModule, canEditTruth]);
+  }, [editorDebug, module, activeEntry?.id, truthLocked, canEditModule, canEditTruth]);
 
   const activeLoading =
     module === "truth"
@@ -510,8 +512,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   }, [projectStatus]);
 
-  const truthStatus = truth?.status === "LOCKED" ? "LOCKED" : "DRAFT";
-  const truthLocked = truthStatus === "LOCKED";
   const truthStatusLabel = truthLocked ? "真相：已锁定" : "真相：草稿";
   const truthStatusTone = truthLocked ? "bg-indigo-500" : "bg-slate-400";
   const sourceVersion = useMemo(() => {
@@ -635,7 +635,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="mt-4 space-y-2">
             {MODULE_CONFIGS.map((item) => {
               const collection = collections[item.key as keyof typeof collections];
-              const canEditEntry = canWrite && (!item.requiresTruthLocked || locked);
+              const canEditEntry = canWrite && (!item.requiresTruthLocked || truthLocked);
               const isExpanded =
                 item.key === module ? true : Boolean(expandedModules[item.key]);
               return (
@@ -968,14 +968,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     title: "锁定时间",
                     content: (
                       <div className="text-sm text-ink">
-                        {locked ? truth?.updatedAt || "已锁定" : "未锁定"}
+                        {truthLocked ? truth?.updatedAt || "已锁定" : "未锁定"}
                       </div>
                     )
                   }
                 ]}
               />
               {saveError ? <ErrorBanner message={saveError} /> : null}
-              {locked ? (
+              {truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
                   当前真相已锁定，编辑区为只读。解锁后可继续修改。
                 </div>
@@ -987,12 +987,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               ) : null}
               <div
                 className={`rounded-2xl border px-4 py-4 ${
-                  locked
+                  truthLocked
                     ? "border-amber-200 bg-amber-50/30"
                     : "border-slate-100 bg-white/90"
                 }`}
               >
-                {locked ? (
+                {truthLocked ? (
                   <div className="mb-3 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
                     内容已锁定，作为派生源
                   </div>
@@ -1009,7 +1009,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           ) : module === "roles" || module === "clues" ? (
             <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              {requiresLocked && !locked ? (
+              {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
                   当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
@@ -1173,7 +1173,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           ) : module === "timeline" ? (
             <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              {requiresLocked && !locked ? (
+              {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
                   当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
@@ -1359,7 +1359,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           ) : module === "dm" ? (
             <div className="space-y-4">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              {requiresLocked && !locked ? (
+              {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
                   当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
@@ -1497,7 +1497,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           ) : (
             <div className="space-y-3">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
-              {requiresLocked && !locked ? (
+              {requiresLocked && !truthLocked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
                   当前真相尚未锁定，请锁定后再编辑该模块。
                 </div>
@@ -1531,7 +1531,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             <>
               {panelError ? <ErrorBanner message={panelError} /> : null}
               <AIPanel
-                locked={locked}
+                locked={truthLocked}
                 onLock={handleLock}
                 onUnlock={handleUnlockRequest}
                 unlockConfirmOpen={unlockConfirmOpen}

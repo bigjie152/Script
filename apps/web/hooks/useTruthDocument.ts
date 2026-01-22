@@ -20,11 +20,7 @@ export function useTruthDocument(projectId: string) {
   const [baselineText, setBaselineText] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
-
-  useEffect(() => {
-    setLocked(truth?.status === "LOCKED");
-  }, [truth?.status]);
+  const locked = useMemo(() => truth?.status === "LOCKED", [truth?.status]);
 
   useEffect(() => {
     const nextDoc = deserializeDocument(truth?.content, {
@@ -96,14 +92,12 @@ export function useTruthDocument(projectId: string) {
 
   const lock = useCallback(async () => {
     const result = await lockTruth(projectId);
-    setLocked(result.status === "LOCKED");
     refresh();
     return result;
   }, [projectId, refresh]);
 
   const unlock = useCallback(async () => {
     const result = await unlockTruth(projectId);
-    setLocked(result.status === "LOCKED");
     refresh();
     return result;
   }, [projectId, refresh]);
