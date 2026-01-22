@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { Button } from "../common/Button";
@@ -13,7 +13,7 @@ type SidebarItem = {
 
 const ITEMS: SidebarItem[] = [
   { key: "workspace", label: "工作台", href: "/workspace" },
-  { key: "projects", label: "我的项目", href: "/workspace" },
+  { key: "projects", label: "我的项目", href: "/projects" },
   { key: "community", label: "社区中心", href: "/community" },
   { key: "settings", label: "系统设置", href: "/settings" },
   { key: "profile", label: "个人中心", href: "/user/profile" }
@@ -32,7 +32,7 @@ export function Sidebar({ activeKey = "workspace" }: SidebarProps) {
     <aside className="glass-panel flex h-full w-full flex-col px-4 py-6">
       <div className="flex items-center gap-3 px-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/90 text-white">
-          文
+          SF
         </div>
         <div>
           <div className="text-base font-semibold">Script AI</div>

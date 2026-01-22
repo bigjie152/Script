@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "../../components/common/Button";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
 import { Sidebar } from "../../components/layout/Sidebar";
@@ -88,6 +89,19 @@ export default function WorkspacePage() {
     return `共 ${projects.length} 个项目`;
   }, [projects.length]);
 
+  const recentProjects = useMemo(() => projects.slice(0, 4), [projects]);
+  const lastProject = recentProjects[0];
+
+  const statusSummary = useMemo(() => {
+    const summary = { draft: 0, inProgress: 0, locked: 0 };
+    projects.forEach((item) => {
+      if (item.status === "In Progress") summary.inProgress += 1;
+      else summary.draft += 1;
+      if (item.truthStatus === "Locked") summary.locked += 1;
+    });
+    return summary;
+  }, [projects]);
+
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -98,6 +112,8 @@ export default function WorkspacePage() {
             creating={creating}
             searchValue={searchInput}
             onSearchChange={setSearchInput}
+            title="工作台"
+            subtitle="现在要做什么？快速回到创作状态。"
           />
 
           {!user ? (
@@ -107,9 +123,63 @@ export default function WorkspacePage() {
           ) : null}
           {error ? <ErrorBanner message={error} /> : null}
 
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="glass-panel-strong px-6 py-5">
+              <div className="text-sm font-semibold">通知 / 待处理</div>
+              <div className="mt-3 space-y-2 text-sm text-muted">
+                <div>暂无新的 AI 审查结果</div>
+                <div>暂无一致性异常</div>
+                <div>暂无协作邀请</div>
+              </div>
+            </div>
+            <div className="glass-panel-strong flex flex-col justify-between px-6 py-5">
+              <div>
+                <div className="text-sm font-semibold">快捷入口</div>
+                <div className="mt-2 text-sm text-muted">
+                  快速开始新的创作或继续上次编辑。
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-2">
+                <Button onClick={handleCreate} loading={creating}>
+                  新建项目
+                </Button>
+                <Button
+                  variant="ghost"
+                  disabled={!lastProject}
+                  onClick={() => {
+                    if (lastProject) {
+                      router.push(`/projects/${lastProject.id}/editor/overview`);
+                    }
+                  }}
+                >
+                  继续上次编辑
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-4">
+            <div className="glass-panel-strong px-5 py-4">
+              <div className="text-xs text-muted">草稿</div>
+              <div className="mt-2 text-xl font-semibold">{statusSummary.draft}</div>
+            </div>
+            <div className="glass-panel-strong px-5 py-4">
+              <div className="text-xs text-muted">进行中</div>
+              <div className="mt-2 text-xl font-semibold">{statusSummary.inProgress}</div>
+            </div>
+            <div className="glass-panel-strong px-5 py-4">
+              <div className="text-xs text-muted">已锁定真相</div>
+              <div className="mt-2 text-xl font-semibold">{statusSummary.locked}</div>
+            </div>
+            <div className="glass-panel-strong px-5 py-4">
+              <div className="text-xs text-muted">本周创作时长</div>
+              <div className="mt-2 text-xl font-semibold">--</div>
+            </div>
+          </section>
+
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-lg font-semibold">我的项目</div>
+              <div className="text-lg font-semibold">最近活动</div>
               <div className="text-xs text-muted">{listMeta}</div>
             </div>
             {loading ? (
@@ -118,7 +188,7 @@ export default function WorkspacePage() {
               <EmptyState title="暂无项目" description="点击右上角新建项目" />
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
-                {projects.map((item) => (
+                {recentProjects.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => handlePreview(item.id)}

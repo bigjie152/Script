@@ -5,19 +5,23 @@ type TopNavProps = {
   creating?: boolean;
   searchValue?: string;
   onSearchChange?: (next: string) => void;
+  title?: string;
+  subtitle?: string;
 };
 
 export function TopNav({
   onCreate,
   creating,
   searchValue,
-  onSearchChange
+  onSearchChange,
+  title = "工作台",
+  subtitle = "继续你的创作与协作之旅。"
 }: TopNavProps) {
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div>
-        <div className="text-2xl font-semibold">工作台</div>
-        <div className="mt-1 text-sm text-muted">继续你的创作与协作之旅。</div>
+        <div className="text-2xl font-semibold">{title}</div>
+        <div className="mt-1 text-sm text-muted">{subtitle}</div>
       </div>
       <div className="flex flex-1 justify-center">
         <div className="glass-panel-strong flex w-full max-w-md items-center gap-3 rounded-full px-4 py-2 text-sm text-muted">

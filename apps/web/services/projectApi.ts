@@ -79,13 +79,17 @@ export async function updateProject(
 
 export async function listProjects(params: {
   scope?: "mine";
-  sort?: "updatedAt";
+  sort?: "updatedAt" | "status" | "truthStatus" | "progress";
   q?: string;
+  status?: string;
+  truthStatus?: string;
 }) {
   const search = new URLSearchParams();
   if (params.scope) search.set("scope", params.scope);
   if (params.sort) search.set("sort", params.sort);
   if (params.q) search.set("q", params.q);
+  if (params.status) search.set("status", params.status);
+  if (params.truthStatus) search.set("truthStatus", params.truthStatus);
   const query = search.toString();
   const path = query ? `/api/projects?${query}` : "/api/projects";
   return apiRequest<ProjectListResponse>(path);

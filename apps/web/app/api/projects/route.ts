@@ -192,6 +192,8 @@ export async function GET(request: Request) {
   const scope = (url.searchParams.get("scope") || "mine").trim();
   const sort = (url.searchParams.get("sort") || "updatedAt").trim();
   const q = (url.searchParams.get("q") || "").trim();
+  const statusFilter = (url.searchParams.get("status") || "").trim();
+  const truthFilter = (url.searchParams.get("truthStatus") || "").trim();
 
   const user = await getAuthUser(request);
   if (!user) {
@@ -214,7 +216,8 @@ export async function GET(request: Request) {
     }
   }
 
-  const orderBy = sort === "updatedAt" ? desc(schema.projects.updatedAt) : desc(schema.projects.updatedAt);
+  const orderBy =
+    sort === "updatedAt" ? desc(schema.projects.updatedAt) : desc(schema.projects.updatedAt);
   const projects = await db
     .select()
     .from(schema.projects)
@@ -248,17 +251,43 @@ export async function GET(request: Request) {
     latencyMs: Date.now() - startedAt
   });
 
-  return jsonResponse(
-    {
-      projects: projects.map((project) => ({
-        id: project.id,
-        name: project.name,
-        description: project.description ?? "",
-        updatedAt: project.updatedAt,
-        status: "Draft",
-        truthStatus: statusMap.get(project.id) ?? "Draft"
-      }))
-    },
-    { requestId }
-  );
+  const statusOrder = ["Draft", "In Progress", "Completed"];
+  const truthOrder = ["Draft", "Locked"];
+
+  let result = projects.map((project) => {
+    const meta = project.meta && typeof project.meta === "object" ? project.meta : null;
+    const statusValue =
+      meta && typeof (meta as Record<string, unknown>).status === "string"
+        ? ((meta as Record<string, unknown>).status as string)
+        : "Draft";
+    const truthStatus = statusMap.get(project.id) ?? "Draft";
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description ?? "",
+      updatedAt: project.updatedAt,
+      status: statusValue,
+      truthStatus
+    };
+  });
+
+  if (statusFilter) {
+    result = result.filter((item) => item.status === statusFilter);
+  }
+  if (truthFilter) {
+    result = result.filter((item) => item.truthStatus === truthFilter);
+  }
+
+  if (sort === "status") {
+    result = result.sort(
+      (a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status)
+    );
+  }
+  if (sort === "truthStatus") {
+    result = result.sort(
+      (a, b) => truthOrder.indexOf(a.truthStatus) - truthOrder.indexOf(b.truthStatus)
+    );
+  }
+
+  return jsonResponse({ projects: result }, { requestId });
 }

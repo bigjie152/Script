@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Sidebar } from "../../../components/layout/Sidebar";
 import { useAuth } from "../../../hooks/useAuth";
