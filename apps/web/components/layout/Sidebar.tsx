@@ -13,7 +13,7 @@ type SidebarItem = {
 
 const ITEMS: SidebarItem[] = [
   { key: "workspace", label: "工作台", href: "/workspace" },
-  { key: "projects", label: "我的项目", href: "/projects" },
+  { key: "projects", label: "我的项目", href: "/workspace" },
   { key: "community", label: "社区中心", href: "/community" },
   { key: "settings", label: "系统设置", href: "/settings" },
   { key: "profile", label: "个人中心", href: "/user/profile" }
