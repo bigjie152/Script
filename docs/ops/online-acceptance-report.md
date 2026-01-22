@@ -344,3 +344,34 @@ scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 ## 4) 结论
 - 基线回归未回退
 - UI 侧 Gate 8.5 验收待人工补充
+
+---
+
+# Milestone 8.5 Gate 验收（编辑器可用性修复期）
+
+验收时间：待补  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 锁定/解锁稳定性
+- 复现路径：Truth 输入 → 保存 → 锁定 → 解锁 → 再编辑
+- 结果：待补（记录 20 次无崩溃）
+
+## 2) 条目切换稳定性
+- 角色/线索各 ≥20 次切换
+- 结果：待补（无卡死/无面板失焦）
+
+## 3) 预览一致性
+- 预览页展示 Overview 文本，与编辑器一致
+- 抽测项目：待补（≥3 个）
+
+## 4) 内联重命名与新增条目
+- roles/clues/timeline/dm 各 1 次新增 → 改名 → 刷新一致
+- 结果：待补
+
+## 5) 基线回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+结果摘要：待补（20/20）
