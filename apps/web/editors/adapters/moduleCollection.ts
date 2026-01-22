@@ -9,6 +9,8 @@ export type ModuleEntry = {
   id: string;
   name: string;
   content: Record<string, unknown>;
+  meta?: Record<string, unknown>;
+  data?: Record<string, unknown>;
   updatedAt?: string | null;
 };
 
@@ -40,6 +42,8 @@ function createEntry(
     id: crypto.randomUUID(),
     name,
     content: normalizeContent(content ?? emptyDoc),
+    meta: {},
+    data: {},
     updatedAt: null
   };
 }
@@ -55,6 +59,8 @@ export function normalizeModuleCollection(
         id: entry.id || crypto.randomUUID(),
         name: entry.name || seed.defaultName,
         content: normalizeContent(entry.content),
+        meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
+        data: entry.data && typeof entry.data === "object" ? entry.data : {},
         updatedAt: entry.updatedAt ?? null
       })),
       activeId: raw.activeId ?? raw.entries[0]?.id ?? null
@@ -77,7 +83,9 @@ export function serializeModuleCollection(
     activeId: collection.activeId ?? null,
     entries: collection.entries.map((entry) => ({
       ...entry,
-      content: normalizeContent(entry.content)
+      content: normalizeContent(entry.content),
+      meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
+      data: entry.data && typeof entry.data === "object" ? entry.data : {}
     }))
   };
 }
@@ -101,6 +109,44 @@ export function updateEntryContent(
     entries: collection.entries.map((entry) =>
       entry.id === entryId
         ? { ...entry, content: normalizeContent(content), updatedAt: new Date().toISOString() }
+        : entry
+    )
+  };
+}
+
+export function updateEntryMeta(
+  collection: ModuleCollection,
+  entryId: string,
+  nextMeta: Record<string, unknown>
+): ModuleCollection {
+  return {
+    ...collection,
+    entries: collection.entries.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            meta: nextMeta,
+            updatedAt: new Date().toISOString()
+          }
+        : entry
+    )
+  };
+}
+
+export function updateEntryData(
+  collection: ModuleCollection,
+  entryId: string,
+  nextData: Record<string, unknown>
+): ModuleCollection {
+  return {
+    ...collection,
+    entries: collection.entries.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            data: nextData,
+            updatedAt: new Date().toISOString()
+          }
         : entry
     )
   };

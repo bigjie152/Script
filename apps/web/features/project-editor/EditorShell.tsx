@@ -1,9 +1,9 @@
-ï»¿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/common/Button";
-import { EntryList } from "../../components/editor/EntryList";
+import { ModuleMetaGrid } from "../../components/modules/ModuleMetaGrid";
 import { DocumentEditor } from "../../editors/DocumentEditor";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
@@ -15,6 +15,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useMockAiTasks } from "../../hooks/useMockAi";
 import { useProjectMeta } from "../../hooks/useProjectMeta";
 import { deserializeDocument } from "../../editors/adapters/plainTextAdapter";
+import { getIssues, IssueItem } from "../../services/issueApi";
 import { AIPanel } from "../ai-panel/AIPanel";
 import { IssuePanel } from "../issue-panel/IssuePanel";
 import {
@@ -54,40 +55,78 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const moduleConfig = MODULE_CONFIG_MAP[module];
   const isRoleModule = module === "roles";
   const isClueModule = module === "clues";
+  const isTimelineModule = module === "timeline";
+  const isDmModule = module === "dm";
+  const isCollectionModule = isRoleModule || isClueModule || isTimelineModule || isDmModule;
   const moduleDocKey =
-    isDocumentModuleKey(module) && !isRoleModule && !isClueModule && module !== "overview"
+    isDocumentModuleKey(module) && !isCollectionModule && module !== "overview"
       ? (module as DocumentModuleKey)
       : null;
   const moduleDoc = useModuleDocument(projectId, moduleDocKey);
-  const rolesCollection = useModuleCollection(projectId, "roles", "è§’è‰²");
-  const cluesCollection = useModuleCollection(projectId, "clues", "çº¿ç´¢");
+  const rolesCollection = useModuleCollection(projectId, "roles", "½ÇÉ«");
+  const cluesCollection = useModuleCollection(projectId, "clues", "ÏßË÷");
+  const timelineCollection = useModuleCollection(projectId, "timeline", "Ê±¼äÏß");
+  const dmCollection = useModuleCollection(projectId, "dm", "ÕÂ½Ú");
   const projectMeta = useProjectMeta(projectId, project, refresh);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
   const [panelError, setPanelError] = useState<string | null>(null);
   const entryParam = searchParams.get("entry");
+  const dmEditorRef = useRef<HTMLDivElement | null>(null);
+  const [issueList, setIssueList] = useState<IssueItem[]>([]);
+  const [issueError, setIssueError] = useState<string | null>(null);
 
-  const activeCollection = isRoleModule
-    ? rolesCollection
-    : isClueModule
-      ? cluesCollection
-      : null;
+  const collections = useMemo(
+    () => ({
+      roles: rolesCollection,
+      clues: cluesCollection,
+      timeline: timelineCollection,
+      dm: dmCollection
+    }),
+    [rolesCollection, cluesCollection, timelineCollection, dmCollection]
+  );
+
+  const activeCollection = isCollectionModule
+    ? collections[module as "roles" | "clues" | "timeline" | "dm"]
+    : null;
+  const activeEntry = activeCollection?.activeEntry ?? null;
+  const activeEntryMeta = (activeEntry?.meta || {}) as Record<string, unknown>;
+  const activeEntryData = (activeEntry?.data || {}) as Record<string, unknown>;
 
   const mentionItems = useMemo<MentionItem[]>(() => {
     const roles = rolesCollection.entries.map((entry) => ({
       id: entry.id,
       label: entry.name,
       entityType: "role" as const,
-      description: "è§’è‰²æ¡ç›®"
+      description: "½ÇÉ«ÌõÄ¿"
     }));
     const clues = cluesCollection.entries.map((entry) => ({
       id: entry.id,
       label: entry.name,
       entityType: "clue" as const,
-      description: "çº¿ç´¢æ¡ç›®"
+      description: "ÏßË÷ÌõÄ¿"
     }));
     return [...roles, ...clues];
   }, [rolesCollection.entries, cluesCollection.entries]);
+
+  useEffect(() => {
+    let alive = true;
+    async function run() {
+      try {
+        const data = await getIssues(projectId, latestSnapshotId ?? undefined);
+        if (!alive) return;
+        setIssueList(data.issues || []);
+        setIssueError(null);
+      } catch (err) {
+        if (!alive) return;
+        setIssueError(err instanceof Error ? err.message : "·çÏÕµã»ñÈ¡Ê§°Ü");
+      }
+    }
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [projectId, latestSnapshotId]);
 
   useEffect(() => {
     if (!entryParam) return;
@@ -97,7 +136,23 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     if (isClueModule) {
       cluesCollection.setActiveEntry(entryParam);
     }
-  }, [entryParam, isRoleModule, isClueModule, rolesCollection, cluesCollection]);
+    if (isTimelineModule) {
+      timelineCollection.setActiveEntry(entryParam);
+    }
+    if (isDmModule) {
+      dmCollection.setActiveEntry(entryParam);
+    }
+  }, [
+    entryParam,
+    isRoleModule,
+    isClueModule,
+    isTimelineModule,
+    isDmModule,
+    rolesCollection,
+    cluesCollection,
+    timelineCollection,
+    dmCollection
+  ]);
 
   const overviewDocument = useMemo(
     () =>
@@ -109,18 +164,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   );
 
   const moduleLabel = useMemo(
-    () => moduleConfig?.label || "æ¦‚è§ˆ",
+    () => moduleConfig?.label || "¸ÅÀÀ",
     [moduleConfig]
   );
 
   const moduleHint = useMemo(() => {
     if (module === "truth") {
-      return locked ? "çœŸç›¸å·²é”å®šï¼Œç¼–è¾‘åŒºåªè¯»" : "ç¼–è¾‘çœŸç›¸å†…å®¹";
+      return locked ? "ÕæÏàÒÑËø¶¨£¬±à¼­ÇøÖ»¶Á" : "±à¼­ÕæÏàÄÚÈİ";
     }
     if (moduleConfig?.requiresTruthLocked && !locked) {
-      return "è¯·å…ˆé”å®šçœŸç›¸åå†ç¼–è¾‘æ´¾ç”Ÿæ¨¡å—";
+      return "ÇëÏÈËø¶¨ÕæÏàºóÔÙ±à¼­ÅÉÉúÄ£¿é";
     }
-    return "æ¨¡å—å†…å®¹";
+    return "Ä£¿éÄÚÈİ";
   }, [module, moduleConfig, locked]);
 
   const activeSaveState =
@@ -135,13 +190,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const saveLabel = useMemo(() => {
     switch (activeSaveState) {
       case "saving":
-        return "ä¿å­˜ä¸­â€¦";
+        return "±£´æÖĞ¡­";
       case "success":
-        return "å·²ä¿å­˜";
+        return "ÒÑ±£´æ";
       case "error":
-        return "ä¿å­˜å¤±è´¥";
+        return "±£´æÊ§°Ü";
       default:
-        return "ä¿å­˜";
+        return "±£´æ";
     }
   }, [activeSaveState]);
 
@@ -151,37 +206,37 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleLock = async () => {
     if (!canWrite) {
-      setPanelError("è¯·å…ˆç™»å½•åå†æ“ä½œ");
+      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
       return;
     }
     setPanelError(null);
     try {
       await lock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "é”å®šå¤±è´¥ï¼Œè¯·é‡è¯•");
+      setPanelError(err instanceof Error ? err.message : "Ëø¶¨Ê§°Ü£¬ÇëÖØÊÔ");
     }
   };
 
   const handleUnlock = async () => {
     if (!canWrite) {
-      setPanelError("è¯·å…ˆç™»å½•åå†æ“ä½œ");
+      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
       return;
     }
     const ok = window.confirm(
-      "è§£é”åå°†å…è®¸ä¿®æ”¹çœŸç›¸å†…å®¹ï¼Œå¯èƒ½å½±å“æ´¾ç”Ÿç»“æœä¸€è‡´æ€§ï¼Œç¡®å®šè§£é”å—ï¼Ÿ"
+      "½âËøºó½«ÔÊĞíĞŞ¸ÄÕæÏàÄÚÈİ£¬¿ÉÄÜÓ°ÏìÅÉÉú½á¹ûÒ»ÖÂĞÔ£¬È·¶¨½âËøÂğ£¿"
     );
     if (!ok) return;
     setPanelError(null);
     try {
       await unlock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "è§£é”å¤±è´¥ï¼Œè¯·é‡è¯•");
+      setPanelError(err instanceof Error ? err.message : "½âËøÊ§°Ü£¬ÇëÖØÊÔ");
     }
   };
 
   const handleDeriveRoles = () => {
     if (!canWrite) {
-      setPanelError("è¯·å…ˆç™»å½•åå†æ“ä½œ");
+      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
       return;
     }
     if (!locked) return;
@@ -191,7 +246,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleReviewLogic = () => {
     if (!canWrite) {
-      setPanelError("è¯·å…ˆç™»å½•åå†æ“ä½œ");
+      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
       return;
     }
     setPanelError(null);
@@ -212,13 +267,37 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   };
 
-  const handleEntrySelect = (entryId: string) => {
-    if (!activeCollection) return;
-    const nextPath = `/projects/${projectId}/editor/${module}?entry=${encodeURIComponent(
+  const handleEntrySelect = (targetModule: EditorModuleKey, entryId: string) => {
+    const collection = collections[targetModule as keyof typeof collections];
+    if (!collection) return;
+    const nextPath = `/projects/${projectId}/editor/${targetModule}?entry=${encodeURIComponent(
       entryId
     )}`;
     router.push(nextPath);
-    activeCollection.setActiveEntry(entryId);
+    collection.setActiveEntry(entryId);
+  };
+
+  const handleCreateEntry = (targetModule: EditorModuleKey) => {
+    const collection = collections[targetModule as keyof typeof collections];
+    if (!collection) return;
+    const entryId = collection.createEntry();
+    if (entryId) {
+      router.push(
+        `/projects/${projectId}/editor/${targetModule}?entry=${encodeURIComponent(
+          entryId
+        )}`
+      );
+    }
+  };
+
+  const updateActiveMeta = (nextMeta: Record<string, unknown>) => {
+    if (!activeCollection?.activeEntryId) return;
+    activeCollection.updateMeta(activeCollection.activeEntryId, nextMeta);
+  };
+
+  const updateActiveData = (nextData: Record<string, unknown>) => {
+    if (!activeCollection?.activeEntryId) return;
+    activeCollection.updateData(activeCollection.activeEntryId, nextData);
   };
 
   const handleNav = (next: EditorModuleKey) => {
@@ -283,11 +362,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const projectStatusLabel = useMemo(() => {
     switch (projectStatus) {
       case "In Progress":
-        return "è¿›è¡Œä¸­";
+        return "½øĞĞÖĞ";
       case "Completed":
-        return "å·²å®Œæˆ";
+        return "ÒÑÍê³É";
       default:
-        return "è‰ç¨¿";
+        return "²İ¸å";
     }
   }, [projectStatus]);
 
@@ -302,8 +381,80 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   }, [projectStatus]);
 
-  const truthStatusLabel = locked ? "çœŸç›¸ï¼šå·²é”å®š" : "çœŸç›¸ï¼šè‰ç¨¿";
+  const truthStatusLabel = locked ? "ÕæÏà£ºÒÑËø¶¨" : "ÕæÏà£º²İ¸å";
   const truthStatusTone = locked ? "bg-indigo-500" : "bg-slate-400";
+  const sourceVersion = useMemo(() => {
+    const version = projectMeta.form.version?.trim();
+    if (version) return version;
+    if (latestSnapshotId) return latestSnapshotId;
+    return "v0.1";
+  }, [projectMeta.form.version, latestSnapshotId]);
+
+  const p0Issues = useMemo(() => {
+    return issueList.filter((issue) => String(issue.severity).toUpperCase() === "P0");
+  }, [issueList]);
+
+  const collectText = (node: any): string => {
+    if (!node) return "";
+    if (typeof node.text === "string") return node.text;
+    if (Array.isArray(node.content)) {
+      return node.content.map(collectText).join("");
+    }
+    return "";
+  };
+
+  const buildOutline = (content: Record<string, unknown> | undefined) => {
+    if (!content || typeof content !== "object") return [];
+    const root = content as { content?: any[] };
+    const headings: { index: number; text: string; level: number }[] = [];
+    let index = 0;
+    (root.content || []).forEach((node) => {
+      if (node?.type === "heading") {
+        const level = node.attrs?.level ?? 2;
+        const text = collectText(node) || "Î´ÃüÃû±êÌâ";
+        headings.push({ index, text, level });
+        index += 1;
+      }
+    });
+    return headings;
+  };
+
+  const collectMentions = (
+    node: any,
+    bucket: { id: string; entityType: "role" | "clue" }[]
+  ) => {
+    if (!node) return;
+    if (node.type === "roleMention" || node.type === "clueMention") {
+      const id = node.attrs?.id;
+      if (id) {
+        bucket.push({
+          id,
+          entityType: node.type === "roleMention" ? "role" : "clue"
+        });
+      }
+    }
+    if (Array.isArray(node.content)) {
+      node.content.forEach((child: any) => collectMentions(child, bucket));
+    }
+  };
+
+  const extractMentionLabels = (content: Record<string, unknown> | undefined) => {
+    if (!content || typeof content !== "object") return [];
+    const bucket: { id: string; entityType: "role" | "clue" }[] = [];
+    collectMentions(content, bucket);
+    const unique = new Map<string, { id: string; label: string; entityType: "role" | "clue" }>();
+    bucket.forEach((item) => {
+      const match = mentionItems.find((mention) => mention.id === item.id);
+      if (match) {
+        unique.set(`${item.entityType}-${item.id}`, {
+          id: item.id,
+          label: match.label,
+          entityType: item.entityType
+        });
+      }
+    });
+    return Array.from(unique.values());
+  };
 
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
@@ -311,7 +462,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-lg font-semibold">
-              {project?.name || "æœªå‘½åé¡¹ç›®"}
+              {project?.name || "Î´ÃüÃûÏîÄ¿"}
             </span>
             <span className="text-muted">/</span>
             <span className="text-muted">{moduleLabel}</span>
@@ -319,52 +470,103 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${projectStatusTone}`} />
-              é¡¹ç›®ï¼š{projectStatusLabel}
+              ÏîÄ¿£º{projectStatusLabel}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${truthStatusTone}`} />
-              {locked ? "ğŸ”’" : null}
+              {locked ? "??" : null}
               {truthStatusLabel}
             </span>
           </div>
         </div>
         <Button variant="outline" onClick={handleBack}>
-          è¿”å› Workspace
+          ·µ»Ø Workspace
         </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)_360px]">
         <aside className="glass-panel-strong h-fit p-4">
-          <div className="text-xs text-muted">æ¨¡å—å¯¼èˆª</div>
-          <div className="mt-4 space-y-1">
-            {MODULE_CONFIGS.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => handleNav(item.key)}
-                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
-                  item.key === module
-                    ? "bg-white text-ink shadow-soft"
-                    : "text-muted hover:bg-white/50 hover:text-ink"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="text-xs text-muted">Ä£¿éµ¼º½</div>
+          <div className="mt-4 space-y-2">
+            {MODULE_CONFIGS.map((item) => {
+              const collection = collections[item.key as keyof typeof collections];
+              const canEditEntry = canWrite && (!item.requiresTruthLocked || locked);
+              return (
+                <div key={item.key} className="space-y-1">
+                  <button
+                    onClick={() => handleNav(item.key)}
+                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                      item.key === module
+                        ? "bg-white text-ink shadow-soft"
+                        : "text-muted hover:bg-white/50 hover:text-ink"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                  {collection ? (
+                    <div className="space-y-1 pl-4 text-sm">
+                      {collection.entries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className={`flex items-center justify-between rounded-lg px-2 py-1 text-xs ${
+                            entry.id === collection.activeEntryId && item.key === module
+                              ? "bg-white text-ink shadow-soft"
+                              : "text-muted hover:bg-white/50 hover:text-ink"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            className="flex-1 text-left"
+                            onClick={() => handleEntrySelect(item.key, entry.id)}
+                          >
+                            {entry.name}
+                          </button>
+                          {canEditEntry ? (
+                            <div className="flex items-center gap-1 text-[10px] text-muted">
+                              <button
+                                type="button"
+                                className="rounded px-1 hover:text-ink"
+                                onClick={() => {
+                                  const next = window.prompt("ÖØÃüÃûÌõÄ¿", entry.name);
+                                  if (next && next.trim()) {
+                                    collection.renameEntry(entry.id, next.trim());
+                                  }
+                                }}
+                              >
+                                ÖØÃüÃû
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-1 hover:text-ink"
+                                onClick={() => {
+                                  const ok = window.confirm("È·¶¨É¾³ı¸ÃÌõÄ¿Âğ£¿");
+                                  if (ok) collection.removeEntry(entry.id);
+                                }}
+                                disabled={collection.entries.length <= 1}
+                              >
+                                É¾³ı
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                      {canEditEntry ? (
+                        <button
+                          type="button"
+                          className="mt-1 flex items-center gap-2 text-xs text-muted hover:text-ink"
+                          onClick={() => handleCreateEntry(item.key)}
+                        >
+                          + Ìí¼Ó{item.label}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
-          {activeCollection ? (
-            <EntryList
-              title={`${moduleLabel}æ¡ç›®`}
-              entries={activeCollection.entries}
-              activeId={activeCollection.activeEntryId}
-              canEdit={canEditModule}
-              onSelect={handleEntrySelect}
-              onCreate={activeCollection.createEntry}
-              onRename={activeCollection.renameEntry}
-              onDelete={activeCollection.removeEntry}
-            />
-          ) : null}
           <div className="mt-6 text-xs text-muted">
-            é¡¹ç›®ï¼š{project?.name || "åŠ è½½ä¸­â€¦"}
+            ÏîÄ¿£º{project?.name || "¼ÓÔØÖĞ¡­"}
           </div>
         </aside>
 
@@ -384,7 +586,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           </div>
 
           {activeLoading ? (
-            <EmptyState title="åŠ è½½ä¸­â€¦" description="æ­£åœ¨è¯»å–é¡¹ç›®æ•°æ®" />
+            <EmptyState title="¼ÓÔØÖĞ¡­" description="ÕıÔÚ¶ÁÈ¡ÏîÄ¿Êı¾İ" />
           ) : activeError ? (
             <ErrorBanner message={activeError} />
           ) : module === "overview" ? (
@@ -392,67 +594,78 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  æœªç™»å½•çŠ¶æ€ä¸‹ä»…æ”¯æŒåªè¯»æµè§ˆï¼Œè¯·å…ˆç™»å½•åç¼–è¾‘ã€‚
+                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
                 </div>
               ) : null}
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
-                  <div className="text-xs text-muted">é¡¹ç›®ç±»å‹</div>
-                  <select
-                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                    value={projectMeta.form.genre}
-                    onChange={(event) =>
-                      projectMeta.updateField("genre", event.target.value)
-                    }
-                    disabled={!canWrite}
-                  >
-                    <option value="">è¯·é€‰æ‹©</option>
-                    <option value="æ‚¬ç–‘">æ‚¬ç–‘</option>
-                    <option value="æ¨ç†">æ¨ç†</option>
-                    <option value="æƒ…æ„Ÿ">æƒ…æ„Ÿ</option>
-                    <option value="ææ€–">ææ€–</option>
-                    <option value="å¥‡å¹»">å¥‡å¹»</option>
-                    <option value="ç§‘å¹»">ç§‘å¹»</option>
-                    <option value="å†å²">å†å²</option>
-                    <option value="å…¶ä»–">å…¶ä»–</option>
-                  </select>
-                </div>
-                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
-                  <div className="text-xs text-muted">äººæ•°</div>
-                  <select
-                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
-                    value={projectMeta.form.players}
-                    onChange={(event) =>
-                      projectMeta.updateField("players", event.target.value)
-                    }
-                    disabled={!canWrite}
-                  >
-                    <option value="">è¯·é€‰æ‹©</option>
-                    <option value="3-4 äºº">3-4 äºº</option>
-                    <option value="4-6 äºº">4-6 äºº</option>
-                    <option value="6-8 äºº">6-8 äºº</option>
-                    <option value="8-10 äºº">8-10 äºº</option>
-                    <option value="ä¸é™">ä¸é™</option>
-                  </select>
-                </div>
-                <div className="rounded-2xl bg-white/90 px-5 py-4 shadow-soft">
-                  <div className="text-xs text-muted">å½“å‰ç‰ˆæœ¬</div>
-                  <div className="mt-3 text-lg font-semibold text-ink">
-                    {projectMeta.form.version?.trim() ||
-                      latestSnapshotId ||
-                      "v0.1"}
-                  </div>
-                  <div className="mt-1 text-[11px] text-muted">
-                    æœ€è¿‘æ›´æ–°ï¼š{project?.updatedAt || "-"}
-                  </div>
-                </div>
-              </div>
+              <ModuleMetaGrid
+                cards={[
+                  {
+                    key: "genre",
+                    title: "ÏîÄ¿ÀàĞÍ",
+                    content: (
+                      <select
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={projectMeta.form.genre}
+                        onChange={(event) =>
+                          projectMeta.updateField("genre", event.target.value)
+                        }
+                        disabled={!canWrite}
+                      >
+                        <option value="">ÇëÑ¡Ôñ</option>
+                        <option value="ĞüÒÉ">ĞüÒÉ</option>
+                        <option value="ÍÆÀí">ÍÆÀí</option>
+                        <option value="Çé¸Ğ">Çé¸Ğ</option>
+                        <option value="¿Ö²À">¿Ö²À</option>
+                        <option value="Ææ»Ã">Ææ»Ã</option>
+                        <option value="¿Æ»Ã">¿Æ»Ã</option>
+                        <option value="ÀúÊ·">ÀúÊ·</option>
+                        <option value="ÆäËû">ÆäËû</option>
+                      </select>
+                    )
+                  },
+                  {
+                    key: "players",
+                    title: "ÈËÊı",
+                    content: (
+                      <select
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={projectMeta.form.players}
+                        onChange={(event) =>
+                          projectMeta.updateField("players", event.target.value)
+                        }
+                        disabled={!canWrite}
+                      >
+                        <option value="">ÇëÑ¡Ôñ</option>
+                        <option value="3-4 ÈË">3-4 ÈË</option>
+                        <option value="4-6 ÈË">4-6 ÈË</option>
+                        <option value="6-8 ÈË">6-8 ÈË</option>
+                        <option value="8-10 ÈË">8-10 ÈË</option>
+                        <option value="²»ÏŞ">²»ÏŞ</option>
+                      </select>
+                    )
+                  },
+                  {
+                    key: "version",
+                    title: "µ±Ç°°æ±¾",
+                    content: (
+                      <div>
+                        <div className="text-lg font-semibold text-ink">
+                          {sourceVersion}
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted">
+                          ×î½ü¸üĞÂ£º{project?.updatedAt || "-"}
+                        </div>
+                      </div>
+                    )
+                  }
+                ]}
+              />
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="text-lg font-semibold">å‰§æœ¬ç®€ä»‹</div>
+                  <div className="text-lg font-semibold">¾ç±¾¼ò½é</div>
                   <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600">
-                    æ ¸å¿ƒ
+                    ºËĞÄ
                   </span>
                 </div>
                 <div className="relative">
@@ -470,7 +683,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   />
                   {!overviewDocument.text?.trim() ? (
                     <div className="pointer-events-none absolute left-8 top-6 text-sm text-muted">
-                      å†™ä¸‹ä½ çš„æ•…äº‹èƒŒæ™¯ï¼Œè¿™é‡Œæ˜¯çµæ„Ÿçš„èµ·ç‚¹...
+                      Ğ´ÏÂÄãµÄ¹ÊÊÂ±³¾°£¬ÕâÀïÊÇÁé¸ĞµÄÆğµã...
                     </div>
                   ) : null}
                 </div>
@@ -484,48 +697,579 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               </div>
             </div>
           ) : module === "truth" ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <ModuleMetaGrid
+                cards={[
+                  {
+                    key: "snapshot",
+                    title: "×îĞÂ¿ìÕÕ",
+                    content: (
+                      <div>
+                        <div className="text-base font-semibold text-ink">
+                          {latestSnapshotId || sourceVersion}
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted">
+                          {latestSnapshotId ? "¿ìÕÕÒÑÉú³É" : "Ä¬ÈÏ°æ±¾"}
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: "coverage",
+                    title: "ÅÉÉú¸²¸ÇÂÊ",
+                    content: (
+                      <div className="text-sm text-muted">
+                        ¼´½«ÉÏÏß
+                      </div>
+                    )
+                  },
+                  {
+                    key: "lockedAt",
+                    title: "Ëø¶¨Ê±¼ä",
+                    content: (
+                      <div className="text-sm text-ink">
+                        {locked ? truth?.updatedAt || "ÒÑËø¶¨" : "Î´Ëø¶¨"}
+                      </div>
+                    )
+                  }
+                ]}
+              />
               {saveError ? <ErrorBanner message={saveError} /> : null}
               {locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  å½“å‰çœŸç›¸å·²é”å®šï¼Œç¼–è¾‘åŒºä¸ºåªè¯»ã€‚è§£é”åå¯ç»§ç»­ä¿®æ”¹ã€‚
+                  µ±Ç°ÕæÏàÒÑËø¶¨£¬±à¼­ÇøÎªÖ»¶Á¡£½âËøºó¿É¼ÌĞøĞŞ¸Ä¡£
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  æœªç™»å½•çŠ¶æ€ä¸‹ä»…æ”¯æŒåªè¯»æµè§ˆï¼Œè¯·å…ˆç™»å½•åç¼–è¾‘ã€‚
+                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
                 </div>
               ) : null}
-              <DocumentEditor
-                value={document}
-                onChange={setDocument}
-                readonly={!canEditTruth}
-                mentionItems={mentionItems}
-                onMentionClick={handleMentionClick}
+              <div
+                className={`rounded-2xl border px-4 py-4 ${
+                  locked
+                    ? "border-amber-200 bg-amber-50/30"
+                    : "border-slate-100 bg-white/90"
+                }`}
+              >
+                {locked ? (
+                  <div className="mb-3 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
+                    ÄÚÈİÒÑËø¶¨£¬×÷ÎªÅÉÉúÔ´
+                  </div>
+                ) : null}
+                <DocumentEditor
+                  value={document}
+                  onChange={setDocument}
+                  readonly={!canEditTruth}
+                  mentionItems={mentionItems}
+                  onMentionClick={handleMentionClick}
+                />
+              </div>
+            </div>
+          ) : module === "roles" || module === "clues" ? (
+            <div className="space-y-4">
+              {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              {requiresLocked && !locked ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  µ±Ç°ÕæÏàÉĞÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                </div>
+              ) : null}
+              {!canWrite ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
+                </div>
+              ) : null}
+              <ModuleMetaGrid
+                cards={
+                  module === "roles"
+                    ? [
+                        {
+                          key: "motivation",
+                          title: "ºËĞÄ¶¯»ú",
+                          content: (
+                            <input
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.motivation as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  motivation: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                              placeholder="ÀıÈç£º¸´³ğ/Êê×ï"
+                            />
+                          )
+                        },
+                        {
+                          key: "progress",
+                          title: "ÒÑÖªÕæÏà½ø¶È",
+                          content: (
+                            <input
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.truthProgress as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  truthProgress: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                              placeholder="ÀıÈç£º40%"
+                            />
+                          )
+                        },
+                        {
+                          key: "secrets",
+                          title: "ÃØÃÜÊıÁ¿",
+                          content: (
+                            <input
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.secretCount as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  secretCount: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                              placeholder="ÀıÈç£º3 ¸ö"
+                            />
+                          )
+                        }
+                      ]
+                    : [
+                        {
+                          key: "direction",
+                          title: "Ö¸ÏòĞÔ",
+                          content: (
+                            <input
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.direction as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  direction: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                              placeholder="ÀıÈç£ºÖ¸Ïò½ÇÉ«/³¡¾°"
+                            />
+                          )
+                        },
+                        {
+                          key: "difficulty",
+                          title: "»ñÈ¡ÄÑ¶È",
+                          content: (
+                            <select
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.difficulty as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  difficulty: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                            >
+                              <option value="">ÇëÑ¡Ôñ</option>
+                              <option value="¡ï">¡ï</option>
+                              <option value="¡ï¡ï">¡ï¡ï</option>
+                              <option value="¡ï¡ï¡ï">¡ï¡ï¡ï</option>
+                              <option value="¡ï¡ï¡ï¡ï">¡ï¡ï¡ï¡ï</option>
+                              <option value="¡ï¡ï¡ï¡ï¡ï">¡ï¡ï¡ï¡ï¡ï</option>
+                            </select>
+                          )
+                        },
+                        {
+                          key: "authenticity",
+                          title: "ÕæÊµ¶È",
+                          content: (
+                            <select
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                              value={(activeEntryMeta.authenticity as string) || ""}
+                              onChange={(event) =>
+                                updateActiveMeta({
+                                  ...activeEntryMeta,
+                                  authenticity: event.target.value
+                                })
+                              }
+                              disabled={!canEditModule}
+                            >
+                              <option value="">ÇëÑ¡Ôñ</option>
+                              <option value="ÕæÊµ">ÕæÊµ</option>
+                              <option value="Ğé¼Ù">Ğé¼Ù</option>
+                              <option value="²»È·¶¨">²»È·¶¨</option>
+                            </select>
+                          )
+                        }
+                      ]
+                }
               />
+              {activeEntry ? (
+                <div className="rounded-2xl border border-slate-100 bg-white/90 px-4 py-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      {activeEntry.name}
+                    </div>
+                    <div className="text-xs text-muted">Source: {sourceVersion}</div>
+                  </div>
+                  <DocumentEditor
+                    value={activeCollection?.document || moduleDoc.document}
+                    onChange={
+                      activeCollection
+                        ? activeCollection.setDocument
+                        : moduleDoc.setDocument
+                    }
+                    readonly={!canEditModule}
+                    mentionItems={mentionItems}
+                    onMentionClick={handleMentionClick}
+                  />
+                </div>
+              ) : (
+                <EmptyState title="ÔİÎŞÌõÄ¿" description="ÇëÏÈ´´½¨ÌõÄ¿ºó±à¼­ÄÚÈİ" />
+              )}
+            </div>
+          ) : module === "timeline" ? (
+            <div className="space-y-4">
+              {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              {requiresLocked && !locked ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  µ±Ç°ÕæÏàÉĞÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                </div>
+              ) : null}
+              <ModuleMetaGrid
+                cards={[
+                  {
+                    key: "duration",
+                    title: "×ÜÊ±³¤",
+                    content: (
+                      <input
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={(activeEntryMeta.duration as string) || ""}
+                        onChange={(event) =>
+                          updateActiveMeta({
+                            ...activeEntryMeta,
+                            duration: event.target.value
+                          })
+                        }
+                        disabled={!canEditModule}
+                        placeholder="ÀıÈç£º4.5 Ğ¡Ê±"
+                      />
+                    )
+                  },
+                  {
+                    key: "density",
+                    title: "ÊÂ¼şÃÜ¶È",
+                    content: (
+                      <input
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={(activeEntryMeta.density as string) || ""}
+                        onChange={(event) =>
+                          updateActiveMeta({
+                            ...activeEntryMeta,
+                            density: event.target.value
+                          })
+                        }
+                        disabled={!canEditModule}
+                        placeholder="ÀıÈç£º15 min/node"
+                      />
+                    )
+                  },
+                  {
+                    key: "twists",
+                    title: "¹Ø¼ü·´×ª",
+                    content: (
+                      <input
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={(activeEntryMeta.twists as string) || ""}
+                        onChange={(event) =>
+                          updateActiveMeta({
+                            ...activeEntryMeta,
+                            twists: event.target.value
+                          })
+                        }
+                        disabled={!canEditModule}
+                        placeholder="ÀıÈç£º3 ´Î"
+                      />
+                    )
+                  }
+                ]}
+              />
+              {activeEntry ? (
+                <div className="rounded-2xl border border-slate-100 bg-white/90 px-4 py-4">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      {activeEntry.name}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const events = Array.isArray(activeEntryData.events)
+                          ? [...activeEntryData.events]
+                          : [];
+                        events.push({
+                          id: crypto.randomUUID(),
+                          time: "",
+                          content: { type: "doc", content: [] }
+                        });
+                        updateActiveData({ ...activeEntryData, events });
+                      }}
+                      disabled={!canEditModule}
+                    >
+                      Ìí¼ÓÊÂ¼ş
+                    </Button>
+                  </div>
+                  <div className="space-y-4">
+                    {(Array.isArray(activeEntryData.events)
+                      ? activeEntryData.events
+                      : []
+                    ).map((event: any, index: number) => {
+                      const eventDoc = deserializeDocument(event.content, {
+                        projectId,
+                        module: "timeline"
+                      });
+                      const participants = extractMentionLabels(event.content);
+                      return (
+                        <div
+                          key={event.id || index}
+                          className="rounded-xl border border-slate-100 bg-white px-4 py-4 shadow-sm"
+                        >
+                          <div className="grid gap-3 md:grid-cols-[120px_minmax(0,1fr)_160px]">
+                            <div>
+                              <div className="text-xs text-muted">Ê±¼äµã</div>
+                              <input
+                                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-ink outline-none focus:border-ink/40"
+                                value={event.time || ""}
+                                onChange={(eventInput) => {
+                                  const events = Array.isArray(activeEntryData.events)
+                                    ? [...activeEntryData.events]
+                                    : [];
+                                  events[index] = { ...event, time: eventInput.target.value };
+                                  updateActiveData({ ...activeEntryData, events });
+                                }}
+                                disabled={!canEditModule}
+                                placeholder="ÀıÈç 18:00"
+                              />
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted">ÊÂ¼şÏêÇé</div>
+                              <div className="mt-2">
+                                <DocumentEditor
+                                  value={eventDoc}
+                                  onChange={(nextDoc) => {
+                                    const events = Array.isArray(activeEntryData.events)
+                                      ? [...activeEntryData.events]
+                                      : [];
+                                    events[index] = {
+                                      ...event,
+                                      content: nextDoc.content
+                                    };
+                                    updateActiveData({ ...activeEntryData, events });
+                                  }}
+                                  readonly={!canEditModule}
+                                  mentionItems={mentionItems}
+                                  onMentionClick={handleMentionClick}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted">Éæ¼°½ÇÉ«</div>
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
+                                {participants.length ? (
+                                  participants.map((item) => (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      className="rounded-full bg-indigo-50 px-2 py-1 text-indigo-600"
+                                      onClick={() =>
+                                        handleMentionClick({
+                                          id: item.id,
+                                          label: item.label,
+                                          entityType: item.entityType
+                                        })
+                                      }
+                                    >
+                                      @{item.label}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <span>ÔİÎŞ¹ØÁª</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(Array.isArray(activeEntryData.events)
+                      ? activeEntryData.events
+                      : []
+                    ).length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-xs text-muted">
+                        µã»÷ÓÒÉÏ½Ç¡°Ìí¼ÓÊÂ¼ş¡±´´½¨Ê±¼äÏß½Úµã¡£
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState title="ÔİÎŞÊ±¼äÏß" description="ÇëÏÈ´´½¨Ê±¼äÏßÌõÄ¿" />
+              )}
+            </div>
+          ) : module === "dm" ? (
+            <div className="space-y-4">
+              {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
+              {requiresLocked && !locked ? (
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
+                  µ±Ç°ÕæÏàÉĞÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                </div>
+              ) : null}
+              <ModuleMetaGrid
+                cards={[
+                  {
+                    key: "difficulty",
+                    title: "ÄÑ¶È",
+                    content: (
+                      <select
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={(activeEntryMeta.difficulty as string) || ""}
+                        onChange={(event) =>
+                          updateActiveMeta({
+                            ...activeEntryMeta,
+                            difficulty: event.target.value
+                          })
+                        }
+                        disabled={!canEditModule}
+                      >
+                        <option value="">ÇëÑ¡Ôñ</option>
+                        <option value="³õ¼¶">³õ¼¶</option>
+                        <option value="½ø½×">½ø½×</option>
+                        <option value="À§ÄÑ">À§ÄÑ</option>
+                      </select>
+                    )
+                  },
+                  {
+                    key: "players",
+                    title: "ÈËÊıÏŞÖÆ",
+                    content: (
+                      <input
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
+                        value={(activeEntryMeta.playersLimit as string) || ""}
+                        onChange={(event) =>
+                          updateActiveMeta({
+                            ...activeEntryMeta,
+                            playersLimit: event.target.value
+                          })
+                        }
+                        disabled={!canEditModule}
+                        placeholder="ÀıÈç£º5 ÈË¹Ì¶¨"
+                      />
+                    )
+                  },
+                  {
+                    key: "risk",
+                    title: "ºËĞÄÄÑµã",
+                    content: (
+                      <div>
+                        <div className="text-lg font-semibold text-ink">
+                          {p0Issues.length} ¸ö·çÏÕµã
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted">
+                          {issueError ? "»ñÈ¡Ê§°Ü" : "À´×ÔÎÊÌâÁĞ±í P0"}
+                        </div>
+                      </div>
+                    )
+                  }
+                ]}
+              />
+              {activeEntry ? (
+                <div className="rounded-2xl border border-slate-100 bg-white/90 px-4 py-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      {activeEntry.name}
+                    </div>
+                    <div className="text-xs text-muted">Source: {sourceVersion}</div>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+                    <div ref={dmEditorRef}>
+                      <DocumentEditor
+                        value={activeCollection?.document || moduleDoc.document}
+                        onChange={
+                          activeCollection
+                            ? activeCollection.setDocument
+                            : moduleDoc.setDocument
+                        }
+                        readonly={!canEditModule}
+                        mentionItems={mentionItems}
+                        onMentionClick={handleMentionClick}
+                      />
+                    </div>
+                    <div className="rounded-xl border border-slate-100 bg-white px-4 py-4 text-sm">
+                      <div className="text-sm font-semibold">±¾ÕÂ´ó¸Ù</div>
+                      <div className="mt-3 space-y-2 text-xs text-muted">
+                        {buildOutline(activeCollection?.document.content).length ? (
+                          buildOutline(activeCollection?.document.content).map((item) => (
+                            <button
+                              key={item.index}
+                              type="button"
+                              className="block w-full text-left hover:text-ink"
+                              onClick={() => {
+                                const container = dmEditorRef.current;
+                                if (!container) return;
+                                const headings = container.querySelectorAll("h1, h2, h3");
+                                const target = headings[item.index];
+                                if (target) {
+                                  target.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }
+                              }}
+                            >
+                              {item.text}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-muted">ÔİÎŞ±êÌâ</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs text-muted">
+                    <div className="flex items-center justify-between">
+                      <span>·çÏÕÌáÊ¾£¨P0£©</span>
+                      <span>{p0Issues.length} Ìõ</span>
+                    </div>
+                    <div className="mt-2 space-y-1 text-[11px]">
+                      {p0Issues.length ? (
+                        p0Issues.slice(0, 3).map((issue) => (
+                          <div key={issue.id} className="text-ink">
+                            {issue.title}
+                          </div>
+                        ))
+                      ) : (
+                        <div>ÔİÎŞ·çÏÕµã</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState title="ÔİÎŞÕÂ½Ú" description="ÇëÏÈ´´½¨ DM ÊÖ²áÕÂ½Ú" />
+              )}
             </div>
           ) : (
             <div className="space-y-3">
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  å½“å‰çœŸç›¸å°šæœªé”å®šï¼Œè¯·é”å®šåå†ç¼–è¾‘è¯¥æ¨¡å—ã€‚
+                  µ±Ç°ÕæÏàÉĞÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  æœªç™»å½•çŠ¶æ€ä¸‹ä»…æ”¯æŒåªè¯»æµè§ˆï¼Œè¯·å…ˆç™»å½•åç¼–è¾‘ã€‚
+                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
                 </div>
               ) : null}
               <DocumentEditor
-                value={
-                  activeCollection ? activeCollection.document : moduleDoc.document
-                }
-                onChange={
-                  activeCollection
-                    ? activeCollection.setDocument
-                    : moduleDoc.setDocument
-                }
+                value={moduleDoc.document}
+                onChange={moduleDoc.setDocument}
                 readonly={!canEditModule}
                 mentionItems={mentionItems}
                 onMentionClick={handleMentionClick}
@@ -539,8 +1283,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             value={tab}
             onChange={setTab}
             tabs={[
-              { key: "ai", label: "AI é¢æ¿" },
-              { key: "issues", label: "é—®é¢˜åˆ—è¡¨" }
+              { key: "ai", label: "AI Ãæ°å" },
+              { key: "issues", label: "ÎÊÌâÁĞ±í" }
             ]}
           />
           {tab === "ai" ? (

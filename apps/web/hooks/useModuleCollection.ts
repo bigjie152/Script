@@ -10,6 +10,8 @@ import {
   normalizeModuleCollection,
   serializeModuleCollection,
   updateEntryContent,
+  updateEntryMeta,
+  updateEntryData,
   getActiveEntry,
   ensureEntry,
   toEditorDocument
@@ -113,7 +115,9 @@ export function useModuleCollection(
     (nextDoc: typeof document) => {
       setDocument(nextDoc);
       if (!activeEntryId) return;
-      setCollection((prev) => updateEntryContent(prev, activeEntryId, nextDoc.content));
+      setCollection((prev) =>
+        updateEntryContent(prev, activeEntryId, nextDoc.content)
+      );
       if (saveState === "error") {
         setSaveState("idle");
         setSaveError(null);
@@ -130,11 +134,14 @@ export function useModuleCollection(
   );
 
   const createEntry = useCallback(() => {
+    const id = crypto.randomUUID();
     const name = `${defaultName} ${entries.length + 1}`;
     const nextEntry: ModuleEntry = {
-      id: crypto.randomUUID(),
+      id,
       name,
       content: { type: "doc", content: [] },
+      meta: {},
+      data: {},
       updatedAt: null
     };
     setCollection((prev) => ({
@@ -143,6 +150,7 @@ export function useModuleCollection(
       activeId: nextEntry.id
     }));
     setDocument(toEditorDocument(nextEntry, { projectId, module: moduleKey }));
+    return id;
   }, [defaultName, entries.length, projectId, moduleKey]);
 
   const renameEntry = useCallback((entryId: string, name: string) => {
@@ -166,6 +174,8 @@ export function useModuleCollection(
                   id: crypto.randomUUID(),
                   name: defaultName,
                   content: { type: "doc", content: [] },
+                  meta: {},
+                  data: {},
                   updatedAt: null
                 }
               ];
@@ -185,6 +195,20 @@ export function useModuleCollection(
       });
     },
     [defaultName, projectId, moduleKey]
+  );
+
+  const updateMeta = useCallback(
+    (entryId: string, meta: Record<string, unknown>) => {
+      setCollection((prev) => updateEntryMeta(prev, entryId, meta));
+    },
+    []
+  );
+
+  const updateData = useCallback(
+    (entryId: string, data: Record<string, unknown>) => {
+      setCollection((prev) => updateEntryData(prev, entryId, data));
+    },
+    []
   );
 
   const hasUnsaved = useMemo(() => {
@@ -229,6 +253,8 @@ export function useModuleCollection(
     createEntry,
     renameEntry,
     removeEntry,
-    setActiveEntry
+    setActiveEntry,
+    updateMeta,
+    updateData
   };
 }

@@ -247,7 +247,10 @@ export function BlockEditor({
   }, [editor]);
 
   return (
-    <div ref={containerRef} className="glass-panel-strong relative flex h-full w-full flex-col">
+    <div
+      ref={containerRef}
+      className="relative flex h-full w-full flex-col rounded-2xl border border-slate-100 bg-white/90 shadow-sm"
+    >
       {editor && !readonly ? (
         <BubbleMenu
           editor={editor}

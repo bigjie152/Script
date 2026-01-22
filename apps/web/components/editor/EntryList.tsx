@@ -34,7 +34,7 @@ export function EntryList({
           onClick={onCreate}
           disabled={!canEdit}
         >
-          æ–°å¢
+          ĞÂÔö
         </Button>
       </div>
       <div className="space-y-1">
@@ -59,32 +59,32 @@ export function EntryList({
                 type="button"
                 className="rounded-md px-1 text-muted hover:text-ink"
                 onClick={() => {
-                  const next = window.prompt("é‡å‘½åæ¡ç›®", entry.name);
+                  const next = window.prompt("ÖØÃüÃûÌõÄ¿", entry.name);
                   if (next && next.trim()) {
                     onRename(entry.id, next.trim());
                   }
                 }}
                 disabled={!canEdit}
               >
-                é‡å‘½å
+                ÖØÃüÃû
               </button>
               <button
                 type="button"
                 className="rounded-md px-1 text-muted hover:text-ink"
                 onClick={() => {
-                  const ok = window.confirm("ç¡®å®šåˆ é™¤è¯¥æ¡ç›®å—ï¼Ÿ");
+                  const ok = window.confirm("È·¶¨É¾³ı¸ÃÌõÄ¿Âğ£¿");
                   if (ok) onDelete(entry.id);
                 }}
                 disabled={!canEdit || entries.length <= 1}
               >
-                åˆ é™¤
+                É¾³ı
               </button>
             </div>
           </div>
         ))}
         {!entries.length ? (
           <div className="rounded-lg border border-dashed border-white/70 px-3 py-2 text-xs text-muted">
-            æš‚æ— æ¡ç›®ï¼Œç‚¹å‡»â€œæ–°å¢â€åˆ›å»ºã€‚
+            ÔİÎŞÌõÄ¿£¬µã»÷¡°ĞÂÔö¡±´´½¨¡£
           </div>
         ) : null}
       </div>
