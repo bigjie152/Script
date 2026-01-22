@@ -63,10 +63,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       ? (module as DocumentModuleKey)
       : null;
   const moduleDoc = useModuleDocument(projectId, moduleDocKey);
-  const rolesCollection = useModuleCollection(projectId, "roles", "½ÇÉ«");
-  const cluesCollection = useModuleCollection(projectId, "clues", "ÏßË÷");
-  const timelineCollection = useModuleCollection(projectId, "timeline", "Ê±¼äÏß");
-  const dmCollection = useModuleCollection(projectId, "dm", "ÕÂ½Ú");
+  const rolesCollection = useModuleCollection(projectId, "roles", "ï¿½ï¿½É«");
+  const cluesCollection = useModuleCollection(projectId, "clues", "ï¿½ï¿½ï¿½ï¿½");
+  const timelineCollection = useModuleCollection(projectId, "timeline", "Ê±ï¿½ï¿½ï¿½ï¿½");
+  const dmCollection = useModuleCollection(projectId, "dm", "ï¿½Â½ï¿½");
   const projectMeta = useProjectMeta(projectId, project, refresh);
   const { deriveRoles, reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
@@ -98,13 +98,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
       id: entry.id,
       label: entry.name,
       entityType: "role" as const,
-      description: "½ÇÉ«ÌõÄ¿"
+      description: "ï¿½ï¿½É«ï¿½ï¿½Ä¿"
     }));
     const clues = cluesCollection.entries.map((entry) => ({
       id: entry.id,
       label: entry.name,
       entityType: "clue" as const,
-      description: "ÏßË÷ÌõÄ¿"
+      description: "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿"
     }));
     return [...roles, ...clues];
   }, [rolesCollection.entries, cluesCollection.entries]);
@@ -119,7 +119,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         setIssueError(null);
       } catch (err) {
         if (!alive) return;
-        setIssueError(err instanceof Error ? err.message : "·çÏÕµã»ñÈ¡Ê§°Ü");
+        setIssueError(err instanceof Error ? err.message : "ï¿½ï¿½ï¿½Õµï¿½ï¿½È¡Ê§ï¿½ï¿½");
       }
     }
     run();
@@ -164,18 +164,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   );
 
   const moduleLabel = useMemo(
-    () => moduleConfig?.label || "¸ÅÀÀ",
+    () => moduleConfig?.label || "ï¿½ï¿½ï¿½ï¿½",
     [moduleConfig]
   );
 
   const moduleHint = useMemo(() => {
     if (module === "truth") {
-      return locked ? "ÕæÏàÒÑËø¶¨£¬±à¼­ÇøÖ»¶Á" : "±à¼­ÕæÏàÄÚÈÝ";
+      return locked ? "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½à¼­ï¿½ï¿½Ö»ï¿½ï¿½" : "ï¿½à¼­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½";
     }
     if (moduleConfig?.requiresTruthLocked && !locked) {
-      return "ÇëÏÈËø¶¨ÕæÏàºóÔÙ±à¼­ÅÉÉúÄ£¿é";
+      return "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù±à¼­ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½";
     }
-    return "Ä£¿éÄÚÈÝ";
+    return "Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½";
   }, [module, moduleConfig, locked]);
 
   const activeSaveState =
@@ -190,13 +190,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const saveLabel = useMemo(() => {
     switch (activeSaveState) {
       case "saving":
-        return "±£´æÖÐ¡­";
+        return "ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½";
       case "success":
-        return "ÒÑ±£´æ";
+        return "ï¿½Ñ±ï¿½ï¿½ï¿½";
       case "error":
-        return "±£´æÊ§°Ü";
+        return "ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½";
       default:
-        return "±£´æ";
+        return "ï¿½ï¿½ï¿½ï¿½";
     }
   }, [activeSaveState]);
 
@@ -206,37 +206,37 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleLock = async () => {
     if (!canWrite) {
-      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
+      setPanelError("ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½ï¿½Ù²ï¿½ï¿½ï¿½");
       return;
     }
     setPanelError(null);
     try {
       await lock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "Ëø¶¨Ê§°Ü£¬ÇëÖØÊÔ");
+      setPanelError(err instanceof Error ? err.message : "ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
     }
   };
 
   const handleUnlock = async () => {
     if (!canWrite) {
-      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
+      setPanelError("ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½ï¿½Ù²ï¿½ï¿½ï¿½");
       return;
     }
     const ok = window.confirm(
-      "½âËøºó½«ÔÊÐíÐÞ¸ÄÕæÏàÄÚÈÝ£¬¿ÉÄÜÓ°ÏìÅÉÉú½á¹ûÒ»ÖÂÐÔ£¬È·¶¨½âËøÂð£¿"
+      "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ô£ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
     );
     if (!ok) return;
     setPanelError(null);
     try {
       await unlock();
     } catch (err) {
-      setPanelError(err instanceof Error ? err.message : "½âËøÊ§°Ü£¬ÇëÖØÊÔ");
+      setPanelError(err instanceof Error ? err.message : "ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
     }
   };
 
   const handleDeriveRoles = () => {
     if (!canWrite) {
-      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
+      setPanelError("ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½ï¿½Ù²ï¿½ï¿½ï¿½");
       return;
     }
     if (!locked) return;
@@ -246,7 +246,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleReviewLogic = () => {
     if (!canWrite) {
-      setPanelError("ÇëÏÈµÇÂ¼ºóÔÙ²Ù×÷");
+      setPanelError("ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½ï¿½Ù²ï¿½ï¿½ï¿½");
       return;
     }
     setPanelError(null);
@@ -362,11 +362,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const projectStatusLabel = useMemo(() => {
     switch (projectStatus) {
       case "In Progress":
-        return "½øÐÐÖÐ";
+        return "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½";
       case "Completed":
-        return "ÒÑÍê³É";
+        return "ï¿½ï¿½ï¿½ï¿½ï¿½";
       default:
-        return "²Ý¸å";
+        return "ï¿½Ý¸ï¿½";
     }
   }, [projectStatus]);
 
@@ -381,7 +381,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     }
   }, [projectStatus]);
 
-  const truthStatusLabel = locked ? "ÕæÏà£ºÒÑËø¶¨" : "ÕæÏà£º²Ý¸å";
+  const truthStatusLabel = locked ? "ï¿½ï¿½ï¿½à£ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" : "ï¿½ï¿½ï¿½à£ºï¿½Ý¸ï¿½";
   const truthStatusTone = locked ? "bg-indigo-500" : "bg-slate-400";
   const sourceVersion = useMemo(() => {
     const version = projectMeta.form.version?.trim();
@@ -411,7 +411,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     (root.content || []).forEach((node) => {
       if (node?.type === "heading") {
         const level = node.attrs?.level ?? 2;
-        const text = collectText(node) || "Î´ÃüÃû±êÌâ";
+        const text = collectText(node) || "Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½";
         headings.push({ index, text, level });
         index += 1;
       }
@@ -462,7 +462,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-lg font-semibold">
-              {project?.name || "Î´ÃüÃûÏîÄ¿"}
+              {project?.name || "Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿"}
             </span>
             <span className="text-muted">/</span>
             <span className="text-muted">{moduleLabel}</span>
@@ -470,7 +470,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${projectStatusTone}`} />
-              ÏîÄ¿£º{projectStatusLabel}
+              ï¿½ï¿½Ä¿ï¿½ï¿½{projectStatusLabel}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-xs text-ink shadow-soft">
               <span className={`h-2 w-2 rounded-full ${truthStatusTone}`} />
@@ -480,13 +480,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           </div>
         </div>
         <Button variant="outline" onClick={handleBack}>
-          ·µ»Ø Workspace
+          ï¿½ï¿½ï¿½ï¿½ Workspace
         </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)_360px]">
         <aside className="glass-panel-strong h-fit p-4">
-          <div className="text-xs text-muted">Ä£¿éµ¼º½</div>
+          <div className="text-xs text-muted">Ä£ï¿½éµ¼ï¿½ï¿½</div>
           <div className="mt-4 space-y-2">
             {MODULE_CONFIGS.map((item) => {
               const collection = collections[item.key as keyof typeof collections];
@@ -527,24 +527,24 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 type="button"
                                 className="rounded px-1 hover:text-ink"
                                 onClick={() => {
-                                  const next = window.prompt("ÖØÃüÃûÌõÄ¿", entry.name);
+                                  const next = window.prompt("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿", entry.name);
                                   if (next && next.trim()) {
                                     collection.renameEntry(entry.id, next.trim());
                                   }
                                 }}
                               >
-                                ÖØÃüÃû
+                                ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                               </button>
                               <button
                                 type="button"
                                 className="rounded px-1 hover:text-ink"
                                 onClick={() => {
-                                  const ok = window.confirm("È·¶¨É¾³ý¸ÃÌõÄ¿Âð£¿");
+                                  const ok = window.confirm("È·ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½");
                                   if (ok) collection.removeEntry(entry.id);
                                 }}
                                 disabled={collection.entries.length <= 1}
                               >
-                                É¾³ý
+                                É¾ï¿½ï¿½
                               </button>
                             </div>
                           ) : null}
@@ -556,7 +556,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           className="mt-1 flex items-center gap-2 text-xs text-muted hover:text-ink"
                           onClick={() => handleCreateEntry(item.key)}
                         >
-                          + Ìí¼Ó{item.label}
+                          + ï¿½ï¿½ï¿½{item.label}
                         </button>
                       ) : null}
                     </div>
@@ -566,7 +566,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             })}
           </div>
           <div className="mt-6 text-xs text-muted">
-            ÏîÄ¿£º{project?.name || "¼ÓÔØÖÐ¡­"}
+            ï¿½ï¿½Ä¿ï¿½ï¿½{project?.name || "ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½"}
           </div>
         </aside>
 
@@ -586,7 +586,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
           </div>
 
           {activeLoading ? (
-            <EmptyState title="¼ÓÔØÖÐ¡­" description="ÕýÔÚ¶ÁÈ¡ÏîÄ¿Êý¾Ý" />
+            <EmptyState title="ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½" description="ï¿½ï¿½ï¿½Ú¶ï¿½È¡ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½" />
           ) : activeError ? (
             <ErrorBanner message={activeError} />
           ) : module === "overview" ? (
@@ -594,14 +594,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
+                  Î´ï¿½ï¿½Â¼×´Ì¬ï¿½Â½ï¿½Ö§ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½à¼­ï¿½ï¿½
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "genre",
-                    title: "ÏîÄ¿ÀàÐÍ",
+                    title: "ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -611,21 +611,21 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canWrite}
                       >
-                        <option value="">ÇëÑ¡Ôñ</option>
-                        <option value="ÐüÒÉ">ÐüÒÉ</option>
-                        <option value="ÍÆÀí">ÍÆÀí</option>
-                        <option value="Çé¸Ð">Çé¸Ð</option>
-                        <option value="¿Ö²À">¿Ö²À</option>
-                        <option value="Ææ»Ã">Ææ»Ã</option>
-                        <option value="¿Æ»Ã">¿Æ»Ã</option>
-                        <option value="ÀúÊ·">ÀúÊ·</option>
-                        <option value="ÆäËû">ÆäËû</option>
+                        <option value="">ï¿½ï¿½Ñ¡ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½Ö²ï¿½">ï¿½Ö²ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½Æ»ï¿½">ï¿½Æ»ï¿½</option>
+                        <option value="ï¿½ï¿½Ê·">ï¿½ï¿½Ê·</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
                       </select>
                     )
                   },
                   {
                     key: "players",
-                    title: "ÈËÊý",
+                    title: "ï¿½ï¿½ï¿½ï¿½",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -635,25 +635,25 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canWrite}
                       >
-                        <option value="">ÇëÑ¡Ôñ</option>
-                        <option value="3-4 ÈË">3-4 ÈË</option>
-                        <option value="4-6 ÈË">4-6 ÈË</option>
-                        <option value="6-8 ÈË">6-8 ÈË</option>
-                        <option value="8-10 ÈË">8-10 ÈË</option>
-                        <option value="²»ÏÞ">²»ÏÞ</option>
+                        <option value="">ï¿½ï¿½Ñ¡ï¿½ï¿½</option>
+                        <option value="3-4 ï¿½ï¿½">3-4 ï¿½ï¿½</option>
+                        <option value="4-6 ï¿½ï¿½">4-6 ï¿½ï¿½</option>
+                        <option value="6-8 ï¿½ï¿½">6-8 ï¿½ï¿½</option>
+                        <option value="8-10 ï¿½ï¿½">8-10 ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
                       </select>
                     )
                   },
                   {
                     key: "version",
-                    title: "µ±Ç°°æ±¾",
+                    title: "ï¿½ï¿½Ç°ï¿½æ±¾",
                     content: (
                       <div>
                         <div className="text-lg font-semibold text-ink">
                           {sourceVersion}
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          ×î½ü¸üÐÂ£º{project?.updatedAt || "-"}
+                          ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½{project?.updatedAt || "-"}
                         </div>
                       </div>
                     )
@@ -663,9 +663,9 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="text-lg font-semibold">¾ç±¾¼ò½é</div>
+                  <div className="text-lg font-semibold">ï¿½ç±¾ï¿½ï¿½ï¿½</div>
                   <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600">
-                    ºËÐÄ
+                    ï¿½ï¿½ï¿½ï¿½
                   </span>
                 </div>
                 <div className="relative">
@@ -683,7 +683,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   />
                   {!overviewDocument.text?.trim() ? (
                     <div className="pointer-events-none absolute left-8 top-6 text-sm text-muted">
-                      Ð´ÏÂÄãµÄ¹ÊÊÂ±³¾°£¬ÕâÀïÊÇÁé¸ÐµÄÆðµã...
+                      Ð´ï¿½ï¿½ï¿½ï¿½Ä¹ï¿½ï¿½Â±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½...
                     </div>
                   ) : null}
                 </div>
@@ -702,33 +702,33 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 cards={[
                   {
                     key: "snapshot",
-                    title: "×îÐÂ¿ìÕÕ",
+                    title: "ï¿½ï¿½ï¿½Â¿ï¿½ï¿½ï¿½",
                     content: (
                       <div>
                         <div className="text-base font-semibold text-ink">
                           {latestSnapshotId || sourceVersion}
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          {latestSnapshotId ? "¿ìÕÕÒÑÉú³É" : "Ä¬ÈÏ°æ±¾"}
+                          {latestSnapshotId ? "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" : "Ä¬ï¿½Ï°æ±¾"}
                         </div>
                       </div>
                     )
                   },
                   {
                     key: "coverage",
-                    title: "ÅÉÉú¸²¸ÇÂÊ",
+                    title: "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
                     content: (
                       <div className="text-sm text-muted">
-                        ¼´½«ÉÏÏß
+                        ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                       </div>
                     )
                   },
                   {
                     key: "lockedAt",
-                    title: "Ëø¶¨Ê±¼ä",
+                    title: "ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½",
                     content: (
                       <div className="text-sm text-ink">
-                        {locked ? truth?.updatedAt || "ÒÑËø¶¨" : "Î´Ëø¶¨"}
+                        {locked ? truth?.updatedAt || "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" : "Î´ï¿½ï¿½ï¿½ï¿½"}
                       </div>
                     )
                   }
@@ -737,12 +737,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {saveError ? <ErrorBanner message={saveError} /> : null}
               {locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  µ±Ç°ÕæÏàÒÑËø¶¨£¬±à¼­ÇøÎªÖ»¶Á¡£½âËøºó¿É¼ÌÐøÐÞ¸Ä¡£
+                  ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½à¼­ï¿½ï¿½ÎªÖ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¼ï¿½ï¿½ï¿½ï¿½Þ¸Ä¡ï¿½
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
+                  Î´ï¿½ï¿½Â¼×´Ì¬ï¿½Â½ï¿½Ö§ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½à¼­ï¿½ï¿½
                 </div>
               ) : null}
               <div
@@ -754,7 +754,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               >
                 {locked ? (
                   <div className="mb-3 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
-                    ÄÚÈÝÒÑËø¶¨£¬×÷ÎªÅÉÉúÔ´
+                    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ô´
                   </div>
                 ) : null}
                 <DocumentEditor
@@ -771,12 +771,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  µ±Ç°ÕæÏàÉÐÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                  ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù±à¼­ï¿½ï¿½Ä£ï¿½é¡£
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
+                  Î´ï¿½ï¿½Â¼×´Ì¬ï¿½Â½ï¿½Ö§ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½à¼­ï¿½ï¿½
                 </div>
               ) : null}
               <ModuleMetaGrid
@@ -785,7 +785,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     ? [
                         {
                           key: "motivation",
-                          title: "ºËÐÄ¶¯»ú",
+                          title: "ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -797,13 +797,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="ÀýÈç£º¸´³ð/Êê×ï"
+                              placeholder="ï¿½ï¿½ï¿½ç£ºï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½"
                             />
                           )
                         },
                         {
                           key: "progress",
-                          title: "ÒÑÖªÕæÏà½ø¶È",
+                          title: "ï¿½ï¿½Öªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -815,13 +815,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="ÀýÈç£º40%"
+                              placeholder="ï¿½ï¿½ï¿½ç£º40%"
                             />
                           )
                         },
                         {
                           key: "secrets",
-                          title: "ÃØÃÜÊýÁ¿",
+                          title: "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -833,7 +833,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="ÀýÈç£º3 ¸ö"
+                              placeholder="ï¿½ï¿½ï¿½ç£º3 ï¿½ï¿½"
                             />
                           )
                         }
@@ -841,7 +841,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                     : [
                         {
                           key: "direction",
-                          title: "Ö¸ÏòÐÔ",
+                          title: "Ö¸ï¿½ï¿½ï¿½ï¿½",
                           content: (
                             <input
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -853,13 +853,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                 })
                               }
                               disabled={!canEditModule}
-                              placeholder="ÀýÈç£ºÖ¸Ïò½ÇÉ«/³¡¾°"
+                              placeholder="ï¿½ï¿½ï¿½ç£ºÖ¸ï¿½ï¿½ï¿½É«/ï¿½ï¿½ï¿½ï¿½"
                             />
                           )
                         },
                         {
                           key: "difficulty",
-                          title: "»ñÈ¡ÄÑ¶È",
+                          title: "ï¿½ï¿½È¡ï¿½Ñ¶ï¿½",
                           content: (
                             <select
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -872,18 +872,18 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               }
                               disabled={!canEditModule}
                             >
-                              <option value="">ÇëÑ¡Ôñ</option>
-                              <option value="¡ï">¡ï</option>
-                              <option value="¡ï¡ï">¡ï¡ï</option>
-                              <option value="¡ï¡ï¡ï">¡ï¡ï¡ï</option>
-                              <option value="¡ï¡ï¡ï¡ï">¡ï¡ï¡ï¡ï</option>
-                              <option value="¡ï¡ï¡ï¡ï¡ï">¡ï¡ï¡ï¡ï¡ï</option>
+                              <option value="">ï¿½ï¿½Ñ¡ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½">ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</option>
                             </select>
                           )
                         },
                         {
                           key: "authenticity",
-                          title: "ÕæÊµ¶È",
+                          title: "ï¿½ï¿½Êµï¿½ï¿½",
                           content: (
                             <select
                               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -896,10 +896,10 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               }
                               disabled={!canEditModule}
                             >
-                              <option value="">ÇëÑ¡Ôñ</option>
-                              <option value="ÕæÊµ">ÕæÊµ</option>
-                              <option value="Ðé¼Ù">Ðé¼Ù</option>
-                              <option value="²»È·¶¨">²»È·¶¨</option>
+                              <option value="">ï¿½ï¿½Ñ¡ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½Êµ">ï¿½ï¿½Êµ</option>
+                              <option value="ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½</option>
+                              <option value="ï¿½ï¿½È·ï¿½ï¿½">ï¿½ï¿½È·ï¿½ï¿½</option>
                             </select>
                           )
                         }
@@ -927,7 +927,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                   />
                 </div>
               ) : (
-                <EmptyState title="ÔÝÎÞÌõÄ¿" description="ÇëÏÈ´´½¨ÌõÄ¿ºó±à¼­ÄÚÈÝ" />
+                <EmptyState title="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿" description="ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½à¼­ï¿½ï¿½ï¿½ï¿½" />
               )}
             </div>
           ) : module === "timeline" ? (
@@ -935,14 +935,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  µ±Ç°ÕæÏàÉÐÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                  ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù±à¼­ï¿½ï¿½Ä£ï¿½é¡£
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "duration",
-                    title: "×ÜÊ±³¤",
+                    title: "ï¿½ï¿½Ê±ï¿½ï¿½",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -954,13 +954,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="ÀýÈç£º4.5 Ð¡Ê±"
+                        placeholder="ï¿½ï¿½ï¿½ç£º4.5 Ð¡Ê±"
                       />
                     )
                   },
                   {
                     key: "density",
-                    title: "ÊÂ¼þÃÜ¶È",
+                    title: "ï¿½Â¼ï¿½ï¿½Ü¶ï¿½",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -972,13 +972,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="ÀýÈç£º15 min/node"
+                        placeholder="ï¿½ï¿½ï¿½ç£º15 min/node"
                       />
                     )
                   },
                   {
                     key: "twists",
-                    title: "¹Ø¼ü·´×ª",
+                    title: "ï¿½Ø¼ï¿½ï¿½ï¿½×ª",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -990,7 +990,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="ÀýÈç£º3 ´Î"
+                        placeholder="ï¿½ï¿½ï¿½ç£º3 ï¿½ï¿½"
                       />
                     )
                   }
@@ -1017,7 +1017,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       }}
                       disabled={!canEditModule}
                     >
-                      Ìí¼ÓÊÂ¼þ
+                      ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
                     </Button>
                   </div>
                   <div className="space-y-4">
@@ -1037,7 +1037,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         >
                           <div className="grid gap-3 md:grid-cols-[120px_minmax(0,1fr)_160px]">
                             <div>
-                              <div className="text-xs text-muted">Ê±¼äµã</div>
+                              <div className="text-xs text-muted">Ê±ï¿½ï¿½ï¿½</div>
                               <input
                                 className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-ink outline-none focus:border-ink/40"
                                 value={event.time || ""}
@@ -1049,11 +1049,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                   updateActiveData({ ...activeEntryData, events });
                                 }}
                                 disabled={!canEditModule}
-                                placeholder="ÀýÈç 18:00"
+                                placeholder="ï¿½ï¿½ï¿½ï¿½ 18:00"
                               />
                             </div>
                             <div>
-                              <div className="text-xs text-muted">ÊÂ¼þÏêÇé</div>
+                              <div className="text-xs text-muted">ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                               <div className="mt-2">
                                 <DocumentEditor
                                   value={eventDoc}
@@ -1074,7 +1074,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                               </div>
                             </div>
                             <div>
-                              <div className="text-xs text-muted">Éæ¼°½ÇÉ«</div>
+                              <div className="text-xs text-muted">ï¿½æ¼°ï¿½ï¿½É«</div>
                               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
                                 {participants.length ? (
                                   participants.map((item) => (
@@ -1094,7 +1094,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                                     </button>
                                   ))
                                 ) : (
-                                  <span>ÔÝÎÞ¹ØÁª</span>
+                                  <span>ï¿½ï¿½ï¿½Þ¹ï¿½ï¿½ï¿½</span>
                                 )}
                               </div>
                             </div>
@@ -1107,13 +1107,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       : []
                     ).length === 0 ? (
                       <div className="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-xs text-muted">
-                        µã»÷ÓÒÉÏ½Ç¡°Ìí¼ÓÊÂ¼þ¡±´´½¨Ê±¼äÏß½Úµã¡£
+                        ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï½Ç¡ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ß½Úµã¡£
                       </div>
                     ) : null}
                   </div>
                 </div>
               ) : (
-                <EmptyState title="ÔÝÎÞÊ±¼äÏß" description="ÇëÏÈ´´½¨Ê±¼äÏßÌõÄ¿" />
+                <EmptyState title="ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½" description="ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿" />
               )}
             </div>
           ) : module === "dm" ? (
@@ -1121,14 +1121,14 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  µ±Ç°ÕæÏàÉÐÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                  ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù±à¼­ï¿½ï¿½Ä£ï¿½é¡£
                 </div>
               ) : null}
               <ModuleMetaGrid
                 cards={[
                   {
                     key: "difficulty",
-                    title: "ÄÑ¶È",
+                    title: "ï¿½Ñ¶ï¿½",
                     content: (
                       <select
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -1141,16 +1141,16 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                         }
                         disabled={!canEditModule}
                       >
-                        <option value="">ÇëÑ¡Ôñ</option>
-                        <option value="³õ¼¶">³õ¼¶</option>
-                        <option value="½ø½×">½ø½×</option>
-                        <option value="À§ÄÑ">À§ÄÑ</option>
+                        <option value="">ï¿½ï¿½Ñ¡ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
+                        <option value="ï¿½ï¿½ï¿½ï¿½">ï¿½ï¿½ï¿½ï¿½</option>
                       </select>
                     )
                   },
                   {
                     key: "players",
-                    title: "ÈËÊýÏÞÖÆ",
+                    title: "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
                     content: (
                       <input
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/40"
@@ -1162,20 +1162,20 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           })
                         }
                         disabled={!canEditModule}
-                        placeholder="ÀýÈç£º5 ÈË¹Ì¶¨"
+                        placeholder="ï¿½ï¿½ï¿½ç£º5 ï¿½Ë¹Ì¶ï¿½"
                       />
                     )
                   },
                   {
                     key: "risk",
-                    title: "ºËÐÄÄÑµã",
+                    title: "ï¿½ï¿½ï¿½ï¿½ï¿½Ñµï¿½",
                     content: (
                       <div>
                         <div className="text-lg font-semibold text-ink">
-                          {p0Issues.length} ¸ö·çÏÕµã
+                          {p0Issues.length} ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½
                         </div>
                         <div className="mt-1 text-[11px] text-muted">
-                          {issueError ? "»ñÈ¡Ê§°Ü" : "À´×ÔÎÊÌâÁÐ±í P0"}
+                          {issueError ? "ï¿½ï¿½È¡Ê§ï¿½ï¿½" : "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ P0"}
                         </div>
                       </div>
                     )
@@ -1205,7 +1205,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                       />
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-white px-4 py-4 text-sm">
-                      <div className="text-sm font-semibold">±¾ÕÂ´ó¸Ù</div>
+                      <div className="text-sm font-semibold">ï¿½ï¿½ï¿½Â´ï¿½ï¿½</div>
                       <div className="mt-3 space-y-2 text-xs text-muted">
                         {buildOutline(activeCollection?.document.content).length ? (
                           buildOutline(activeCollection?.document.content).map((item) => (
@@ -1227,15 +1227,15 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                             </button>
                           ))
                         ) : (
-                          <div className="text-muted">ÔÝÎÞ±êÌâ</div>
+                          <div className="text-muted">ï¿½ï¿½ï¿½Þ±ï¿½ï¿½ï¿½</div>
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs text-muted">
                     <div className="flex items-center justify-between">
-                      <span>·çÏÕÌáÊ¾£¨P0£©</span>
-                      <span>{p0Issues.length} Ìõ</span>
+                      <span>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½P0ï¿½ï¿½</span>
+                      <span>{p0Issues.length} ï¿½ï¿½</span>
                     </div>
                     <div className="mt-2 space-y-1 text-[11px]">
                       {p0Issues.length ? (
@@ -1245,13 +1245,13 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                           </div>
                         ))
                       ) : (
-                        <div>ÔÝÎÞ·çÏÕµã</div>
+                        <div>ï¿½ï¿½ï¿½Þ·ï¿½ï¿½Õµï¿½</div>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <EmptyState title="ÔÝÎÞÕÂ½Ú" description="ÇëÏÈ´´½¨ DM ÊÖ²áÕÂ½Ú" />
+                <EmptyState title="ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½" description="ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ DM ï¿½Ö²ï¿½ï¿½Â½ï¿½" />
               )}
             </div>
           ) : (
@@ -1259,12 +1259,12 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
               {activeSaveError ? <ErrorBanner message={activeSaveError} /> : null}
               {requiresLocked && !locked ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  µ±Ç°ÕæÏàÉÐÎ´Ëø¶¨£¬ÇëËø¶¨ºóÔÙ±à¼­¸ÃÄ£¿é¡£
+                  ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù±à¼­ï¿½ï¿½Ä£ï¿½é¡£
                 </div>
               ) : null}
               {!canWrite ? (
                 <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-                  Î´µÇÂ¼×´Ì¬ÏÂ½öÖ§³ÖÖ»¶Áä¯ÀÀ£¬ÇëÏÈµÇÂ¼ºó±à¼­¡£
+                  Î´ï¿½ï¿½Â¼×´Ì¬ï¿½Â½ï¿½Ö§ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Èµï¿½Â¼ï¿½ï¿½à¼­ï¿½ï¿½
                 </div>
               ) : null}
               <DocumentEditor
@@ -1283,8 +1283,8 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
             value={tab}
             onChange={setTab}
             tabs={[
-              { key: "ai", label: "AI Ãæ°å" },
-              { key: "issues", label: "ÎÊÌâÁÐ±í" }
+              { key: "ai", label: "AI ï¿½ï¿½ï¿½" },
+              { key: "issues", label: "ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½" }
             ]}
           />
           {tab === "ai" ? (

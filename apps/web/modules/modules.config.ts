@@ -14,7 +14,7 @@ export type ModuleConfig = {
 export const MODULE_CONFIGS: ModuleConfig[] = [
   {
     key: "overview",
-    label: "¸ÅÀÀ",
+    label: "ï¿½ï¿½ï¿½ï¿½",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/overview`,
     requiresTruthLocked: false,
     editorType: "document",
@@ -22,14 +22,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "truth",
-    label: "ÕæÏà",
+    label: "ï¿½ï¿½ï¿½ï¿½",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/truth`,
     requiresTruthLocked: false,
     editorType: "truth"
   },
   {
     key: "roles",
-    label: "½ÇÉ«",
+    label: "ï¿½ï¿½É«",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/roles`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -37,7 +37,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "clues",
-    label: "ÏßË÷",
+    label: "ï¿½ï¿½ï¿½ï¿½",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/clues`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -45,7 +45,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "timeline",
-    label: "Ê±¼äÏß",
+    label: "Ê±ï¿½ï¿½ï¿½ï¿½",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/timeline`,
     requiresTruthLocked: true,
     editorType: "document",
@@ -53,7 +53,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     key: "dm",
-    label: "DM ÊÖ²á",
+    label: "DM ï¿½Ö²ï¿½",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/dm`,
     requiresTruthLocked: true,
     editorType: "document",
