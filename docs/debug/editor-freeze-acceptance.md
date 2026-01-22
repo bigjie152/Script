@@ -54,3 +54,8 @@ Generating static pages (6/6)
 ## 结论
 - TipTap 编辑器在角色切换与输入阶段不再反复重建
 - scheduleDestroy/setTimeout 频率显著下降（需结合 Performance 实测）
+
+## Playwright 复验（生产）
+- 命令：`PLAYWRIGHT_BASE_URL=https://script-426.pages.dev npx playwright test`
+- 结果：`1 passed`
+- 覆盖：角色模块切换 10 轮 + 输入，页面保持可交互
