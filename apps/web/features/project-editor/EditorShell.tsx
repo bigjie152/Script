@@ -191,6 +191,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   useEffect(() => {
     if (!entryParam) return;
+    if (activeCollection?.activeEntryId === entryParam) return;
     if (isRoleModule) {
       rolesCollection.setActiveEntry(entryParam);
     }
@@ -209,10 +210,11 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
     isClueModule,
     isTimelineModule,
     isDmModule,
-    rolesCollection,
-    cluesCollection,
-    timelineCollection,
-    dmCollection
+    activeCollection?.activeEntryId,
+    rolesCollection.setActiveEntry,
+    cluesCollection.setActiveEntry,
+    timelineCollection.setActiveEntry,
+    dmCollection.setActiveEntry
   ]);
 
   const overviewDocument = useMemo(

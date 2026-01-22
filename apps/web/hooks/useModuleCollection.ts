@@ -102,7 +102,10 @@ export function useModuleCollection(
 
   const setActiveEntry = useCallback(
     (entryId: string) => {
-      setCollection((prev) => ({ ...prev, activeId: entryId }));
+      setCollection((prev) => {
+        if (prev.activeId === entryId) return prev;
+        return { ...prev, activeId: entryId };
+      });
       const nextEntry = entries.find((entry) => entry.id === entryId);
       if (nextEntry) {
         setDocument(toEditorDocument(nextEntry, { projectId, module: moduleKey }));
