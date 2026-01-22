@@ -5,6 +5,7 @@ import { BubbleMenu, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import { mergeAttributes } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import { EditorDocument } from "../../types/editorDocument";
 import { updateDocumentContent } from "../adapters/plainTextAdapter";
 import { DatabaseLikeBlock } from "./databaseLikeBlock";
@@ -49,6 +50,11 @@ export function BlockEditor({
   onMentionClick
 }: BlockEditorProps) {
   const debugEnabled = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
+  const statsRef = useRef<{ created: number; destroyed: number; refresh: number }>({
+    created: 0,
+    destroyed: 0,
+    refresh: 0
+  });
   const lastContentRef = useRef("");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeBlockRef = useRef<HTMLElement | null>(null);
@@ -64,8 +70,23 @@ export function BlockEditor({
     [mentionItems]
   );
 
-  const extensions = useMemo(
-    () => [
+  const extensions = useMemo(() => {
+    if (debugEnabled) {
+      statsRef.current.refresh += 1;
+      if (typeof window !== "undefined") {
+        const record = ((window as any).__editorStats ||= {
+          created: 0,
+          destroyed: 0,
+          refresh: 0
+        });
+        record.refresh = statsRef.current.refresh;
+      }
+      console.info("[editor] extensions refreshed", {
+        module: value.module,
+        refresh: statsRef.current.refresh
+      });
+    }
+    return [
       StarterKit.configure({
         history: {},
         hardBreak: {},
@@ -135,48 +156,83 @@ export function BlockEditor({
         }
       }),
       SlashCommand
-    ],
-    [roleItems, clueItems]
+    ];
+  }, [roleItems, clueItems, debugEnabled, value.module]);
+
+  const handleUpdate = useCallback(
+    ({ editor }: { editor: Editor }) => {
+      const json = editor.getJSON();
+      lastContentRef.current = JSON.stringify(json);
+      onChange(updateDocumentContent(value, json as Record<string, unknown>));
+    },
+    [onChange, value]
+  );
+
+  const editorProps = useMemo(
+    () => ({
+      attributes: {
+        class: "tiptap block-editor"
+      },
+      handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
+        const target = event.target as HTMLElement | null;
+        if (!target || !onMentionClick) return false;
+        const mentionEl = target.closest("[data-mention=\"true\"]") as HTMLElement | null;
+        if (!mentionEl) return false;
+        const entityId = mentionEl.dataset.entityId;
+        const entityType = mentionEl.dataset.entityType as
+          | MentionItem["entityType"]
+          | undefined;
+        const label = mentionEl.dataset.label;
+        if (!entityId || !entityType) return false;
+        onMentionClick({ id: entityId, label: label || entityId, entityType });
+        return true;
+      }
+    }),
+    [onMentionClick]
   );
 
   const editor = useEditor({
     extensions,
     content: value.content,
     editable: !readonly,
-    editorProps: {
-      attributes: {
-        class: "tiptap block-editor"
-      },
-      handleClick: (_view, _pos, event) => {
-        const target = event.target as HTMLElement | null;
-        if (!target || !onMentionClick) return false;
-        const mentionEl = target.closest("[data-mention=\"true\"]") as HTMLElement | null;
-        if (!mentionEl) return false;
-        const entityId = mentionEl.dataset.entityId;
-        const entityType = mentionEl.dataset.entityType as MentionItem["entityType"] | undefined;
-        const label = mentionEl.dataset.label;
-        if (!entityId || !entityType) return false;
-        onMentionClick({ id: entityId, label: label || entityId, entityType });
-        return true;
-      }
-    },
-    onUpdate: ({ editor }) => {
-      const json = editor.getJSON();
-      lastContentRef.current = JSON.stringify(json);
-      onChange(updateDocumentContent(value, json as Record<string, unknown>));
-    }
+    shouldRerenderOnTransaction: false,
+    editorProps,
+    onUpdate: handleUpdate
   });
 
   useEffect(() => {
-    if (!editor || !debugEnabled) return;
-    console.info("[editor] create", {
-      module: value.module,
-      projectId: value.projectId
-    });
+    if (!editor) return;
+    if (debugEnabled) {
+      statsRef.current.created += 1;
+      if (typeof window !== "undefined") {
+        const record = ((window as any).__editorStats ||= {
+          created: 0,
+          destroyed: 0,
+          refresh: 0
+        });
+        record.created = statsRef.current.created;
+      }
+      console.info("[editor] create", {
+        module: value.module,
+        projectId: value.projectId,
+        created: statsRef.current.created
+      });
+    }
     return () => {
+      if (!debugEnabled) return;
+      statsRef.current.destroyed += 1;
+      if (typeof window !== "undefined") {
+        const record = ((window as any).__editorStats ||= {
+          created: 0,
+          destroyed: 0,
+          refresh: 0
+        });
+        record.destroyed = statsRef.current.destroyed;
+      }
       console.info("[editor] destroy", {
         module: value.module,
-        projectId: value.projectId
+        projectId: value.projectId,
+        destroyed: statsRef.current.destroyed
       });
     };
   }, [editor, debugEnabled, value.module, value.projectId]);
