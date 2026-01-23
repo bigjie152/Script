@@ -221,6 +221,7 @@ Gate 8.5（完成条件）
 
 
 ### Milestone 9 — 社区中心 V0.1（公开作品浏览 + 评论评分 + 结构化建议）
+**状态**：已完成（Gate 9 通过，证据见 `docs/ops/online-acceptance-report.md` “Milestone 9 Gate 9 验收”）
 **目标**：建立作品反馈系统，为 AI 与内测提供数据来源。
 
 **交付内容**

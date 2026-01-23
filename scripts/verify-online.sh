@@ -130,6 +130,10 @@ if ! echo "$notify_resp" | grep -q "suggestion_accepted"; then
   echo "WARN: notification missing suggestion_accepted"
 fi
 
+invoke_request "unpublish project" "POST" "${BASE_URL}/api/projects/${project_id}/unpublish" "" "200" > /dev/null
+invoke_request "community detail (owner after unpublish)" "GET" "${BASE_URL}/api/community/projects/${project_id}" "" "200" > /dev/null
+invoke_request "community detail (non-owner after unpublish)" "GET" "${BASE_URL}/api/community/projects/${project_id}" "" "404" "$COOKIE_JAR_B" > /dev/null
+
 echo "== stability: create + read x20 =="
 success=0
 fail=0

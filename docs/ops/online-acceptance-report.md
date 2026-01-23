@@ -375,3 +375,49 @@ base_url：https://script-426.pages.dev
 scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
 ```
 结果摘要：待补（20/20）
+
+---
+
+# Milestone 9 Gate 9 验收（社区中心 V1）
+
+验收时间：2026-01-23 13:53 +08:00  
+base_url：https://script-426.pages.dev  
+环境：Cloudflare Pages / Production
+
+## 1) 生产 D1 schema 更新
+执行：
+```powershell
+npx wrangler d1 execute script-staging --file=./d1-schema.sql --remote
+```
+校验：
+```powershell
+npx wrangler d1 execute script-staging --remote --command "PRAGMA table_info(projects);"
+```
+结果摘要：`projects` 已包含 `is_public` / `published_at` / `community_summary` / `ai_status` 字段。
+
+## 2) Gate 9 回归（verify-online）
+执行：
+```powershell
+scripts/verify-online.ps1 -BaseUrl "https://script-426.pages.dev"
+```
+
+结果摘要：
+- POST /api/projects 201（projectId=4dff3878-9e6f-47b3-8e4d-601284174055）
+- GET /api/projects/:id 200
+- PUT /api/projects/:id/truth 200
+- GET /api/projects/:id/issues 200（issues=[]）
+- POST /api/projects/:id/publish 200（published=true）
+- GET /api/community/projects?sort=latest&q=Smoke 200（包含 projectId）
+- PUT /api/community/projects/:id/rating 200（score=5）
+- POST /api/community/projects/:id/comments 201（commentId=0e02c968-58a5-4b33-9632-8bc93410bca3, isSuggestion=true）
+- POST /api/community/comments/:id/accept 200（accepted=true）
+- GET /api/me/notifications（B）包含 suggestion_accepted
+- POST /api/projects/:id/unpublish 200
+- GET /api/community/projects/:id（owner）200
+- GET /api/community/projects/:id（non-owner）404
+- stability 20/20 成功（total_time=45.624s）
+
+## 3) 结论
+- 社区发布/撤回、评分、评论、采纳与通知链路可用
+- 热门/最新列表与搜索可用（Smoke 项可命中）
+- 基线回归未回退

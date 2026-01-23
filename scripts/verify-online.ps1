@@ -121,11 +121,11 @@ $loginBodyB = @{ username = $AuthUsernameB; password = $AuthPasswordB } | Conver
 Invoke-Request -Title "auth login (B)" -Method "POST" -Url "$BaseUrl/api/auth/login" `
   -Body $loginBodyB -ExpectedStatus @("200") -Jar $CookieJarB | Out-Null
 
-$ratingBody = '{\"score\":5}'
+$ratingBody = '{"score":5}'
 Invoke-Request -Title "community rating" -Method "PUT" -Url "$BaseUrl/api/community/projects/$projectId/rating" `
   -Body $ratingBody -ExpectedStatus @("200") -Jar $CookieJarB | Out-Null
 
-$commentBody = '{\"content\":\"Suggestion: add character motive\",\"isSuggestion\":true}'
+$commentBody = '{"content":"Suggestion: add character motive","isSuggestion":true}'
 $commentResp = Invoke-Request -Title "community comment" -Method "POST" -Url "$BaseUrl/api/community/projects/$projectId/comments" `
   -Body $commentBody -ExpectedStatus @("201") -Jar $CookieJarB
 $commentId = ""
@@ -148,6 +148,15 @@ $notifyResp = Invoke-Request -Title "notifications (B)" -Method "GET" -Url "$Bas
 if (-not ($notifyResp -match "suggestion_accepted")) {
   Write-Host "WARN: notification missing suggestion_accepted"
 }
+
+Invoke-Request -Title "unpublish project" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/unpublish" `
+  -ExpectedStatus @("200","204") | Out-Null
+
+Invoke-Request -Title "community detail (owner after unpublish)" -Method "GET" `
+  -Url "$BaseUrl/api/community/projects/$projectId" -ExpectedStatus @("200") | Out-Null
+
+Invoke-Request -Title "community detail (non-owner after unpublish)" -Method "GET" `
+  -Url "$BaseUrl/api/community/projects/$projectId" -ExpectedStatus @("404") -Jar $CookieJarB | Out-Null
 
 Write-Host "== stability: create + read x20 =="
 $success = 0
