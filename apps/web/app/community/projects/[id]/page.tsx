@@ -1,15 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Sidebar } from "../../../../components/layout/Sidebar";
+import { TopNav } from "../../../../components/layout/TopNav";
 import { Button } from "../../../../components/common/Button";
 import { EmptyState } from "../../../../components/common/EmptyState";
 import { ErrorBanner } from "../../../../components/common/ErrorBanner";
 import { DocumentEditor } from "../../../../editors/DocumentEditor";
-import { createEmptyDocument, deserializeDocument } from "../../../../editors/adapters/plainTextAdapter";
+import {
+  createEmptyDocument,
+  deserializeDocument
+} from "../../../../editors/adapters/plainTextAdapter";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useCommunityProject } from "../../../../hooks/useCommunityProject";
+import { createProject } from "../../../../services/projectApi";
 import {
   acceptSuggestion,
   createCommunityComment,
@@ -22,12 +27,25 @@ import {
 
 export const runtime = "edge";
 
+type TabKey = "comments" | "overview";
+
+function getStringValue(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function getFirstString(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const item = value.find((entry) => typeof entry === "string");
+  return typeof item === "string" && item.trim().length > 0 ? item : null;
+}
+
 export default function CommunityProjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = typeof params?.id === "string" ? params.id : "";
   const { user } = useAuth();
   const { data, loading, error, refresh } = useCommunityProject(projectId);
+  const [searchInput, setSearchInput] = useState("");
   const [commentText, setCommentText] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -37,6 +55,8 @@ export default function CommunityProjectDetailPage() {
   const [editingText, setEditingText] = useState("");
   const [suggestion, setSuggestion] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<TabKey>("comments");
+  const [creating, setCreating] = useState(false);
 
   const overviewDoc = useMemo(() => {
     if (!data?.overview) return createEmptyDocument(projectId || "", "overview");
@@ -52,6 +72,31 @@ export default function CommunityProjectDetailPage() {
     );
     return Array.from(set.values());
   }, [data?.comments]);
+
+  const handleCreate = async () => {
+    if (!user) {
+      setCommentError("请先登录后再创建项目");
+      router.push("/login");
+      return;
+    }
+    setCommentError(null);
+    setCreating(true);
+    try {
+      const result = await createProject({
+        name: "未命名剧本",
+        description: "新建项目"
+      });
+      const newProjectId = result.projectId || result.project?.id;
+      if (!newProjectId) {
+        throw new Error("创建失败，请重试");
+      }
+      router.push(`/projects/${newProjectId}/editor/overview`);
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : "创建失败，请重试");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleRate = async (score: number) => {
     if (!user) {
@@ -234,121 +279,176 @@ export default function CommunityProjectDetailPage() {
     );
   }
 
+  const meta =
+    data.project.meta && typeof data.project.meta === "object"
+      ? (data.project.meta as Record<string, unknown>)
+      : null;
+  const summary =
+    data.project.communitySummary && typeof data.project.communitySummary === "object"
+      ? (data.project.communitySummary as Record<string, unknown>)
+      : null;
+  const genre =
+    getStringValue(meta?.genre) ||
+    getStringValue(summary?.genre) ||
+    "题材未设置";
+  const players =
+    getStringValue(meta?.players) ||
+    getStringValue(summary?.players) ||
+    "人数未知";
+  const tag = getFirstString(meta?.tags) || getFirstString(summary?.tags) || "多线叙事";
+  const introText =
+    data.project.description || getStringValue(summary?.intro) || "暂无简介";
+  const isLocked = data.truthStatus === "Locked";
+  const aiPass = data.aiStatus.issueCount === 0 && !data.aiStatus.hasP0;
+
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <Sidebar activeKey="community" />
         <main className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-2xl font-semibold">{data.project.name}</div>
-              <div className="mt-1 text-sm text-muted">
-                作者：{data.author.username}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {data.isOwner ? (
-                <Button onClick={() => router.push(`/projects/${projectId}/editor/overview`)}>
-                  进入编辑器
-                </Button>
-              ) : null}
-              <Button variant="ghost" onClick={() => router.push("/community")}>
-                返回广场
-              </Button>
-            </div>
+          <TopNav
+            onCreate={handleCreate}
+            creating={creating}
+            searchValue={searchInput}
+            showTitle={false}
+            onSearchChange={setSearchInput}
+          />
+
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+            <button
+              type="button"
+              onClick={() => router.push("/community")}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-ink"
+            >
+              ← 返回
+            </button>
+            <div className="text-lg font-semibold text-ink">{data.project.name}</div>
+            <span className="text-xs text-muted">by {data.author.username}</span>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <section className="space-y-4">
-              <div className="glass-panel-strong px-6 py-5">
-                <div className="text-sm text-muted">作品简介</div>
-                <div className="mt-2 text-sm text-ink">
-                  {data.project.description || "暂无简介"}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted">
-                  <div>更新时间：{data.project.updatedAt || "-"}</div>
-                  <div>真相状态：{data.truthStatus === "Locked" ? "已锁定" : "草稿"}</div>
-                  <div>AI 校验：{data.aiStatus.issueCount} 项问题</div>
+          <section className="glass-panel-strong px-6 py-6">
+            <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div className="flex h-52 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 text-center text-white">
+                <div>
+                  <div className="text-lg font-semibold">{data.project.name}</div>
+                  <div className="text-xs opacity-80">{data.project.name.toUpperCase()}</div>
                 </div>
               </div>
-
-              <div className="glass-panel-strong px-6 py-5">
-                <div className="text-sm font-semibold">评分与互动</div>
-                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                  <div className="text-lg font-semibold text-ink">
-                    {data.ratingSummary.displayScore.toFixed(1)}
-                  </div>
-                  <div className="text-xs text-muted">
-                    {data.ratingSummary.votes} 人评分，均分 {data.ratingSummary.average.toFixed(1)}
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <button
-                      key={score}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleRate(score)}
-                      className={`rounded-full border px-3 py-1 text-xs ${
-                        data.userState.rating === score
-                          ? "border-indigo-400 bg-indigo-50 text-indigo-600"
-                          : "border-slate-200 text-muted"
-                      }`}
-                    >
-                      {score} 星
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted">
-                  <button
-                    type="button"
-                    onClick={toggleUserLike}
-                    className={`rounded-full border px-3 py-1 ${
-                      data.userState.liked
-                        ? "border-indigo-400 bg-indigo-50 text-indigo-600"
-                        : "border-slate-200"
-                    }`}
-                  >
-                    👍 点赞 {data.counts.likes}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleUserFavorite}
-                    className={`rounded-full border px-3 py-1 ${
-                      data.userState.favorited
-                        ? "border-indigo-400 bg-indigo-50 text-indigo-600"
-                        : "border-slate-200"
-                    }`}
-                  >
-                    ⭐ 收藏 {data.counts.favorites}
-                  </button>
-                </div>
-              </div>
-
-              {acceptedAuthors.length ? (
-                <div className="glass-panel-strong px-6 py-4 text-sm text-muted">
-                  核心建议者：
-                  <span className="ml-2 text-ink">
-                    {acceptedAuthors.join("、")}
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-muted">
+                    {genre}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-muted">
+                    {players}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-muted">
+                    {tag}
                   </span>
                 </div>
-              ) : null}
+                <div className="text-sm text-muted">{introText}</div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className={`rounded-full px-3 py-1 ${aiPass ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                    {aiPass ? "AI 逻辑校验通过" : `AI 发现 ${data.aiStatus.issueCount} 项`}
+                  </span>
+                  <span className={`rounded-full px-3 py-1 ${isLocked ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-muted"}`}>
+                    {isLocked ? "Truth 已锁定" : "Truth 草稿"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-amber-500">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg
+                          key={star}
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill={star <= Math.round(data.ratingSummary.displayScore) ? "currentColor" : "none"}
+                          stroke="currentColor"
+                        >
+                          <path d="M10 15.27 4.18 18l1.11-6.47L.59 6.5l6.53-.95L10 .5l2.88 5.05 6.53.95-4.7 5.03L15.82 18 10 15.27z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted">
+                      {data.ratingSummary.displayScore.toFixed(1)} ({data.ratingSummary.votes} 人评分)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted">
+                    <button
+                      type="button"
+                      className={`rounded-full border px-3 py-1 ${
+                        data.userState.liked
+                          ? "border-indigo-300 bg-indigo-50 text-indigo-600"
+                          : "border-slate-200"
+                      }`}
+                      onClick={toggleUserLike}
+                    >
+                      赞 {data.counts.likes}
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded-full border px-3 py-1 ${
+                        data.userState.favorited
+                          ? "border-indigo-300 bg-indigo-50 text-indigo-600"
+                          : "border-slate-200"
+                      }`}
+                      onClick={toggleUserFavorite}
+                    >
+                      收藏 {data.counts.favorites}
+                    </button>
+                    <span>评论 {data.counts.comments}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
-              <div className="glass-panel-strong px-6 py-5">
-                <div className="text-sm font-semibold">作品概览</div>
-                <div className="mt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {data.isOwner ? (
+              <Button onClick={() => router.push(`/projects/${projectId}/editor/overview`)}>
+                进入编辑器
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => router.push(`/projects/${projectId}/preview`)}>
+              阅读剧本
+            </Button>
+          </div>
+
+          <section className="glass-panel-strong px-6 py-5">
+            <div className="flex items-center gap-6 border-b border-slate-100 pb-4 text-sm">
+              <button
+                type="button"
+                className={`text-sm font-semibold ${
+                  activeTab === "comments" ? "text-indigo-600" : "text-muted"
+                }`}
+                onClick={() => setActiveTab("comments")}
+              >
+                评论与建议 ({data.counts.comments})
+              </button>
+              <button
+                type="button"
+                className={`text-sm font-semibold ${
+                  activeTab === "overview" ? "text-indigo-600" : "text-muted"
+                }`}
+                onClick={() => setActiveTab("overview")}
+              >
+                剧本概览
+              </button>
+            </div>
+
+            {activeTab === "overview" ? (
+              <div className="mt-6">
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-sm text-muted">
                   <DocumentEditor value={overviewDoc} onChange={() => {}} readonly />
                 </div>
               </div>
-            </section>
-
-            <aside className="space-y-4">
-              <div className="glass-panel-strong px-5 py-4">
-                <div className="text-sm font-semibold">评论与建议</div>
-                <div className="mt-3 space-y-2">
+            ) : (
+              <div className="mt-6 space-y-6">
+                <div className="space-y-3">
                   <textarea
-                    className="h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink"
-                    placeholder="分享你的看法或建议..."
+                    className="h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink"
+                    placeholder="写下你的评论或建议..."
                     value={commentText}
                     onChange={(event) => setCommentText(event.target.value)}
                   />
@@ -360,17 +460,23 @@ export default function CommunityProjectDetailPage() {
                     />
                     标记为正式建议
                   </label>
-                  <Button onClick={handleComment} loading={busy} className="w-full">
-                    发布评论
-                  </Button>
+                  <div className="flex items-center justify-end gap-3">
+                    <Button onClick={handleComment} loading={busy}>
+                      发布
+                    </Button>
+                  </div>
                   {commentError ? (
                     <div className="text-xs text-rose-500">{commentError}</div>
                   ) : null}
                 </div>
-              </div>
-              <div className="glass-panel-strong px-5 py-4">
-                <div className="text-sm font-semibold">评论列表</div>
-                <div className="mt-4 space-y-4 text-sm">
+
+                {acceptedAuthors.length ? (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-xs text-emerald-700">
+                    核心建议者：{acceptedAuthors.join("、")}
+                  </div>
+                ) : null}
+
+                <div className="space-y-4">
                   {data.comments.length === 0 ? (
                     <div className="text-xs text-muted">暂无评论</div>
                   ) : (
@@ -380,15 +486,15 @@ export default function CommunityProjectDetailPage() {
                       const visibleReplies = expanded ? replies : replies.slice(0, 2);
 
                       return (
-                        <div key={comment.id} className="rounded-xl border border-slate-100 bg-white px-3 py-3">
+                        <div key={comment.id} className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
                           <div className="flex items-center justify-between text-xs text-muted">
                             <span>{comment.username}</span>
                             <span>{comment.createdAt}</span>
                           </div>
                           {editingId === comment.id ? (
-                            <div className="mt-2 space-y-2">
+                            <div className="mt-3 space-y-2">
                               <textarea
-                                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                 value={editingText}
                                 onChange={(event) => setEditingText(event.target.value)}
                               />
@@ -402,15 +508,13 @@ export default function CommunityProjectDetailPage() {
                                 >
                                   取消
                                 </Button>
-                                <Button onClick={() => handleUpdate(comment.id)}>
-                                  保存
-                                </Button>
+                                <Button onClick={() => handleUpdate(comment.id)}>保存</Button>
                               </div>
                             </div>
                           ) : (
-                            <div className="mt-2 text-sm text-ink">{comment.content}</div>
+                            <div className="mt-3 text-sm text-ink">{comment.content}</div>
                           )}
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+                          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
                             {comment.isSuggestion ? (
                               <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">
                                 正式建议
@@ -449,9 +553,7 @@ export default function CommunityProjectDetailPage() {
                                 删除
                               </button>
                             ) : null}
-                            {data.isOwner &&
-                            comment.isSuggestion &&
-                            comment.status !== "accepted" ? (
+                            {data.isOwner && comment.isSuggestion && comment.status !== "accepted" ? (
                               <button
                                 type="button"
                                 className="text-emerald-600"
@@ -464,7 +566,7 @@ export default function CommunityProjectDetailPage() {
                           {replyTo === comment.id ? (
                             <div className="mt-3 space-y-2">
                               <textarea
-                                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                 value={replyText}
                                 onChange={(event) => setReplyText(event.target.value)}
                               />
@@ -472,14 +574,12 @@ export default function CommunityProjectDetailPage() {
                                 <Button variant="ghost" onClick={() => setReplyTo(null)}>
                                   取消
                                 </Button>
-                                <Button onClick={() => handleReply(comment.id)}>
-                                  回复
-                                </Button>
+                                <Button onClick={() => handleReply(comment.id)}>回复</Button>
                               </div>
                             </div>
                           ) : null}
                           {visibleReplies.length > 0 ? (
-                            <div className="mt-3 space-y-2 border-l border-slate-200 pl-3">
+                            <div className="mt-4 space-y-2 border-l border-slate-200 pl-3">
                               {visibleReplies.map((reply) => (
                                 <div key={reply.id} className="text-xs text-muted">
                                   <div className="flex items-center justify-between">
@@ -516,8 +616,8 @@ export default function CommunityProjectDetailPage() {
                   )}
                 </div>
               </div>
-            </aside>
-          </div>
+            )}
+          </section>
         </main>
       </div>
     </div>

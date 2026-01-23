@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,8 +18,7 @@ export default function CommunityPage() {
   const { user } = useAuth();
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("latest");
-  const [genreFilter, setGenreFilter] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("hot");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +31,7 @@ export default function CommunityPage() {
 
   const { projects, loading, error: listError } = useCommunityProjects({
     sort: sortKey,
-    q: searchQuery,
-    genre: genreFilter || undefined
+    q: searchQuery
   });
 
   const handleCreate = async () => {
@@ -70,62 +68,67 @@ export default function CommunityPage() {
             onCreate={handleCreate}
             creating={creating}
             searchValue={searchInput}
+            showTitle={false}
             onSearchChange={setSearchInput}
-            title="社区广场"
-            subtitle="发现其他作者的优秀剧本与灵感。"
           />
+
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="text-2xl font-semibold">社区广场</div>
+              <div className="mt-1 text-sm text-muted">
+                探索共创剧本，参与评分与讨论。
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center rounded-full border border-slate-200 bg-white px-1 py-1 text-xs">
+                <button
+                  type="button"
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 ${
+                    sortKey === "hot" ? "bg-indigo-50 text-indigo-600" : "text-muted"
+                  }`}
+                  onClick={() => setSortKey("hot")}
+                >
+                  <span className="text-sm">🔥</span>
+                  热门
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 ${
+                    sortKey === "latest" ? "bg-indigo-50 text-indigo-600" : "text-muted"
+                  }`}
+                  onClick={() => setSortKey("latest")}
+                >
+                  <span className="text-sm">🕒</span>
+                  最新
+                </button>
+              </div>
+              <div className="glass-panel-strong flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted">
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M12.9 14.32a7 7 0 1 1 1.414-1.414l3.387 3.386a1 1 0 0 1-1.414 1.415l-3.387-3.387Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <input
+                  className="w-56 bg-transparent text-sm text-ink outline-none"
+                  placeholder="搜索剧本、作者..."
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                />
+              </div>
+            </div>
+          </div>
 
           {error ? <ErrorBanner message={error} /> : null}
           {listError ? <ErrorBanner message={listError} /> : null}
-
-          <div className="glass-panel-strong flex flex-wrap items-center gap-3 px-4 py-3 text-xs text-muted">
-            <span>排序：</span>
-            <div className="flex items-center rounded-full border border-slate-200 bg-white px-1 py-1">
-              <button
-                type="button"
-                className={`rounded-full px-3 py-1 ${
-                  sortKey === "latest" ? "bg-indigo-50 text-indigo-600" : ""
-                }`}
-                onClick={() => setSortKey("latest")}
-              >
-                最新
-              </button>
-              <button
-                type="button"
-                className={`rounded-full px-3 py-1 ${
-                  sortKey === "hot" ? "bg-indigo-50 text-indigo-600" : ""
-                }`}
-                onClick={() => setSortKey("hot")}
-              >
-                热门
-              </button>
-            </div>
-            <div className="ml-4 flex items-center gap-2">
-              <span>题材：</span>
-              <select
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-ink"
-                value={genreFilter}
-                onChange={(event) => setGenreFilter(event.target.value)}
-              >
-                <option value="">全部</option>
-                <option value="悬疑">悬疑</option>
-                <option value="推理">推理</option>
-                <option value="恐怖">恐怖</option>
-                <option value="情感">情感</option>
-                <option value="其他">其他</option>
-              </select>
-            </div>
-            <span className="ml-auto text-xs text-muted">
-              仅展示公开发布作品
-            </span>
-          </div>
 
           {loading ? (
             <EmptyState title="加载中…" description="正在读取社区作品" />
           ) : projects.length === 0 ? (
             <EmptyState title="暂无公开作品" description="稍后再来看看" />
           ) : (
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {projects.map((item) => (
                 <CommunityProjectCard
                   key={item.id}

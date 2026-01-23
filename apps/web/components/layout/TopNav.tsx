@@ -8,6 +8,7 @@ type TopNavProps = {
   onSearchChange?: (next: string) => void;
   title?: string;
   subtitle?: string;
+  showTitle?: boolean;
 };
 
 export function TopNav({
@@ -16,8 +17,10 @@ export function TopNav({
   searchValue,
   onSearchChange,
   title = "工作台",
-  subtitle = "继续你的创作与协作之旅。"
+  subtitle = "继续你的创作与协作之旅。",
+  showTitle = true
 }: TopNavProps) {
+  const hasTitle = showTitle && (title || subtitle);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -31,10 +34,12 @@ export function TopNav({
 
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <div>
-        <div className="text-2xl font-semibold">{title}</div>
-        <div className="mt-1 text-sm text-muted">{subtitle}</div>
-      </div>
+      {hasTitle ? (
+        <div>
+          <div className="text-2xl font-semibold">{title}</div>
+          <div className="mt-1 text-sm text-muted">{subtitle}</div>
+        </div>
+      ) : null}
       <div className="flex flex-1 justify-center">
         <div className="glass-panel-strong flex w-full max-w-md items-center gap-3 rounded-full px-4 py-2 text-sm text-muted">
           <span className="text-xs">搜索</span>
