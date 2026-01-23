@@ -1,4 +1,5 @@
-﻿import { Button } from "../common/Button";
+﻿import { useEffect } from "react";
+import { Button } from "../common/Button";
 
 type TopNavProps = {
   onCreate: () => void;
@@ -17,6 +18,17 @@ export function TopNav({
   title = "工作台",
   subtitle = "继续你的创作与协作之旅。"
 }: TopNavProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        document.getElementById("global-search")?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div>
@@ -27,6 +39,7 @@ export function TopNav({
         <div className="glass-panel-strong flex w-full max-w-md items-center gap-3 rounded-full px-4 py-2 text-sm text-muted">
           <span className="text-xs">搜索</span>
           <input
+            id="global-search"
             className="w-full bg-transparent text-sm text-ink outline-none"
             placeholder="搜索项目或社区..."
             value={searchValue || ""}

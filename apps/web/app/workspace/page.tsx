@@ -5,18 +5,19 @@ import { useRouter } from "next/navigation";
 import { Button } from "../../components/common/Button";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorBanner } from "../../components/common/ErrorBanner";
+import { KpiCard } from "../../components/dashboard/KpiCard";
+import { ProjectCard } from "../../components/projects/ProjectCard";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { TopNav } from "../../components/layout/TopNav";
 import { useAuth } from "../../hooks/useAuth";
-import { createProject, listProjects, ProjectListItem } from "../../services/projectApi";
+import { useProjects } from "../../hooks/useProjects";
+import { createProject } from "../../services/projectApi";
 
 export default function WorkspacePage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [projects, setProjects] = useState<ProjectListItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -27,33 +28,23 @@ export default function WorkspacePage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  useEffect(() => {
-    if (!user) {
-      setProjects([]);
-      return;
-    }
+  const { projects, loading, error: listError } = useProjects({
+    sort: "updatedAt",
+    q: searchQuery
+  });
 
-    let alive = true;
-    async function run() {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await listProjects({ scope: "mine", sort: "updatedAt", q: searchQuery });
-        if (!alive) return;
-        setProjects(result.projects || []);
-      } catch (err) {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : "加载失败，请重试");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    run();
+  const recentProjects = useMemo(() => projects.slice(0, 3), [projects]);
+  const lastActive = recentProjects[0];
 
-    return () => {
-      alive = false;
-    };
-  }, [user, searchQuery]);
+  const statusSummary = useMemo(() => {
+    const summary = { draft: 0, inProgress: 0, locked: 0 };
+    projects.forEach((item) => {
+      if (item.status === "In Progress") summary.inProgress += 1;
+      else summary.draft += 1;
+      if (item.truthStatus === "Locked") summary.locked += 1;
+    });
+    return summary;
+  }, [projects]);
 
   const handleCreate = async () => {
     if (!user) {
@@ -80,28 +71,6 @@ export default function WorkspacePage() {
     }
   };
 
-  const handlePreview = (projectId: string) => {
-    router.push(`/projects/${projectId}/preview`);
-  };
-
-  const listMeta = useMemo(() => {
-    if (!projects.length) return "暂无项目";
-    return `共 ${projects.length} 个项目`;
-  }, [projects.length]);
-
-  const recentProjects = useMemo(() => projects.slice(0, 4), [projects]);
-  const lastProject = recentProjects[0];
-
-  const statusSummary = useMemo(() => {
-    const summary = { draft: 0, inProgress: 0, locked: 0 };
-    projects.forEach((item) => {
-      if (item.status === "In Progress") summary.inProgress += 1;
-      else summary.draft += 1;
-      if (item.truthStatus === "Locked") summary.locked += 1;
-    });
-    return summary;
-  }, [projects]);
-
   return (
     <div className="min-h-screen px-4 py-6 lg:px-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -112,16 +81,59 @@ export default function WorkspacePage() {
             creating={creating}
             searchValue={searchInput}
             onSearchChange={setSearchInput}
-            title="工作台"
-            subtitle="现在要做什么？快速回到创作状态。"
+            title={user?.username ? `早安，${user.username}` : "工作台"}
+            subtitle="准备好开始今天的创作了吗？"
           />
 
           {!user ? (
             <div className="rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-xs text-amber-700">
-              当前未登录，请先登录后查看你的项目列表。
+              当前未登录，请先登录后查看你的项目与状态。
             </div>
           ) : null}
           {error ? <ErrorBanner message={error} /> : null}
+          {listError ? <ErrorBanner message={listError} /> : null}
+
+          <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-lg font-semibold">快捷入口</div>
+              <div className="mt-1 text-sm text-muted">
+                继续上次编辑或快速创建新的剧本项目。
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleCreate} loading={creating}>
+                新建项目
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={!lastActive}
+                onClick={() => {
+                  if (lastActive) {
+                    router.push(`/projects/${lastActive.id}/editor/overview`);
+                  }
+                }}
+              >
+                继续上次编辑
+              </Button>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-4">
+            <KpiCard title="草稿项目" value={statusSummary.draft} helper="本周" />
+            <KpiCard
+              title="进行中"
+              value={statusSummary.inProgress}
+              helper="推进中"
+              accent="amber"
+            />
+            <KpiCard
+              title="已锁定真相"
+              value={statusSummary.locked}
+              helper="已锁定"
+              accent="emerald"
+            />
+            <KpiCard title="本周创作时长" value="--" helper="小时" accent="slate" />
+          </section>
 
           <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="glass-panel-strong px-6 py-5">
@@ -132,95 +144,32 @@ export default function WorkspacePage() {
                 <div>暂无协作邀请</div>
               </div>
             </div>
-            <div className="glass-panel-strong flex flex-col justify-between px-6 py-5">
-              <div>
-                <div className="text-sm font-semibold">快捷入口</div>
-                <div className="mt-2 text-sm text-muted">
-                  快速开始新的创作或继续上次编辑。
-                </div>
+            <div className="glass-panel-strong px-6 py-5">
+              <div className="text-sm font-semibold">创作提醒</div>
+              <div className="mt-3 text-sm text-muted">
+                继续保持创作节奏，锁定真相后可解锁派生生成。
               </div>
-              <div className="mt-4 flex flex-col gap-2">
-                <Button onClick={handleCreate} loading={creating}>
-                  新建项目
-                </Button>
-                <Button
-                  variant="ghost"
-                  disabled={!lastProject}
-                  onClick={() => {
-                    if (lastProject) {
-                      router.push(`/projects/${lastProject.id}/editor/overview`);
-                    }
-                  }}
-                >
-                  继续上次编辑
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-4">
-            <div className="glass-panel-strong px-5 py-4">
-              <div className="text-xs text-muted">草稿</div>
-              <div className="mt-2 text-xl font-semibold">{statusSummary.draft}</div>
-            </div>
-            <div className="glass-panel-strong px-5 py-4">
-              <div className="text-xs text-muted">进行中</div>
-              <div className="mt-2 text-xl font-semibold">{statusSummary.inProgress}</div>
-            </div>
-            <div className="glass-panel-strong px-5 py-4">
-              <div className="text-xs text-muted">已锁定真相</div>
-              <div className="mt-2 text-xl font-semibold">{statusSummary.locked}</div>
-            </div>
-            <div className="glass-panel-strong px-5 py-4">
-              <div className="text-xs text-muted">本周创作时长</div>
-              <div className="mt-2 text-xl font-semibold">--</div>
             </div>
           </section>
 
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-lg font-semibold">最近活动</div>
-              <div className="text-xs text-muted">{listMeta}</div>
+              <div className="text-lg font-semibold">最近编辑</div>
+              <div className="text-xs text-muted">共 {projects.length} 个项目</div>
             </div>
             {loading ? (
               <EmptyState title="加载中…" description="正在读取项目列表" />
-            ) : projects.length === 0 ? (
+            ) : recentProjects.length === 0 ? (
               <EmptyState title="暂无项目" description="点击右上角新建项目" />
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
                 {recentProjects.map((item) => (
-                  <button
+                  <ProjectCard
                     key={item.id}
-                    onClick={() => handlePreview(item.id)}
-                    className="glass-panel-strong flex flex-col gap-4 px-5 py-4 text-left transition hover:-translate-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-muted">
-                        {formatTruthStatus(item.truthStatus)}
-                      </span>
-                      <span className="text-xs text-muted">
-                        {formatRelativeTime(item.updatedAt)}
-                      </span>
-                    </div>
-                    <div className="text-lg font-semibold">
-                      {item.name || "未命名项目"}
-                    </div>
-                    <div className="text-sm text-muted">
-                      {item.description || "暂无简介"}
-                    </div>
-                    <div className="mt-auto space-y-2">
-                      <div className="text-xs text-muted">进度</div>
-                      <div className="h-2 w-full rounded-full bg-slate-100">
-                        <div
-                          className="h-2 rounded-full bg-indigo-500"
-                          style={{ width: `${getProgress(item)}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-muted">
-                        最后编辑于 {formatRelativeTime(item.updatedAt)}
-                      </div>
-                    </div>
-                  </button>
+                    project={item}
+                    variant="compact"
+                    onClick={() => router.push(`/projects/${item.id}/preview`)}
+                  />
                 ))}
               </div>
             )}
@@ -229,40 +178,4 @@ export default function WorkspacePage() {
       </div>
     </div>
   );
-}
-
-function formatDate(value?: string) {
-  if (!value) return "-";
-  const normalized = value.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return value;
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function formatTruthStatus(status?: string) {
-  if (status === "Locked") return "已锁定";
-  return "草稿";
-}
-
-function formatRelativeTime(value?: string) {
-  if (!value) return "-";
-  const normalized = value.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return value;
-  const diff = Date.now() - date.getTime();
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (diff < minute) return "刚刚";
-  if (diff < hour) return `${Math.floor(diff / minute)} 分钟前`;
-  if (diff < day) return `${Math.floor(diff / hour)} 小时前`;
-  return `${Math.floor(diff / day)} 天前`;
-}
-
-function getProgress(item: ProjectListItem) {
-  if (item.status === "Completed") return 100;
-  if (item.status === "In Progress") return 45;
-  if (item.truthStatus === "Locked") return 60;
-  return 12;
 }
