@@ -7,6 +7,10 @@ export const projects = sqliteTable("projects", {
   description: text("description"),
   meta: text("meta", { mode: "json" }),
   ownerId: text("owner_id"),
+  isPublic: integer("is_public").notNull().default(0),
+  publishedAt: text("published_at"),
+  communitySummary: text("community_summary", { mode: "json" }),
+  aiStatus: text("ai_status", { mode: "json" }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
@@ -94,5 +98,49 @@ export const aiRequestLogs = sqliteTable("ai_request_logs", {
   provider: text("provider").notNull(),
   model: text("model"),
   meta: text("meta", { mode: "json" }),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const ratings = sqliteTable("ratings", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  userId: text("user_id").notNull(),
+  score: integer("score").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  userId: text("user_id").notNull(),
+  parentId: text("parent_id"),
+  content: text("content").notNull(),
+  isSuggestion: integer("is_suggestion").notNull().default(0),
+  status: text("status").notNull().default("normal"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const favorites = sqliteTable("favorites", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const likes = sqliteTable("likes", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  type: text("type").notNull(),
+  payload: text("payload", { mode: "json" }),
+  isRead: integer("is_read").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });

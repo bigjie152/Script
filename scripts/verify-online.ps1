@@ -7,6 +7,7 @@ if (-not $AuthUsername) { $AuthUsername = "smoke_user" }
 $AuthPassword = $env:AUTH_PASSWORD
 if (-not $AuthPassword) { $AuthPassword = "smoke_pass_123" }
 $CookieJar = [System.IO.Path]::GetTempFileName()
+$CookieJarB = [System.IO.Path]::GetTempFileName()
 
 function Truncate-Body {
   param([string]$Text)
@@ -20,7 +21,8 @@ function Invoke-Request {
     [string]$Method,
     [string]$Url,
     [string]$Body = "",
-    [string[]]$ExpectedStatus = @()
+    [string[]]$ExpectedStatus = @(),
+    [string]$Jar = $CookieJar
   )
 
   Write-Host "== $Title =="
@@ -32,13 +34,13 @@ function Invoke-Request {
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($tmp, $Body, $utf8NoBom)
     $resp = & curl.exe -s -X $Method -H "Content-Type: application/json" `
-      -b $CookieJar -c $CookieJar `
+      -b $Jar -c $Jar `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
       --data-binary "@$tmp" $Url
     Remove-Item $tmp -Force
   } else {
     $resp = & curl.exe -s -X $Method `
-      -b $CookieJar -c $CookieJar `
+      -b $Jar -c $Jar `
       -w "`nHTTP_STATUS:%{http_code}`nTIME_TOTAL:%{time_total}`n" `
       $Url
   }
@@ -101,6 +103,52 @@ Invoke-Request -Title "update truth" -Method "PUT" -Url "$BaseUrl/api/projects/$
 
 Invoke-Request -Title "list issues" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/issues" -ExpectedStatus @("200") | Out-Null
 
+Invoke-Request -Title "publish project" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/publish" -ExpectedStatus @("200","201") | Out-Null
+
+$communityResp = Invoke-Request -Title "community list" -Method "GET" -Url "$BaseUrl/api/community/projects?sort=latest&q=Smoke" -ExpectedStatus @("200")
+if (-not ($communityResp -match $projectId)) {
+  Write-Host "FAIL: community list does not include project"
+  exit 1
+}
+
+$AuthUsernameB = "$AuthUsername-2"
+$AuthPasswordB = "$AuthPassword-2"
+$registerBodyB = @{ username = $AuthUsernameB; password = $AuthPasswordB } | ConvertTo-Json -Compress
+Invoke-Request -Title "auth register (B)" -Method "POST" -Url "$BaseUrl/api/auth/register" `
+  -Body $registerBodyB -ExpectedStatus @("200","201","409") -Jar $CookieJarB | Out-Null
+
+$loginBodyB = @{ username = $AuthUsernameB; password = $AuthPasswordB } | ConvertTo-Json -Compress
+Invoke-Request -Title "auth login (B)" -Method "POST" -Url "$BaseUrl/api/auth/login" `
+  -Body $loginBodyB -ExpectedStatus @("200") -Jar $CookieJarB | Out-Null
+
+$ratingBody = '{\"score\":5}'
+Invoke-Request -Title "community rating" -Method "PUT" -Url "$BaseUrl/api/community/projects/$projectId/rating" `
+  -Body $ratingBody -ExpectedStatus @("200") -Jar $CookieJarB | Out-Null
+
+$commentBody = '{\"content\":\"Suggestion: add character motive\",\"isSuggestion\":true}'
+$commentResp = Invoke-Request -Title "community comment" -Method "POST" -Url "$BaseUrl/api/community/projects/$projectId/comments" `
+  -Body $commentBody -ExpectedStatus @("201") -Jar $CookieJarB
+$commentId = ""
+try {
+  $c = $commentResp | ConvertFrom-Json
+  $commentId = $c.comment.id
+} catch {
+  $commentId = ""
+}
+if (-not $commentId) {
+  Write-Host "FAIL: commentId missing"
+  exit 1
+}
+
+Invoke-Request -Title "accept suggestion" -Method "POST" -Url "$BaseUrl/api/community/comments/$commentId/accept" `
+  -ExpectedStatus @("200") | Out-Null
+
+$notifyResp = Invoke-Request -Title "notifications (B)" -Method "GET" -Url "$BaseUrl/api/me/notifications" `
+  -ExpectedStatus @("200") -Jar $CookieJarB
+if (-not ($notifyResp -match "suggestion_accepted")) {
+  Write-Host "WARN: notification missing suggestion_accepted"
+}
+
 Write-Host "== stability: create + read x20 =="
 $success = 0
 $fail = 0
@@ -161,3 +209,4 @@ Write-Host ("stability_fail={0}" -f $fail)
 Write-Host ("stability_total_time={0}s" -f $totalTime.ToString("F3"))
 
 Remove-Item $CookieJar -Force
+Remove-Item $CookieJarB -Force

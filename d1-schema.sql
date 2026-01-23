@@ -4,6 +4,10 @@
   description text,
   meta text,
   owner_id text,
+  is_public integer not null default 0,
+  published_at text,
+  community_summary text,
+  ai_status text,
   created_at text not null default CURRENT_TIMESTAMP,
   updated_at text not null default CURRENT_TIMESTAMP
 );
@@ -94,5 +98,64 @@ create table if not exists feedback (
   created_at text not null default CURRENT_TIMESTAMP
 );
 
--- add meta for existing databases (run once if missing)
-alter table projects add column meta text;
+create table if not exists ratings (
+  id text primary key,
+  project_id text not null,
+  user_id text not null,
+  score integer not null,
+  created_at text not null default CURRENT_TIMESTAMP,
+  updated_at text not null default CURRENT_TIMESTAMP
+);
+
+create unique index if not exists ratings_project_user_idx
+  on ratings (project_id, user_id);
+
+create table if not exists comments (
+  id text primary key,
+  project_id text not null,
+  user_id text not null,
+  parent_id text,
+  content text not null,
+  is_suggestion integer not null default 0,
+  status text not null default 'normal',
+  created_at text not null default CURRENT_TIMESTAMP,
+  updated_at text not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists comments_project_idx
+  on comments (project_id, created_at);
+
+create table if not exists favorites (
+  id text primary key,
+  project_id text not null,
+  user_id text not null,
+  created_at text not null default CURRENT_TIMESTAMP
+);
+
+create unique index if not exists favorites_project_user_idx
+  on favorites (project_id, user_id);
+
+create table if not exists likes (
+  id text primary key,
+  project_id text not null,
+  user_id text not null,
+  created_at text not null default CURRENT_TIMESTAMP
+);
+
+create unique index if not exists likes_project_user_idx
+  on likes (project_id, user_id);
+
+create table if not exists notifications (
+  id text primary key,
+  user_id text not null,
+  type text not null,
+  payload text,
+  is_read integer not null default 0,
+  created_at text not null default CURRENT_TIMESTAMP
+);
+
+-- add new columns for existing databases (run once if missing)
+alter table projects add column is_public integer;
+alter table projects add column published_at text;
+alter table projects add column community_summary text;
+alter table projects add column ai_status text;

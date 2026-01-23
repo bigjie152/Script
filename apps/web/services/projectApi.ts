@@ -6,6 +6,10 @@ export type Project = {
   description?: string | null;
   meta?: Record<string, unknown> | null;
   ownerId?: string | null;
+  isPublic?: boolean | number;
+  publishedAt?: string | null;
+  communitySummary?: Record<string, unknown> | null;
+  aiStatus?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -75,6 +79,20 @@ export async function updateProject(
     method: "PUT",
     body: JSON.stringify(payload)
   });
+}
+
+export async function publishProject(projectId: string) {
+  return apiRequest<{ published: boolean; publishedAt?: string }>(
+    `/api/projects/${projectId}/publish`,
+    { method: "POST" }
+  );
+}
+
+export async function unpublishProject(projectId: string) {
+  return apiRequest<{ published: boolean }>(
+    `/api/projects/${projectId}/unpublish`,
+    { method: "POST" }
+  );
 }
 
 export async function listProjects(params: {
