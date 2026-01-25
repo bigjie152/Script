@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import EditorApp from "@/ui/aistudio/editor/EditorApp";
 import { ModuleType } from "@/ui/aistudio/editor/types/types";
 
