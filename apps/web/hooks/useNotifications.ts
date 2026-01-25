@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { getNotifications, markNotificationsRead, NotificationItem } from "../services/userApi";
+import {
+  getNotifications,
+  markNotificationsRead,
+  NotificationItem
+} from "../services/userApi";
 import { useAuth } from "./useAuth";
 
 export function useNotifications() {

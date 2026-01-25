@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { listCommunityProjects, CommunityProjectListItem } from "../services/communityApi";
+import {
+  listCommunityProjects,
+  CommunityProjectListItem
+} from "../services/communityApi";
 
 type UseCommunityProjectsOptions = {
   sort?: "latest" | "hot";

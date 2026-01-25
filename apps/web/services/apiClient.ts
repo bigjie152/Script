@@ -56,7 +56,7 @@ export async function apiRequest<T>(
     if (!response.ok) {
       const message =
         (data as ApiErrorPayload)?.error?.message ||
-        "请求失败，请稍后重试";
+        "请求失败，请稍后再试";
       throw new ApiError(message, response.status, data);
     }
 
@@ -64,10 +64,10 @@ export async function apiRequest<T>(
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if ((error as Error)?.name === "AbortError") {
-      throw new ApiError("请求超时，请稍后重试", 0);
+      throw new ApiError("请求超时，请稍后再试", 0);
     }
     throw new ApiError(
-      error instanceof Error ? error.message : "网络异常，请稍后重试",
+      error instanceof Error ? error.message : "网络异常，请稍后再试",
       0
     );
   } finally {

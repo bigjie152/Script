@@ -96,7 +96,10 @@ export function getActiveEntry(
   if (!collection.entries.length) return null;
   const activeId = collection.activeId;
   if (!activeId) return collection.entries[0];
-  return collection.entries.find((entry) => entry.id === activeId) ?? collection.entries[0];
+  return (
+    collection.entries.find((entry) => entry.id === activeId) ??
+    collection.entries[0]
+  );
 }
 
 export function updateEntryContent(
@@ -108,7 +111,11 @@ export function updateEntryContent(
     ...collection,
     entries: collection.entries.map((entry) =>
       entry.id === entryId
-        ? { ...entry, content: normalizeContent(content), updatedAt: new Date().toISOString() }
+        ? {
+            ...entry,
+            content: normalizeContent(content),
+            updatedAt: new Date().toISOString()
+          }
         : entry
     )
   };

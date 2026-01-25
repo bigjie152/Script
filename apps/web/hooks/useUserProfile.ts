@@ -27,7 +27,9 @@ export function useUserProfile() {
         const result = await getUserProfile();
         if (alive) setData(result);
       } catch (err) {
-        if (alive) setError(err instanceof Error ? err.message : "加载失败，请重试");
+        if (alive) {
+          setError(err instanceof Error ? err.message : "加载失败，请重试");
+        }
       } finally {
         if (alive) setLoading(false);
       }

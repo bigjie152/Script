@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCommunityProject, CommunityProjectDetail } from "../services/communityApi";
+import {
+  getCommunityProject,
+  CommunityProjectDetail
+} from "../services/communityApi";
 
 export function useCommunityProject(projectId: string) {
   const [data, setData] = useState<CommunityProjectDetail | null>(null);
