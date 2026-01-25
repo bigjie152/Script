@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Compass, Star, ShieldCheck } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
@@ -8,6 +8,7 @@ type ModuleCollectionState = {
   document: EditorDocument;
   setDocument: (next: EditorDocument) => void;
   setActiveEntry: (entryId: string) => void;
+  updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
 };
 
 interface CluesProps {
@@ -23,7 +24,7 @@ const Clues: React.FC<CluesProps> = ({
   onSelectEntry,
   onCreateEntry
 }) => {
-  const { entries, setActiveEntry, document, setDocument } = collection;
+  const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
 
   const selectedEntry = useMemo(() => {
     if (!entryId) return null;
@@ -53,7 +54,7 @@ const Clues: React.FC<CluesProps> = ({
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{clue.name}</h3>
-                  <p className="text-xs text-gray-500">书房</p>
+                  <p className="text-xs text-gray-500">线索描述</p>
                 </div>
               </div>
               <div className="text-xs text-gray-400">
@@ -74,50 +75,74 @@ const Clues: React.FC<CluesProps> = ({
     );
   }
 
-  const pointsTo = (selectedEntry.meta?.pointsTo as string) || "陈医生";
-  const difficulty = (selectedEntry.meta?.difficulty as string) || "获取难度";
-  const reliability = (selectedEntry.meta?.reliability as string) || "真实线索";
+  const meta = selectedEntry.meta ?? {};
+  const pointsTo = (meta.pointsTo as string) || "";
+  const difficulty = (meta.difficulty as string) || "2";
+  const reliability = (meta.reliability as string) || "真实线索";
 
   return (
     <div className="h-full flex flex-col min-w-0">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <Compass size={16} className="text-blue-500" />
-            <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">指向性</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
+            <Compass size={14} className="text-blue-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">指向性</span>
           </div>
-          <div className="font-semibold text-gray-800 text-lg">{pointsTo}</div>
+          <input
+            className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+            value={pointsTo}
+            placeholder="例如：陈医生"
+            onChange={(event) =>
+              updateMeta(selectedEntry.id, { ...meta, pointsTo: event.target.value })
+            }
+          />
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <Star size={16} className="text-amber-500" />
-            <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">获取难度</span>
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
+            <Star size={14} className="text-amber-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">获取难度</span>
           </div>
-          <div className="flex items-center gap-2 text-amber-500">
-            <Star size={14} />
-            <Star size={14} />
-            <Star size={14} className="opacity-30" />
-          </div>
+          <select
+            className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+            value={difficulty}
+            onChange={(event) =>
+              updateMeta(selectedEntry.id, { ...meta, difficulty: event.target.value })
+            }
+          >
+            <option value="1">一星</option>
+            <option value="2">二星</option>
+            <option value="3">三星</option>
+            <option value="4">四星</option>
+            <option value="5">五星</option>
+          </select>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <ShieldCheck size={16} className="text-green-500" />
-            <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">真实度</span>
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={14} className="text-green-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">真实度</span>
           </div>
-          <div className="font-semibold text-gray-800 text-lg">{reliability}</div>
+          <select
+            className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+            value={reliability}
+            onChange={(event) =>
+              updateMeta(selectedEntry.id, { ...meta, reliability: event.target.value })
+            }
+          >
+            <option value="真实线索">真实线索</option>
+            <option value="不确定">不确定</option>
+            <option value="虚假线索">虚假线索</option>
+          </select>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <h2 className="font-bold text-gray-800 text-lg">{selectedEntry.name}</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-xs px-2 py-1 bg-white text-gray-500 rounded border border-gray-200 shadow-sm">
-              Source: v1
-            </span>
-          </div>
+      <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
+          <h2 className="font-semibold text-gray-800 text-lg">{selectedEntry.name}</h2>
+          <span className="text-xs px-2 py-1 bg-white text-gray-500 rounded border border-gray-200 shadow-sm">
+            Source: v1
+          </span>
         </div>
         <div className="flex-1 overflow-hidden">
           <DocumentEditor value={document} onChange={setDocument} />

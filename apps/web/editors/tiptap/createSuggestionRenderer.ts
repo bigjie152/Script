@@ -20,7 +20,7 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
 
       if (!items.length) {
         const empty = document.createElement("div");
-        empty.className = "suggestion-item is-empty";
+        empty.className = "px-3 py-2 text-xs text-slate-400";
         empty.textContent = emptyText;
         container.appendChild(empty);
         return;
@@ -30,18 +30,21 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         const row = document.createElement("button");
         row.type = "button";
         row.className =
-          "suggestion-item" + (index === selectedIndex ? " is-selected" : "");
+          "w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors " +
+          (index === selectedIndex
+            ? "bg-slate-100 text-slate-900"
+            : "text-slate-600 hover:bg-slate-100");
         const title = item.title || item.label || "";
         const desc = item.description || "";
 
         const titleEl = document.createElement("div");
-        titleEl.className = "suggestion-title";
+        titleEl.className = "text-sm";
         titleEl.textContent = title;
         row.appendChild(titleEl);
 
         if (desc) {
           const descEl = document.createElement("div");
-          descEl.className = "suggestion-desc";
+          descEl.className = "text-xs text-slate-400";
           descEl.textContent = desc;
           row.appendChild(descEl);
         }
@@ -66,7 +69,9 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         command = props.command;
         selectedIndex = 0;
         container = document.createElement("div");
-        container.className = className;
+        container.className =
+          className +
+          " z-50 w-60 rounded-lg border border-slate-200 bg-white p-1 shadow-lg";
         renderItems();
         setPosition(props.clientRect?.());
         document.body.appendChild(container);

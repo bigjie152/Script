@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Activity, Clock3, Repeat } from "lucide-react";
 
 type ModuleCollectionState = {
-  entries: { id: string; name: string; data?: Record<string, unknown> }[];
+  entries: { id: string; name: string; data?: Record<string, unknown>; meta?: Record<string, unknown> }[];
   setActiveEntry: (entryId: string) => void;
   updateData: (entryId: string, data: Record<string, unknown>) => void;
+  updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
 };
 
 interface TimelineProps {
@@ -27,7 +28,7 @@ const Timeline: React.FC<TimelineProps> = ({
   onSelectEntry,
   onCreateEntry
 }) => {
-  const { entries, setActiveEntry, updateData } = collection;
+  const { entries, setActiveEntry, updateData, updateMeta } = collection;
 
   const selectedEntry = useMemo(() => {
     if (!entryId) return null;
@@ -51,7 +52,7 @@ const Timeline: React.FC<TimelineProps> = ({
               onClick={() => onSelectEntry(entry.id)}
               type="button"
             >
-              <div className="text-sm text-gray-400 mb-2">CURRENT</div>
+              <div className="text-xs text-gray-400 mb-2">CURRENT</div>
               <h3 className="font-bold text-gray-900">{entry.name}</h3>
               <p className="text-xs text-gray-500">点击进入事件编辑</p>
             </button>
@@ -67,6 +68,11 @@ const Timeline: React.FC<TimelineProps> = ({
       </div>
     );
   }
+
+  const meta = selectedEntry.meta ?? {};
+  const duration = (meta.duration as string) || "";
+  const density = (meta.density as string) || "";
+  const turns = (meta.turns as string) || "";
 
   const events = (selectedEntry.data?.events as TimelineEvent[]) || [];
 
@@ -94,41 +100,62 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className="h-full flex flex-col min-w-0">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-            <Clock3 size={18} />
+            <Clock3 size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">总时长</div>
-            <div className="text-lg font-semibold text-gray-800">4.5 小时</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">总时长</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：4.5 小时"
+              value={duration}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, duration: event.target.value })
+              }
+            />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-            <Activity size={18} />
+            <Activity size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">事件密度</div>
-            <div className="text-lg font-semibold text-gray-800">15 min/node</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">事件密度</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：15 min/node"
+              value={density}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, density: event.target.value })
+              }
+            />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
-            <Repeat size={18} />
+            <Repeat size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">关键反转</div>
-            <div className="text-lg font-semibold text-gray-800">3 次</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">关键反转</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：3 次"
+              value={turns}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, turns: event.target.value })
+              }
+            />
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+      <div className="flex-1 bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
           <div className="flex items-center gap-3">
             <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">CURRENT</span>
-            <h2 className="font-bold text-gray-800 text-lg">{selectedEntry.name}</h2>
+            <h2 className="font-semibold text-gray-800 text-lg">{selectedEntry.name}</h2>
           </div>
           <button
             className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-sm hover:bg-indigo-700"

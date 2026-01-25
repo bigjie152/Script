@@ -109,13 +109,56 @@ const EditorApp: React.FC = () => {
 
   const createEntry = useCallback(
     (module: EditorModuleKey) => {
-      if (!projectId) return;
+      if (!projectId) return null;
       let nextId: string | null = null;
       if (module === "roles") nextId = roles.createEntry();
       if (module === "clues") nextId = clues.createEntry();
       if (module === "timeline") nextId = timeline.createEntry();
       if (module === "dm") nextId = manual.createEntry();
       if (nextId) navigate(module, nextId);
+      return nextId;
+    },
+    [projectId, roles, clues, timeline, manual, navigate]
+  );
+
+  const renameEntry = useCallback(
+    async (module: EditorModuleKey, entryId: string, name: string) => {
+      if (!projectId) return false;
+      const target =
+        module === "roles"
+          ? roles
+          : module === "clues"
+            ? clues
+            : module === "timeline"
+              ? timeline
+              : module === "dm"
+                ? manual
+                : null;
+      if (!target) return false;
+      target.renameEntry(entryId, name);
+      return target.save();
+    },
+    [projectId, roles, clues, timeline, manual]
+  );
+
+  const deleteEntry = useCallback(
+    async (module: EditorModuleKey, entryId: string) => {
+      if (!projectId) return false;
+      const target =
+        module === "roles"
+          ? roles
+          : module === "clues"
+            ? clues
+            : module === "timeline"
+              ? timeline
+              : module === "dm"
+                ? manual
+                : null;
+      if (!target) return false;
+      target.removeEntry(entryId);
+      const ok = await target.save();
+      navigate(module);
+      return ok;
     },
     [projectId, roles, clues, timeline, manual, navigate]
   );
@@ -187,6 +230,8 @@ const EditorApp: React.FC = () => {
         activeEntryId={entryId}
         onNavigate={navigate}
         onCreateEntry={createEntry}
+        onRenameEntry={renameEntry}
+        onDeleteEntry={deleteEntry}
         structure={navStructure}
       />
 
@@ -202,7 +247,7 @@ const EditorApp: React.FC = () => {
           onBack={() => router.push("/workspace")}
         />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto px-6 py-5 md:px-7 md:py-6">
           {moduleKey === "overview" && (
             <Overview
               projectMeta={projectMeta}
@@ -226,6 +271,7 @@ const EditorApp: React.FC = () => {
               entryId={entryId}
               onSelectEntry={(id) => navigate("roles", id)}
               onCreateEntry={() => createEntry("roles")}
+              onRenameEntry={(id, name) => renameEntry("roles", id, name)}
             />
           )}
           {moduleKey === "clues" && (

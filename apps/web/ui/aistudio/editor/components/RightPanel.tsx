@@ -8,7 +8,7 @@ const RightPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"canvas" | "issues">("canvas");
 
   return (
-    <div className="w-80 bg-white border-l border-gray-100 h-screen flex flex-col shadow-sm z-10">
+    <div className="w-72 bg-white border-l border-gray-100 h-screen flex flex-col shadow-sm z-10">
       <div className="flex p-2 gap-2 border-b border-gray-100">
         <button
           onClick={() => setActiveTab("canvas")}

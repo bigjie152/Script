@@ -33,15 +33,15 @@ const Overview: React.FC<OverviewProps> = ({
   const versionLabel = form.version || latestSnapshotId || "v0.1";
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col gap-6 p-1">
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
+    <div className="max-w-5xl mx-auto h-full flex flex-col gap-5 p-1">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
           <div className="flex flex-col">
-            <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
+            <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider">
               项目类型
             </span>
             <select
-              className="text-lg text-gray-800 font-medium bg-transparent outline-none"
+              className="text-sm text-gray-800 font-medium bg-transparent outline-none"
               value={form.genre}
               onChange={(event) => updateField("genre", event.target.value)}
             >
@@ -58,15 +58,15 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
           <div className="flex flex-col">
-            <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
+            <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider">
               人数
             </span>
             <div className="flex items-center gap-2 text-gray-800 font-medium">
-              <Users size={18} className="text-gray-400" />
+              <Users size={16} className="text-gray-400" />
               <select
-                className="text-lg text-gray-800 font-medium bg-transparent outline-none"
+                className="text-sm text-gray-800 font-medium bg-transparent outline-none"
                 value={form.players}
                 onChange={(event) => updateField("players", event.target.value)}
               >
@@ -84,14 +84,14 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
           <div className="flex flex-col">
-            <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
+            <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider">
               当前版本
             </span>
             <div className="flex items-center gap-2 text-gray-800 font-medium">
-              <GitBranch size={18} className="text-gray-400" />
-              <span className="text-lg text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-sm">
+              <GitBranch size={16} className="text-gray-400" />
+              <span className="text-sm text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-sm">
                 {versionLabel}
               </span>
             </div>
@@ -103,7 +103,7 @@ const Overview: React.FC<OverviewProps> = ({
       </section>
 
       <section className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-gray-800">剧本简介</h2>
             <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
@@ -112,7 +112,7 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 min-h-[500px]">
+        <div className="flex-1 min-h-[520px]">
           <DocumentEditor
             value={overviewDoc.document}
             onChange={overviewDoc.setDocument}

@@ -13,6 +13,7 @@ import { SlashCommand } from "./slashCommand";
 import { MentionItem, createMentionSuggestion } from "./mentionSuggestion";
 import { BlockNodeClass } from "./blockNodeClass";
 import { BubbleMenuBar } from "./menus/BubbleMenuBar";
+import { TopToolbar } from "./menus/TopToolbar";
 import { BlockHandle } from "./ui/BlockHandle";
 import { BlockMenu } from "./menus/BlockMenu";
 
@@ -171,7 +172,8 @@ export function BlockEditor({
   const editorProps = useMemo(
     () => ({
       attributes: {
-        class: "tiptap block-editor"
+        class:
+          "tiptap block-editor min-h-[420px] md:min-h-[520px] text-[15px] leading-7 text-slate-800 focus:outline-none"
       },
       handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
         const target = event.target as HTMLElement | null;
@@ -326,8 +328,9 @@ export function BlockEditor({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full flex-col rounded-2xl border border-slate-100 bg-white/90 shadow-sm"
+      className="relative flex h-full w-full flex-col rounded-xl border border-slate-100 bg-white"
     >
+      <TopToolbar editor={editor} readonly={readonly} />
       {editor ? (
         <BubbleMenu
           editor={editor}
@@ -355,7 +358,7 @@ export function BlockEditor({
         onDelete={deleteCurrentBlock}
         onInsert={insertBlockBelow}
       />
-      <div className="editor-scroll px-6 py-5">
+      <div className="editor-scroll flex-1 overflow-y-auto px-6 py-5">
         <EditorContent editor={editor} />
       </div>
     </div>

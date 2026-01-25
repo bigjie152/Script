@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { AlertTriangle, BookOpenText, Users } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
@@ -8,6 +8,7 @@ type ModuleCollectionState = {
   document: EditorDocument;
   setDocument: (next: EditorDocument) => void;
   setActiveEntry: (entryId: string) => void;
+  updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
 };
 
 interface ManualProps {
@@ -23,7 +24,7 @@ const Manual: React.FC<ManualProps> = ({
   onSelectEntry,
   onCreateEntry
 }) => {
-  const { entries, setActiveEntry, document, setDocument } = collection;
+  const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
 
   const selectedEntry = useMemo(() => {
     if (!entryId) return null;
@@ -63,48 +64,74 @@ const Manual: React.FC<ManualProps> = ({
     );
   }
 
+  const meta = selectedEntry.meta ?? {};
+  const difficulty = (meta.difficulty as string) || "";
+  const players = (meta.players as string) || "";
+  const risks = (meta.risks as string) || "";
+
   return (
     <div className="h-full flex flex-col min-w-0">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-            <BookOpenText size={18} />
+            <BookOpenText size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">开本难度</div>
-            <div className="text-lg font-semibold text-gray-800">进阶 (Hard)</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">开本难度</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：进阶"
+              value={difficulty}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, difficulty: event.target.value })
+              }
+            />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-            <Users size={18} />
+            <Users size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">人数限制</div>
-            <div className="text-lg font-semibold text-gray-800">5 人固定</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">人数限制</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：5 人"
+              value={players}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, players: event.target.value })
+              }
+            />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
-            <AlertTriangle size={18} />
+            <AlertTriangle size={16} />
           </div>
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">核心难点</div>
-            <div className="text-lg font-semibold text-gray-800">1 个风险点</div>
+          <div className="flex-1">
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">核心难点</div>
+            <input
+              className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
+              placeholder="例如：1 个风险点"
+              value={risks}
+              onChange={(event) =>
+                updateMeta(selectedEntry.id, { ...meta, risks: event.target.value })
+              }
+            />
           </div>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <h2 className="font-bold text-gray-800 text-lg">{selectedEntry.name}</h2>
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-4">
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
+            <h2 className="font-semibold text-gray-800 text-lg">{selectedEntry.name}</h2>
           </div>
           <div className="flex-1 overflow-hidden">
             <DocumentEditor value={document} onChange={setDocument} />
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 text-sm text-gray-600">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm text-gray-600">
           <div className="font-semibold text-gray-800 mb-2">本章大纲</div>
           <div className="space-y-2">
             <div className="px-2 py-1 rounded bg-indigo-50 text-indigo-700">1. 核心流程</div>

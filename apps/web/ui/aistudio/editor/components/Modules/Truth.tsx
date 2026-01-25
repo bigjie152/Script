@@ -29,22 +29,22 @@ const Truth: React.FC<TruthProps> = ({
   const snapshotLabel = latestSnapshotId || "v0.1";
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col gap-6 p-1">
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+    <div className="max-w-5xl mx-auto h-full flex flex-col gap-5 p-1">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
             最新快照
           </span>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-gray-800 font-medium">
-              <GitCommit size={18} className="text-indigo-500" />
+              <GitCommit size={16} className="text-indigo-500" />
               <span className="font-mono text-sm bg-gray-100 px-2 py-0.5 rounded">{snapshotLabel}</span>
             </div>
             <span className="text-[10px] text-gray-400">SHA-29F8</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
             派生覆盖率
           </span>
@@ -58,7 +58,7 @@ const Truth: React.FC<TruthProps> = ({
         </div>
 
         <div
-          className={`p-4 rounded-xl shadow-sm border flex flex-col justify-between transition-colors ${
+          className={`p-3 rounded-xl shadow-sm border flex flex-col justify-between transition-colors ${
             isLocked ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100"
           }`}
         >
@@ -71,7 +71,7 @@ const Truth: React.FC<TruthProps> = ({
           </span>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 font-medium">
-              <Calendar size={18} className={isLocked ? "text-amber-600" : "text-gray-400"} />
+              <Calendar size={16} className={isLocked ? "text-amber-600" : "text-gray-400"} />
               <span className={isLocked ? "text-amber-900" : "text-gray-800"}>
                 {isLocked ? truthState.truth?.updatedAt || "已锁定" : "草稿中"}
               </span>
@@ -95,19 +95,19 @@ const Truth: React.FC<TruthProps> = ({
       <section className="flex-1 flex flex-col min-h-0 relative">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Database size={20} className="text-indigo-600" />
+            <Database size={18} className="text-indigo-600" />
             真理源 (Single Source of Truth)
           </h2>
           {isLocked && (
-            <div className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-200 animate-pulse">
+            <div className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-200">
               内容已锁定，作为派生源
             </div>
           )}
         </div>
 
         <div
-          className={`flex-1 rounded-xl overflow-hidden transition-all duration-500 shadow-sm ${
-            isLocked ? "ring-4 ring-amber-50/50" : "border border-gray-200"
+          className={`flex-1 rounded-xl overflow-hidden transition-all duration-300 border ${
+            isLocked ? "border-amber-200 bg-amber-50/30" : "border-slate-100"
           }`}
         >
           <DocumentEditor
@@ -121,7 +121,7 @@ const Truth: React.FC<TruthProps> = ({
 
         {isLocked && (
           <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center opacity-[0.03]">
-            <ShieldCheck size={300} />
+            <ShieldCheck size={260} />
           </div>
         )}
       </section>
