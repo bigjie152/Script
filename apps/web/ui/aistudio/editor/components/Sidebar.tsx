@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   LayoutDashboard,
   Eye,
@@ -11,45 +11,55 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  Plus,
+  Plus
 } from "lucide-react";
-import { ModuleType } from "../types/types";
+import { EditorModuleKey } from "@/types/editorDocument";
 
-export interface NavStructure {
-  [key: string]: { id: string; label: string }[];
-}
+export type NavStructure = Partial<
+  Record<EditorModuleKey, { id: string; label: string }[]>
+>;
 
 interface SidebarProps {
-  activeModule: ModuleType;
-  activeSubId?: string;
-  onNavigate: (module: ModuleType, subId?: string) => void;
+  activeModule: EditorModuleKey;
+  activeEntryId?: string;
+  onNavigate: (module: EditorModuleKey, entryId?: string) => void;
+  onCreateEntry?: (module: EditorModuleKey) => void;
   structure: NavStructure;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate, structure }) => {
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(
-    new Set([ModuleType.Characters, ModuleType.Clues, ModuleType.Timeline, ModuleType.Manual])
+const Sidebar: React.FC<SidebarProps> = ({
+  activeModule,
+  activeEntryId,
+  onNavigate,
+  onCreateEntry,
+  structure
+}) => {
+  const [expandedModules, setExpandedModules] = useState<Set<EditorModuleKey>>(
+    new Set(["roles", "clues", "timeline", "dm"])
   );
 
-  const toggleExpand = (module: string, event: React.MouseEvent) => {
+  const toggleExpand = (module: EditorModuleKey, event: React.MouseEvent) => {
     event.stopPropagation();
-    const newSet = new Set(expandedModules);
-    if (newSet.has(module)) {
-      newSet.delete(module);
+    const next = new Set(expandedModules);
+    if (next.has(module)) {
+      next.delete(module);
     } else {
-      newSet.add(module);
+      next.add(module);
     }
-    setExpandedModules(newSet);
+    setExpandedModules(next);
   };
 
-  const menuItems = [
-    { id: ModuleType.Overview, icon: LayoutDashboard, label: "概览", hasChildren: false },
-    { id: ModuleType.Truth, icon: Eye, label: "真相", hasChildren: false },
-    { id: ModuleType.Characters, icon: Users, label: "角色", hasChildren: true },
-    { id: ModuleType.Clues, icon: Search, label: "线索", hasChildren: true },
-    { id: ModuleType.Timeline, icon: Clock, label: "时间线", hasChildren: true },
-    { id: ModuleType.Manual, icon: BookOpen, label: "DM 手册", hasChildren: true },
-  ];
+  const menuItems = useMemo(
+    () => [
+      { id: "overview" as const, icon: LayoutDashboard, label: "概览", hasChildren: false },
+      { id: "truth" as const, icon: Eye, label: "真相", hasChildren: false },
+      { id: "roles" as const, icon: Users, label: "角色", hasChildren: true },
+      { id: "clues" as const, icon: Search, label: "线索", hasChildren: true },
+      { id: "timeline" as const, icon: Clock, label: "时间线", hasChildren: true },
+      { id: "dm" as const, icon: BookOpen, label: "DM 手册", hasChildren: true }
+    ],
+    []
+  );
 
   return (
     <div className="w-64 bg-white h-screen flex flex-col border-r border-gray-100 shadow-sm z-10 flex-shrink-0">
@@ -65,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.id;
-          const isExpanded = expandedModules.has(item.id);
+          const isExpanded = expandedModules.has(item.id as EditorModuleKey);
           const subItems = structure[item.id] || [];
           const hasChildren = item.hasChildren;
 
@@ -74,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
               <div
                 onClick={() => onNavigate(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer group ${
-                  isActive && !activeSubId
+                  isActive && !activeEntryId
                     ? "bg-indigo-50 text-indigo-700 shadow-sm"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
@@ -83,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
                   <Icon size={18} className={isActive ? "text-indigo-600" : "text-gray-400"} />
                   {item.label}
                 </div>
-                {hasChildren && (
+                {hasChildren ? (
                   <button
                     onClick={(event) => toggleExpand(item.id, event)}
                     className="p-1 rounded hover:bg-gray-200 text-gray-400 group-hover:text-gray-600"
@@ -91,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
-                )}
+                ) : null}
               </div>
 
               {hasChildren && isExpanded && (
@@ -104,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
                         onNavigate(item.id, sub.id);
                       }}
                       className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center justify-between group/sub ${
-                        activeModule === item.id && activeSubId === sub.id
+                        activeModule === item.id && activeEntryId === sub.id
                           ? "text-indigo-600 font-medium bg-indigo-50/50"
                           : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                       }`}
@@ -114,7 +124,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, activeSubId, onNavigate
                     </button>
                   ))}
 
-                  <button className="w-full text-left px-3 py-1.5 rounded-md text-xs font-medium text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/30 flex items-center gap-2 transition-colors" type="button">
+                  <button
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs font-medium text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/30 flex items-center gap-2 transition-colors"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCreateEntry?.(item.id);
+                    }}
+                  >
                     <Plus size={12} />
                     <span>添加{item.label}</span>
                   </button>

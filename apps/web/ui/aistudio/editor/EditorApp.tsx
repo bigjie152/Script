@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Sidebar, { NavStructure } from "./components/Sidebar";
 import Header from "./components/Header";
 import RightPanel from "./components/RightPanel";
@@ -10,101 +11,248 @@ import Roles from "./components/Modules/Roles";
 import Clues from "./components/Modules/Clues";
 import Timeline from "./components/Modules/Timeline";
 import Manual from "./components/Modules/Manual";
+import { resolveModuleKey, MODULE_CONFIG_MAP } from "@/modules/modules.config";
+import { EditorModuleKey } from "@/types/editorDocument";
+import { useTruthDocument } from "@/hooks/useTruthDocument";
+import { useModuleDocument } from "@/hooks/useModuleDocument";
+import { useModuleCollection } from "@/hooks/useModuleCollection";
+import { useProjectMeta } from "@/hooks/useProjectMeta";
+import { MentionItem } from "@/editors/tiptap/mentionSuggestion";
 
-import { ModuleType, ProjectStatus, TruthStatus, ScriptGenre, ScriptMetadata, Role, Clue } from "./types/types";
+type SaveState = "idle" | "saving" | "success" | "error";
 
-const mockRoles: Role[] = [
-  { id: "1", name: "陈医生", motivation: "复仇", knownTruth: "High", secret: "3", content: "", sourceVersion: "v1" },
-  { id: "2", name: "林管家", motivation: "守护", knownTruth: "Medium", secret: "1", content: "", sourceVersion: "v1" },
-  { id: "3", name: "苏小姐", motivation: "贪婪", knownTruth: "Low", secret: "2", content: "", sourceVersion: "v1" },
-];
-
-const mockClues: Clue[] = [
-  { id: "101", name: "烧焦的日记", type: "物品", acquisition: "书房", pointsTo: "陈医生", reliability: "真实", content: "", sourceVersion: "v1" },
-  { id: "102", name: "录音笔", type: "音频", acquisition: "卧室", pointsTo: "林管家", reliability: "真实", content: "", sourceVersion: "v1" },
-];
-
-const projectStructure: NavStructure = {
-  [ModuleType.Characters]: mockRoles.map((role) => ({ id: role.id, label: role.name })),
-  [ModuleType.Clues]: mockClues.map((clue) => ({ id: clue.id, label: clue.name })),
-  [ModuleType.Timeline]: [
-    { id: "act-1", label: "第一幕：集结" },
-    { id: "act-2", label: "第二幕：晚宴" },
-    { id: "act-3", label: "第三幕：搜证" },
-  ],
-  [ModuleType.Manual]: [
-    { id: "manual-1", label: "开场致辞" },
-    { id: "manual-2", label: "破冰环节" },
-    { id: "manual-3", label: "搜证引导" },
-    { id: "manual-4", label: "复盘逻辑" },
-  ],
+type RouteParams = {
+  projectId?: string;
+  module?: string;
 };
 
-interface EditorAppProps {
-  initialModule?: ModuleType;
-  initialSubId?: string;
-}
+const EditorApp: React.FC = () => {
+  const params = useParams<RouteParams>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const projectId = typeof params.projectId === "string" ? params.projectId : "";
+  const moduleKey = resolveModuleKey(
+    typeof params.module === "string" ? params.module : null
+  );
+  const entryId = searchParams.get("entry") ?? undefined;
 
-const EditorApp: React.FC<EditorAppProps> = ({ initialModule, initialSubId }) => {
-  const [activeModule, setActiveModule] = useState<ModuleType>(initialModule ?? ModuleType.Overview);
-  const [activeSubId, setActiveSubId] = useState<string | undefined>(initialSubId);
+  const truthState = useTruthDocument(projectId);
+  const overviewDoc = useModuleDocument(
+    projectId,
+    moduleKey === "overview" ? "overview" : null
+  );
+  const projectMeta = useProjectMeta(
+    projectId,
+    truthState.project,
+    truthState.refresh
+  );
 
-  const [scriptMetadata] = useState<ScriptMetadata>({
-    title: "未命名剧本",
-    genre: ScriptGenre.Suspense,
-    playerCount: 5,
-    version: "v0.1",
-    lastUpdated: "2026-01-19T10:01:59",
-  });
+  const roles = useModuleCollection(projectId, "roles", "角色");
+  const clues = useModuleCollection(projectId, "clues", "线索");
+  const timeline = useModuleCollection(projectId, "timeline", "时间线");
+  const manual = useModuleCollection(projectId, "dm", "DM 手册");
 
-  const [truthStatus, setTruthStatus] = useState<TruthStatus>(TruthStatus.Locked);
+  const mentionItems = useMemo<MentionItem[]>(
+    () => [
+      ...roles.entries.map((entry) => ({
+        id: entry.id,
+        label: entry.name,
+        entityType: "role" as const
+      })),
+      ...clues.entries.map((entry) => ({
+        id: entry.id,
+        label: entry.name,
+        entityType: "clue" as const
+      }))
+    ],
+    [roles.entries, clues.entries]
+  );
+
+  const navStructure = useMemo<NavStructure>(
+    () => ({
+      roles: roles.entries.map((entry) => ({ id: entry.id, label: entry.name })),
+      clues: clues.entries.map((entry) => ({ id: entry.id, label: entry.name })),
+      timeline: timeline.entries.map((entry) => ({ id: entry.id, label: entry.name })),
+      dm: manual.entries.map((entry) => ({ id: entry.id, label: entry.name }))
+    }),
+    [roles.entries, clues.entries, timeline.entries, manual.entries]
+  );
 
   useEffect(() => {
-    if (initialModule) {
-      setActiveModule(initialModule);
-    }
-    if (initialSubId) {
-      setActiveSubId(initialSubId);
-    }
-  }, [initialModule, initialSubId]);
+    if (!projectId || params.module) return;
+    router.replace(`/projects/${projectId}/editor/overview`);
+  }, [projectId, params.module, router]);
 
-  const handleNavigate = (module: ModuleType, subId?: string) => {
-    setActiveModule(module);
-    setActiveSubId(subId);
-  };
+  useEffect(() => {
+    if (!entryId) return;
+    if (moduleKey === "roles") roles.setActiveEntry(entryId);
+    if (moduleKey === "clues") clues.setActiveEntry(entryId);
+    if (moduleKey === "timeline") timeline.setActiveEntry(entryId);
+    if (moduleKey === "dm") manual.setActiveEntry(entryId);
+  }, [
+    entryId,
+    moduleKey,
+    roles.setActiveEntry,
+    clues.setActiveEntry,
+    timeline.setActiveEntry,
+    manual.setActiveEntry
+  ]);
 
-  const renderModuleContent = () => {
-    switch (activeModule) {
-      case ModuleType.Overview:
-        return <Overview metadata={scriptMetadata} />;
-      case ModuleType.Truth:
-        return <Truth status={truthStatus} onStatusChange={setTruthStatus} />;
-      case ModuleType.Characters:
-        return <Roles roles={mockRoles} activeSubId={activeSubId} />;
-      case ModuleType.Clues:
-        return <Clues clues={mockClues} activeSubId={activeSubId} />;
-      case ModuleType.Timeline:
-        return <Timeline activeSubId={activeSubId} />;
-      case ModuleType.Manual:
-        return <Manual activeSubId={activeSubId} />;
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <div className="text-lg font-medium">{activeModule} 模块开发中</div>
-            <p className="text-sm">功能即将上线</p>
-          </div>
-        );
+  const navigate = useCallback(
+    (module: EditorModuleKey, entry?: string) => {
+      if (!projectId) return;
+      const base = `/projects/${projectId}/editor/${module}`;
+      router.push(entry ? `${base}?entry=${entry}` : base);
+    },
+    [projectId, router]
+  );
+
+  const createEntry = useCallback(
+    (module: EditorModuleKey) => {
+      if (!projectId) return;
+      let nextId: string | null = null;
+      if (module === "roles") nextId = roles.createEntry();
+      if (module === "clues") nextId = clues.createEntry();
+      if (module === "timeline") nextId = timeline.createEntry();
+      if (module === "dm") nextId = manual.createEntry();
+      if (nextId) navigate(module, nextId);
+    },
+    [projectId, roles, clues, timeline, manual, navigate]
+  );
+
+  const handleMentionClick = useCallback(
+    (item: MentionItem) => {
+      if (item.entityType === "role") {
+        navigate("roles", item.id);
+        return;
+      }
+      if (item.entityType === "clue") {
+        navigate("clues", item.id);
+      }
+    },
+    [navigate]
+  );
+
+  const projectStatusLabel = useMemo(() => {
+    const status = projectMeta.form.status;
+    if (status === "In Progress") return "进行中";
+    if (status === "Completed") return "已完成";
+    return "草稿";
+  }, [projectMeta.form.status]);
+
+  const truthLocked = truthState.truth?.status === "LOCKED";
+  const truthStatusLabel = truthLocked ? "已锁定" : "草稿";
+
+  const headerModuleLabel = MODULE_CONFIG_MAP[moduleKey]?.label ?? "概览";
+
+  const combinedSaveState = useMemo<SaveState>(() => {
+    if (moduleKey === "overview") {
+      if (overviewDoc.saveState === "saving" || projectMeta.saveState === "saving") return "saving";
+      if (overviewDoc.saveState === "error" || projectMeta.saveState === "error") return "error";
+      if (overviewDoc.saveState === "success" || projectMeta.saveState === "success") return "success";
+      return "idle";
     }
-  };
+    if (moduleKey === "truth") return truthState.saveState;
+    if (moduleKey === "roles") return roles.saveState;
+    if (moduleKey === "clues") return clues.saveState;
+    if (moduleKey === "timeline") return timeline.saveState;
+    if (moduleKey === "dm") return manual.saveState;
+    return "idle";
+  }, [moduleKey, overviewDoc.saveState, projectMeta.saveState, truthState.saveState, roles.saveState, clues.saveState, timeline.saveState, manual.saveState]);
+
+  const handleSave = useCallback(async () => {
+    if (moduleKey === "overview") {
+      const results = await Promise.all([
+        overviewDoc.hasUnsaved ? overviewDoc.save() : Promise.resolve(true),
+        projectMeta.hasUnsaved ? projectMeta.save() : Promise.resolve(true)
+      ]);
+      return results.every(Boolean);
+    }
+    if (moduleKey === "truth") return truthState.save();
+    if (moduleKey === "roles") return roles.save();
+    if (moduleKey === "clues") return clues.save();
+    if (moduleKey === "timeline") return timeline.save();
+    if (moduleKey === "dm") return manual.save();
+    return false;
+  }, [moduleKey, overviewDoc, projectMeta, truthState, roles, clues, timeline, manual]);
+
+  if (!projectId) {
+    return <div className="p-6 text-sm text-gray-500">项目不存在或链接无效。</div>;
+  }
 
   return (
     <div className="flex h-screen bg-[#F8F9FB] overflow-hidden text-gray-800 font-sans selection:bg-indigo-100 selection:text-indigo-800">
-      <Sidebar activeModule={activeModule} activeSubId={activeSubId} onNavigate={handleNavigate} structure={projectStructure} />
+      <Sidebar
+        activeModule={moduleKey}
+        activeEntryId={entryId}
+        onNavigate={navigate}
+        onCreateEntry={createEntry}
+        structure={navStructure}
+      />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header module={activeModule} projectStatus={ProjectStatus.InProgress} truthStatus={truthStatus} scriptTitle={scriptMetadata.title} />
+        <Header
+          moduleLabel={headerModuleLabel}
+          projectTitle={truthState.project?.name || "未命名剧本"}
+          projectStatusLabel={projectStatusLabel}
+          truthStatusLabel={truthStatusLabel}
+          truthLocked={truthLocked}
+          saveState={combinedSaveState}
+          onSave={handleSave}
+          onBack={() => router.push("/workspace")}
+        />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">{renderModuleContent()}</main>
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          {moduleKey === "overview" && (
+            <Overview
+              projectMeta={projectMeta}
+              overviewDoc={overviewDoc}
+              latestSnapshotId={truthState.latestSnapshotId}
+              createdAt={truthState.project?.createdAt ?? null}
+              updatedAt={truthState.project?.updatedAt ?? null}
+            />
+          )}
+          {moduleKey === "truth" && (
+            <Truth
+              truthState={truthState}
+              latestSnapshotId={truthState.latestSnapshotId}
+              mentionItems={mentionItems}
+              onMentionClick={handleMentionClick}
+            />
+          )}
+          {moduleKey === "roles" && (
+            <Roles
+              collection={roles}
+              entryId={entryId}
+              onSelectEntry={(id) => navigate("roles", id)}
+              onCreateEntry={() => createEntry("roles")}
+            />
+          )}
+          {moduleKey === "clues" && (
+            <Clues
+              collection={clues}
+              entryId={entryId}
+              onSelectEntry={(id) => navigate("clues", id)}
+              onCreateEntry={() => createEntry("clues")}
+            />
+          )}
+          {moduleKey === "timeline" && (
+            <Timeline
+              collection={timeline}
+              entryId={entryId}
+              onSelectEntry={(id) => navigate("timeline", id)}
+              onCreateEntry={() => createEntry("timeline")}
+            />
+          )}
+          {moduleKey === "dm" && (
+            <Manual
+              collection={manual}
+              entryId={entryId}
+              onSelectEntry={(id) => navigate("dm", id)}
+              onCreateEntry={() => createEntry("dm")}
+            />
+          )}
+        </main>
       </div>
 
       <RightPanel />

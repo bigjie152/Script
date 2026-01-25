@@ -1,28 +1,96 @@
-import { useMemo } from "react";
-import { Clock3, Activity, Repeat } from "lucide-react";
+﻿import { useEffect, useMemo } from "react";
+import { Activity, Clock3, Repeat } from "lucide-react";
+
+type ModuleCollectionState = {
+  entries: { id: string; name: string; data?: Record<string, unknown> }[];
+  setActiveEntry: (entryId: string) => void;
+  updateData: (entryId: string, data: Record<string, unknown>) => void;
+};
 
 interface TimelineProps {
-  activeSubId?: string;
+  collection: ModuleCollectionState;
+  entryId?: string;
+  onSelectEntry: (entryId: string) => void;
+  onCreateEntry: () => void;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ activeSubId }) => {
-  const act1Events = useMemo(
-    () => [
-      { time: "18:00", detail: "众人抵达山庄，暴雪开始封路。", participants: ["@All"] },
-      { time: "19:30", detail: "晚宴开始，管家宣布老爷身体不适。", participants: ["@林管家", "@苏小姐", "@陈医生"] },
-    ],
-    []
-  );
-  const act2Events = useMemo(
-    () => [
-      { time: "20:15", detail: "突然停电，持续了约5分钟。", participants: ["@All"] },
-      { time: "20:45", detail: "一声尖叫划破长空，发现尸体。", participants: ["@苏小姐"] },
-    ],
-    []
-  );
+type TimelineEvent = {
+  id: string;
+  time: string;
+  detail: string;
+  participants: string[];
+};
 
-  const currentEvents = activeSubId === "act-2" ? act2Events : act1Events;
-  const currentActName = activeSubId === "act-2" ? "第二幕：晚宴与停电" : "第一幕：集结";
+const Timeline: React.FC<TimelineProps> = ({
+  collection,
+  entryId,
+  onSelectEntry,
+  onCreateEntry
+}) => {
+  const { entries, setActiveEntry, updateData } = collection;
+
+  const selectedEntry = useMemo(() => {
+    if (!entryId) return null;
+    return entries.find((entry) => entry.id === entryId) || null;
+  }, [entryId, entries]);
+
+  useEffect(() => {
+    if (!entryId) return;
+    setActiveEntry(entryId);
+  }, [entryId, setActiveEntry]);
+
+  if (!selectedEntry) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">时间线总览</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {entries.map((entry) => (
+            <button
+              key={entry.id}
+              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-all text-left"
+              onClick={() => onSelectEntry(entry.id)}
+              type="button"
+            >
+              <div className="text-sm text-gray-400 mb-2">CURRENT</div>
+              <h3 className="font-bold text-gray-900">{entry.name}</h3>
+              <p className="text-xs text-gray-500">点击进入事件编辑</p>
+            </button>
+          ))}
+          <button
+            className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors min-h-[160px]"
+            type="button"
+            onClick={onCreateEntry}
+          >
+            + 添加时间线
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const events = (selectedEntry.data?.events as TimelineEvent[]) || [];
+
+  const updateEvents = (nextEvents: TimelineEvent[]) => {
+    updateData(selectedEntry.id, {
+      ...(selectedEntry.data || {}),
+      events: nextEvents
+    });
+  };
+
+  const handleAddEvent = () => {
+    const nextEvents = [
+      ...events,
+      { id: crypto.randomUUID(), time: "", detail: "", participants: [] }
+    ];
+    updateEvents(nextEvents);
+  };
+
+  const handleUpdateEvent = (index: number, key: "time" | "detail", value: string) => {
+    const nextEvents = events.map((event, idx) =>
+      idx === index ? { ...event, [key]: value } : event
+    );
+    updateEvents(nextEvents);
+  };
 
   return (
     <div className="h-full flex flex-col min-w-0">
@@ -60,9 +128,13 @@ const Timeline: React.FC<TimelineProps> = ({ activeSubId }) => {
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-3">
             <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">CURRENT</span>
-            <h2 className="font-bold text-gray-800 text-lg">{currentActName}</h2>
+            <h2 className="font-bold text-gray-800 text-lg">{selectedEntry.name}</h2>
           </div>
-          <button className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-sm hover:bg-indigo-700" type="button">
+          <button
+            className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-sm hover:bg-indigo-700"
+            type="button"
+            onClick={handleAddEvent}
+          >
             + 添加事件
           </button>
         </div>
@@ -77,14 +149,25 @@ const Timeline: React.FC<TimelineProps> = ({ activeSubId }) => {
               </tr>
             </thead>
             <tbody>
-              {currentEvents.map((event, index) => (
-                <tr key={`${event.time}-${index}`} className="border-b border-gray-50 hover:bg-gray-50/70 transition-colors">
+              {events.map((event, index) => (
+                <tr key={event.id} className="border-b border-gray-50 hover:bg-gray-50/70 transition-colors">
                   <td className="py-4 px-6">
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 text-gray-700 font-medium w-20 text-center">
-                      {event.time}
-                    </div>
+                    <input
+                      className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 text-gray-700 font-medium w-20 text-center"
+                      value={event.time}
+                      onChange={(e) => handleUpdateEvent(index, "time", e.target.value)}
+                      placeholder="18:00"
+                    />
                   </td>
-                  <td className="py-4 px-6 text-gray-700">{event.detail}</td>
+                  <td className="py-4 px-6 text-gray-700">
+                    <textarea
+                      className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
+                      rows={2}
+                      value={event.detail}
+                      onChange={(e) => handleUpdateEvent(index, "detail", e.target.value)}
+                      placeholder="填写事件详情"
+                    />
+                  </td>
                   <td className="py-4 px-6">
                     <div className="flex flex-wrap gap-2">
                       {event.participants.map((participant) => (
@@ -100,11 +183,13 @@ const Timeline: React.FC<TimelineProps> = ({ activeSubId }) => {
           </table>
         </div>
 
-        <div className="px-6 py-5 text-gray-400 text-sm">
-          点击此处
-          <br />
-          添加下一个时间节点...
-        </div>
+        {events.length === 0 && (
+          <div className="px-6 py-5 text-gray-400 text-sm">
+            点击此处
+            <br />
+            添加下一个时间节点...
+          </div>
+        )}
       </div>
     </div>
   );

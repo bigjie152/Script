@@ -59,6 +59,10 @@ export function useModuleCollection(
   useEffect(() => {
     let alive = true;
     async function run() {
+      if (!projectId) {
+        if (alive) setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -220,6 +224,7 @@ export function useModuleCollection(
   }, [collection, baselineSnapshot]);
 
   const save = useCallback(async () => {
+    if (!projectId) return false;
     setSaveState("saving");
     setSaveError(null);
     try {

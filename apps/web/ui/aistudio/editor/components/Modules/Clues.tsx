@@ -1,100 +1,126 @@
-import { Clue } from "../../types/types";
-import RichEditor from "../RichEditor";
-import { MapPin, Star, CheckCircle2, Search } from "lucide-react";
+﻿import { useEffect, useMemo } from "react";
+import { Compass, Star, ShieldCheck } from "lucide-react";
+import { DocumentEditor } from "@/editors/DocumentEditor";
+import type { EditorDocument } from "@/types/editorDocument";
+
+type ModuleCollectionState = {
+  entries: { id: string; name: string; content: Record<string, unknown>; meta?: Record<string, unknown> }[];
+  document: EditorDocument;
+  setDocument: (next: EditorDocument) => void;
+  setActiveEntry: (entryId: string) => void;
+};
 
 interface CluesProps {
-  clues: Clue[];
-  activeSubId?: string;
+  collection: ModuleCollectionState;
+  entryId?: string;
+  onSelectEntry: (entryId: string) => void;
+  onCreateEntry: () => void;
 }
 
-const Clues: React.FC<CluesProps> = ({ clues, activeSubId }) => {
-  const selectedClue = clues.find((clue) => clue.id === activeSubId);
+const Clues: React.FC<CluesProps> = ({
+  collection,
+  entryId,
+  onSelectEntry,
+  onCreateEntry
+}) => {
+  const { entries, setActiveEntry, document, setDocument } = collection;
 
-  if (!selectedClue) {
+  const selectedEntry = useMemo(() => {
+    if (!entryId) return null;
+    return entries.find((entry) => entry.id === entryId) || null;
+  }, [entryId, entries]);
+
+  useEffect(() => {
+    if (!entryId) return;
+    setActiveEntry(entryId);
+  }, [entryId, setActiveEntry]);
+
+  if (!selectedEntry) {
     return (
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">线索库</h2>
         <div className="space-y-4">
-          {clues.map((clue) => (
-            <div key={clue.id} className="bg-white px-6 py-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-all cursor-pointer flex items-center justify-between gap-6">
+          {entries.map((clue) => (
+            <button
+              key={clue.id}
+              className="w-full bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-all text-left flex items-center justify-between"
+              onClick={() => onSelectEntry(clue.id)}
+              type="button"
+            >
               <div className="flex items-center gap-4">
-                <div
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                    clue.type === "物品" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                  }`}
-                >
-                  {clue.type}
+                <div className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-semibold">
+                  物品
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">{clue.name}</h3>
-                  <p className="text-xs text-gray-500">{clue.acquisition}</p>
+                  <h3 className="font-semibold text-gray-900">{clue.name}</h3>
+                  <p className="text-xs text-gray-500">书房</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-xs text-gray-500">
-                <div className="flex items-center gap-1">
-                  <MapPin size={12} /> 指向 {clue.pointsTo}
-                </div>
-                <div className="flex items-center gap-1">
-                  <CheckCircle2 size={12} className="text-green-500" /> {clue.reliability}
-                </div>
+              <div className="text-xs text-gray-400">
+                指向 {String(clue.meta?.pointsTo ?? "未知")}
               </div>
-            </div>
+            </button>
           ))}
 
-          <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-4 rounded-xl flex items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors cursor-pointer">
-            <span className="text-sm font-medium">+ 添加新线索</span>
-          </div>
+          <button
+            className="w-full border-2 border-dashed border-gray-200 rounded-xl py-5 text-gray-400 hover:text-indigo-500 hover:border-indigo-200 transition-colors"
+            type="button"
+            onClick={onCreateEntry}
+          >
+            + 添加新线索
+          </button>
         </div>
       </div>
     );
   }
+
+  const pointsTo = (selectedEntry.meta?.pointsTo as string) || "陈医生";
+  const difficulty = (selectedEntry.meta?.difficulty as string) || "获取难度";
+  const reliability = (selectedEntry.meta?.reliability as string) || "真实线索";
 
   return (
     <div className="h-full flex flex-col min-w-0">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-2">
-            <MapPin size={16} className="text-blue-500" />
+            <Compass size={16} className="text-blue-500" />
             <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">指向性</span>
           </div>
-          <div className="font-semibold text-gray-800 text-lg">{selectedClue.pointsTo}</div>
+          <div className="font-semibold text-gray-800 text-lg">{pointsTo}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-2">
-            <Star size={16} className="text-orange-500" />
+            <Star size={16} className="text-amber-500" />
             <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">获取难度</span>
           </div>
-          <div className="flex items-center gap-1 text-orange-500">
-            <Star size={16} fill="currentColor" />
-            <Star size={16} fill="currentColor" />
-            <Star size={16} className="text-gray-200" />
+          <div className="flex items-center gap-2 text-amber-500">
+            <Star size={14} />
+            <Star size={14} />
+            <Star size={14} className="opacity-30" />
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 size={16} className="text-green-500" />
+            <ShieldCheck size={16} className="text-green-500" />
             <span className="text-xs uppercase text-gray-400 font-bold tracking-wider">真实度</span>
           </div>
-          <div className="font-semibold text-gray-800 text-lg">{selectedClue.reliability}线索</div>
+          <div className="font-semibold text-gray-800 text-lg">{reliability}</div>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <Search size={18} className="text-indigo-500" />
-            <h2 className="font-bold text-gray-800 text-lg">线索详情：{selectedClue.name}</h2>
-          </div>
+          <h2 className="font-bold text-gray-800 text-lg">{selectedEntry.name}</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs px-2 py-1 bg-white text-gray-500 rounded border border-gray-200 shadow-sm">
-              Source: {selectedClue.sourceVersion}
+              Source: v1
             </span>
           </div>
         </div>
         <div className="flex-1 overflow-hidden">
-          <RichEditor key={selectedClue.id} initialContent={selectedClue.content} className="border-none shadow-none h-full rounded-none" />
+          <DocumentEditor value={document} onChange={setDocument} />
         </div>
       </div>
     </div>

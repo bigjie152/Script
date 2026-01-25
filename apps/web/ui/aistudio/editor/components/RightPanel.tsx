@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { HelpCircle, Lock } from "lucide-react";
@@ -13,7 +13,9 @@ const RightPanel: React.FC = () => {
         <button
           onClick={() => setActiveTab("canvas")}
           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
-            activeTab === "canvas" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50"
+            activeTab === "canvas"
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-500 hover:bg-gray-50"
           }`}
           type="button"
         >
@@ -22,7 +24,9 @@ const RightPanel: React.FC = () => {
         <button
           onClick={() => setActiveTab("issues")}
           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
-            activeTab === "issues" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:bg-gray-50"
+            activeTab === "issues"
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-500 hover:bg-gray-50"
           }`}
           type="button"
         >
@@ -43,7 +47,10 @@ const RightPanel: React.FC = () => {
                 <br />
                 当前真相已锁定，角色剧本生成将基于此版本。
               </p>
-              <button className="w-full py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors" type="button">
+              <button
+                className="w-full py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                type="button"
+              >
                 核对真相
               </button>
             </div>

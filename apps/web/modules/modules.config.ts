@@ -1,4 +1,4 @@
-import { EditorModuleKey, DocumentModuleKey } from "../types/editorDocument";
+﻿import { EditorModuleKey, DocumentModuleKey } from "../types/editorDocument";
 
 export type ModuleEntryMode = "single" | "collection";
 
