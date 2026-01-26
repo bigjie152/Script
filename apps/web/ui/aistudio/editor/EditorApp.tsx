@@ -72,10 +72,10 @@ const EditorApp: React.FC = () => {
     () => ({
       roles: roles.entries.map((entry) => ({ id: entry.id, label: entry.name })),
       clues: clues.entries.map((entry) => ({ id: entry.id, label: entry.name })),
-      timeline: timeline.entries.map((entry) => ({ id: entry.id, label: entry.name })),
-      dm: manual.entries.map((entry) => ({ id: entry.id, label: entry.name }))
+      timeline: [],
+      dm: []
     }),
-    [roles.entries, clues.entries, timeline.entries, manual.entries]
+    [roles.entries, clues.entries]
   );
 
   useEffect(() => {
@@ -87,15 +87,11 @@ const EditorApp: React.FC = () => {
     if (!entryId) return;
     if (moduleKey === "roles") roles.setActiveEntry(entryId);
     if (moduleKey === "clues") clues.setActiveEntry(entryId);
-    if (moduleKey === "timeline") timeline.setActiveEntry(entryId);
-    if (moduleKey === "dm") manual.setActiveEntry(entryId);
   }, [
     entryId,
     moduleKey,
     roles.setActiveEntry,
-    clues.setActiveEntry,
-    timeline.setActiveEntry,
-    manual.setActiveEntry
+    clues.setActiveEntry
   ]);
 
   const navigate = useCallback(
@@ -113,54 +109,36 @@ const EditorApp: React.FC = () => {
       let nextId: string | null = null;
       if (module === "roles") nextId = roles.createEntry();
       if (module === "clues") nextId = clues.createEntry();
-      if (module === "timeline") nextId = timeline.createEntry();
-      if (module === "dm") nextId = manual.createEntry();
       if (nextId) navigate(module, nextId);
       return nextId;
     },
-    [projectId, roles, clues, timeline, manual, navigate]
+    [projectId, roles, clues, navigate]
   );
 
   const renameEntry = useCallback(
     async (module: EditorModuleKey, entryId: string, name: string) => {
       if (!projectId) return false;
       const target =
-        module === "roles"
-          ? roles
-          : module === "clues"
-            ? clues
-            : module === "timeline"
-              ? timeline
-              : module === "dm"
-                ? manual
-                : null;
-      if (!target) return false;
-      target.renameEntry(entryId, name);
-      return target.save();
-    },
-    [projectId, roles, clues, timeline, manual]
+        module === "roles" ? roles : module === "clues" ? clues : null;
+    if (!target) return false;
+    target.renameEntry(entryId, name);
+    return target.save();
+  },
+    [projectId, roles, clues]
   );
 
   const deleteEntry = useCallback(
     async (module: EditorModuleKey, entryId: string) => {
       if (!projectId) return false;
       const target =
-        module === "roles"
-          ? roles
-          : module === "clues"
-            ? clues
-            : module === "timeline"
-              ? timeline
-              : module === "dm"
-                ? manual
-                : null;
-      if (!target) return false;
-      target.removeEntry(entryId);
-      const ok = await target.save();
-      navigate(module);
-      return ok;
-    },
-    [projectId, roles, clues, timeline, manual, navigate]
+        module === "roles" ? roles : module === "clues" ? clues : null;
+    if (!target) return false;
+    target.removeEntry(entryId);
+    const ok = await target.save();
+    navigate(module);
+    return ok;
+  },
+    [projectId, roles, clues, navigate]
   );
 
   const handleMentionClick = useCallback(
@@ -282,22 +260,8 @@ const EditorApp: React.FC = () => {
               onCreateEntry={() => createEntry("clues")}
             />
           )}
-          {moduleKey === "timeline" && (
-            <Timeline
-              collection={timeline}
-              entryId={entryId}
-              onSelectEntry={(id) => navigate("timeline", id)}
-              onCreateEntry={() => createEntry("timeline")}
-            />
-          )}
-          {moduleKey === "dm" && (
-            <Manual
-              collection={manual}
-              entryId={entryId}
-              onSelectEntry={(id) => navigate("dm", id)}
-              onCreateEntry={() => createEntry("dm")}
-            />
-          )}
+          {moduleKey === "timeline" && <Timeline collection={timeline} />}
+          {moduleKey === "dm" && <Manual collection={manual} />}
         </main>
       </div>
 

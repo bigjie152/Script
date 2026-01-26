@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DocumentModuleKey } from "../types/editorDocument";
 import {
   getModuleDocument,
@@ -30,6 +30,11 @@ export function useModuleCollection(
     entries: [],
     activeId: null
   }));
+  const collectionRef = useRef<ModuleCollection>({
+    kind: "collection",
+    entries: [],
+    activeId: null
+  });
   const [document, setDocument] = useState(() =>
     toEditorDocument(
       {
@@ -71,6 +76,7 @@ export function useModuleCollection(
         const next = normalizeModuleCollection(data.content, seed);
         const ensured = ensureEntry(next, seed);
         setCollection(ensured);
+        collectionRef.current = ensured;
         const active = getActiveEntry(ensured);
         if (active) {
           setDocument(toEditorDocument(active, { projectId, module: moduleKey }));
@@ -108,7 +114,9 @@ export function useModuleCollection(
     (entryId: string) => {
       setCollection((prev) => {
         if (prev.activeId === entryId) return prev;
-        return { ...prev, activeId: entryId };
+        const next = { ...prev, activeId: entryId };
+        collectionRef.current = next;
+        return next;
       });
       const nextEntry = entries.find((entry) => entry.id === entryId);
       if (nextEntry) {
@@ -122,9 +130,11 @@ export function useModuleCollection(
     (nextDoc: typeof document) => {
       setDocument(nextDoc);
       if (!activeEntryId) return;
-      setCollection((prev) =>
-        updateEntryContent(prev, activeEntryId, nextDoc.content)
-      );
+      setCollection((prev) => {
+        const next = updateEntryContent(prev, activeEntryId, nextDoc.content);
+        collectionRef.current = next;
+        return next;
+      });
       if (saveState === "error") {
         setSaveState("idle");
         setSaveError(null);
@@ -151,22 +161,30 @@ export function useModuleCollection(
       data: {},
       updatedAt: null
     };
-    setCollection((prev) => ({
-      ...prev,
-      entries: [...prev.entries, nextEntry],
-      activeId: nextEntry.id
-    }));
+    setCollection((prev) => {
+      const next = {
+        ...prev,
+        entries: [...prev.entries, nextEntry],
+        activeId: nextEntry.id
+      };
+      collectionRef.current = next;
+      return next;
+    });
     setDocument(toEditorDocument(nextEntry, { projectId, module: moduleKey }));
     return id;
   }, [defaultName, entries.length, projectId, moduleKey]);
 
   const renameEntry = useCallback((entryId: string, name: string) => {
-    setCollection((prev) => ({
-      ...prev,
-      entries: prev.entries.map((entry) =>
-        entry.id === entryId ? { ...entry, name } : entry
-      )
-    }));
+    setCollection((prev) => {
+      const next = {
+        ...prev,
+        entries: prev.entries.map((entry) =>
+          entry.id === entryId ? { ...entry, name } : entry
+        )
+      };
+      collectionRef.current = next;
+      return next;
+    });
   }, []);
 
   const removeEntry = useCallback(
@@ -194,11 +212,13 @@ export function useModuleCollection(
         if (nextActive) {
           setDocument(toEditorDocument(nextActive, { projectId, module: moduleKey }));
         }
-        return {
+        const next = {
           ...prev,
           entries: nextEntries,
           activeId: nextActiveId
         };
+        collectionRef.current = next;
+        return next;
       });
     },
     [defaultName, projectId, moduleKey]
@@ -206,14 +226,22 @@ export function useModuleCollection(
 
   const updateMeta = useCallback(
     (entryId: string, meta: Record<string, unknown>) => {
-      setCollection((prev) => updateEntryMeta(prev, entryId, meta));
+      setCollection((prev) => {
+        const next = updateEntryMeta(prev, entryId, meta);
+        collectionRef.current = next;
+        return next;
+      });
     },
     []
   );
 
   const updateData = useCallback(
     (entryId: string, data: Record<string, unknown>) => {
-      setCollection((prev) => updateEntryData(prev, entryId, data));
+      setCollection((prev) => {
+        const next = updateEntryData(prev, entryId, data);
+        collectionRef.current = next;
+        return next;
+      });
     },
     []
   );
@@ -225,15 +253,16 @@ export function useModuleCollection(
 
   const save = useCallback(async () => {
     if (!projectId) return false;
+    const snapshot = collectionRef.current;
     setSaveState("saving");
     setSaveError(null);
     try {
       await updateModuleDocument(
         projectId,
         moduleKey,
-        serializeModuleCollection(collection)
+        serializeModuleCollection(snapshot)
       );
-      setBaselineSnapshot(JSON.stringify(collection));
+      setBaselineSnapshot(JSON.stringify(snapshot));
       setSaveState("success");
       refresh();
       return true;
@@ -242,7 +271,7 @@ export function useModuleCollection(
       setSaveError(err instanceof Error ? err.message : "保存失败，请重试");
       return false;
     }
-  }, [projectId, moduleKey, collection, refresh]);
+  }, [projectId, moduleKey, refresh]);
 
   return {
     entries,

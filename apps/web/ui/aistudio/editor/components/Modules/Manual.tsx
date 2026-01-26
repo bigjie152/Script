@@ -1,70 +1,31 @@
-import { useEffect, useMemo } from "react";
 import { AlertTriangle, BookOpenText, Users } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
 
 type ModuleCollectionState = {
-  entries: { id: string; name: string; content: Record<string, unknown>; meta?: Record<string, unknown> }[];
+  entries: { id: string; name: string; meta?: Record<string, unknown> }[];
+  activeEntry?: { id: string; name: string; meta?: Record<string, unknown> } | null;
   document: EditorDocument;
   setDocument: (next: EditorDocument) => void;
-  setActiveEntry: (entryId: string) => void;
   updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
 };
 
 interface ManualProps {
   collection: ModuleCollectionState;
-  entryId?: string;
-  onSelectEntry: (entryId: string) => void;
-  onCreateEntry: () => void;
 }
 
-const Manual: React.FC<ManualProps> = ({
-  collection,
-  entryId,
-  onSelectEntry,
-  onCreateEntry
-}) => {
-  const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
+const Manual: React.FC<ManualProps> = ({ collection }) => {
+  const entry = collection.activeEntry ?? collection.entries[0] ?? null;
 
-  const selectedEntry = useMemo(() => {
-    if (!entryId) return null;
-    return entries.find((entry) => entry.id === entryId) || null;
-  }, [entryId, entries]);
-
-  useEffect(() => {
-    if (!entryId) return;
-    setActiveEntry(entryId);
-  }, [entryId, setActiveEntry]);
-
-  if (!selectedEntry) {
+  if (!entry) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">DM 手册目录</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {entries.map((entry) => (
-            <button
-              key={entry.id}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-all text-left"
-              onClick={() => onSelectEntry(entry.id)}
-              type="button"
-            >
-              <h3 className="font-bold text-gray-900">{entry.name}</h3>
-              <p className="text-xs text-gray-500">点击进入章节内容</p>
-            </button>
-          ))}
-          <button
-            className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors min-h-[160px]"
-            type="button"
-            onClick={onCreateEntry}
-          >
-            + 添加 DM 章节
-          </button>
-        </div>
+      <div className="max-w-5xl mx-auto text-sm text-gray-500">
+        暂无 DM 手册内容。
       </div>
     );
   }
 
-  const meta = selectedEntry.meta ?? {};
+  const meta = entry.meta ?? {};
   const difficulty = (meta.difficulty as string) || "";
   const players = (meta.players as string) || "";
   const risks = (meta.risks as string) || "";
@@ -77,13 +38,18 @@ const Manual: React.FC<ManualProps> = ({
             <BookOpenText size={16} />
           </div>
           <div className="flex-1">
-            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">开本难度</div>
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
+              开场难度
+            </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
               placeholder="例如：进阶"
               value={difficulty}
               onChange={(event) =>
-                updateMeta(selectedEntry.id, { ...meta, difficulty: event.target.value })
+                collection.updateMeta(entry.id, {
+                  ...meta,
+                  difficulty: event.target.value
+                })
               }
             />
           </div>
@@ -93,13 +59,18 @@ const Manual: React.FC<ManualProps> = ({
             <Users size={16} />
           </div>
           <div className="flex-1">
-            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">人数限制</div>
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
+              人数限制
+            </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
               placeholder="例如：5 人"
               value={players}
               onChange={(event) =>
-                updateMeta(selectedEntry.id, { ...meta, players: event.target.value })
+                collection.updateMeta(entry.id, {
+                  ...meta,
+                  players: event.target.value
+                })
               }
             />
           </div>
@@ -109,13 +80,18 @@ const Manual: React.FC<ManualProps> = ({
             <AlertTriangle size={16} />
           </div>
           <div className="flex-1">
-            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">核心难点</div>
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
+              核心难点
+            </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
               placeholder="例如：1 个风险点"
               value={risks}
               onChange={(event) =>
-                updateMeta(selectedEntry.id, { ...meta, risks: event.target.value })
+                collection.updateMeta(entry.id, {
+                  ...meta,
+                  risks: event.target.value
+                })
               }
             />
           </div>
@@ -123,12 +99,12 @@ const Manual: React.FC<ManualProps> = ({
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-4">
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="rounded-xl border border-slate-100 bg-white overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
-            <h2 className="font-semibold text-gray-800 text-lg">{selectedEntry.name}</h2>
+            <h2 className="font-semibold text-gray-800 text-lg">{entry.name}</h2>
           </div>
           <div className="flex-1 overflow-hidden">
-            <DocumentEditor value={document} onChange={setDocument} />
+            <DocumentEditor value={collection.document} onChange={collection.setDocument} />
           </div>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm text-gray-600">

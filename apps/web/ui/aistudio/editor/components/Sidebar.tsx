@@ -41,7 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   structure
 }) => {
   const [expandedModules, setExpandedModules] = useState<Set<EditorModuleKey>>(
-    new Set(["roles", "clues", "timeline", "dm"])
+    new Set(["roles"])
   );
   const [editing, setEditing] = useState<{
     module: EditorModuleKey;
@@ -67,12 +67,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = useMemo(
     () => [
-      { id: "overview" as const, icon: LayoutDashboard, label: "概览", hasChildren: false },
-      { id: "truth" as const, icon: Eye, label: "真相", hasChildren: false },
-      { id: "roles" as const, icon: Users, label: "角色", hasChildren: true },
-      { id: "clues" as const, icon: Search, label: "线索", hasChildren: true },
-      { id: "timeline" as const, icon: Clock, label: "时间线", hasChildren: true },
-      { id: "dm" as const, icon: BookOpen, label: "DM 手册", hasChildren: true }
+      { id: "overview" as const, icon: LayoutDashboard, label: "??", hasChildren: false },
+      { id: "truth" as const, icon: Eye, label: "??", hasChildren: false },
+      { id: "roles" as const, icon: Users, label: "??", hasChildren: true },
+      { id: "clues" as const, icon: Search, label: "??", hasChildren: true },
+      { id: "timeline" as const, icon: Clock, label: "???", hasChildren: false },
+      { id: "dm" as const, icon: BookOpen, label: "DM ??", hasChildren: false }
     ],
     []
   );
