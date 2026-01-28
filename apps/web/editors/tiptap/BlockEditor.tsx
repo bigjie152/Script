@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BubbleMenu, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import Highlight from "@tiptap/extension-highlight";
+import TextStyle from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import FontFamily from "@tiptap/extension-font-family";
+import TextAlign from "@tiptap/extension-text-align";
+import Placeholder from "@tiptap/extension-placeholder";
 import { mergeAttributes } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import { EditorDocument } from "../../types/editorDocument";
@@ -13,9 +21,9 @@ import { SlashCommand } from "./slashCommand";
 import { MentionItem, createMentionSuggestion } from "./mentionSuggestion";
 import { BlockNodeClass } from "./blockNodeClass";
 import { BubbleMenuBar } from "./menus/BubbleMenuBar";
-import { TopToolbar } from "./menus/TopToolbar";
 import { BlockHandle } from "./ui/BlockHandle";
 import { BlockMenu } from "./menus/BlockMenu";
+import { FontSize } from "./fontSize";
 
 type BlockEditorProps = {
   value: EditorDocument;
@@ -93,6 +101,27 @@ export function BlockEditor({
         hardBreak: {},
         dropcursor: false,
         gapcursor: false
+      }),
+      TextStyle,
+      Color,
+      Underline,
+      Highlight.configure({ multicolor: true }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: {
+          class: "text-indigo-600 underline underline-offset-2"
+        }
+      }),
+      FontFamily.configure({
+        types: ["textStyle"]
+      }),
+      FontSize,
+      TextAlign.configure({
+        types: ["heading", "paragraph"]
+      }),
+      Placeholder.configure({
+        placeholder: "开始书写你的内容…"
       }),
       BlockNodeClass,
       DatabaseLikeBlock,
@@ -173,7 +202,15 @@ export function BlockEditor({
     () => ({
       attributes: {
         class:
-          "tiptap block-editor min-h-[420px] md:min-h-[520px] text-[15px] leading-7 text-slate-800 focus:outline-none"
+          "tiptap block-editor min-h-[520px] text-[16px] leading-7 text-slate-800 focus:outline-none prose prose-slate max-w-none"
+      },
+      handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          onSave?.();
+          return true;
+        }
+        return false;
       },
       handleClick: (_view: unknown, _pos: number, event: MouseEvent) => {
         const target = event.target as HTMLElement | null;
@@ -241,9 +278,16 @@ export function BlockEditor({
 
   const updateHandle = useCallback(() => {
     if (!editor || !containerRef.current) return;
+    if ((editor as any).isDestroyed) return;
+    if (!containerRef.current.contains(editor.view.dom)) return;
     const range = getBlockRange(editor);
     if (!range) return;
-    const domAtPos = editor.view.domAtPos(range.from).node as HTMLElement | Text | null;
+    let domAtPos: HTMLElement | Text | null = null;
+    try {
+      domAtPos = editor.view.domAtPos(range.from).node as HTMLElement | Text | null;
+    } catch {
+      return;
+    }
     const element = (
       (domAtPos instanceof Text ? domAtPos.parentElement : domAtPos)?.closest(
         "[data-block-node=\"true\"]"
@@ -330,7 +374,6 @@ export function BlockEditor({
       ref={containerRef}
       className="relative flex h-full w-full flex-col rounded-xl border border-slate-100 bg-white"
     >
-      <TopToolbar editor={editor} readonly={readonly} />
       {editor ? (
         <BubbleMenu
           editor={editor}

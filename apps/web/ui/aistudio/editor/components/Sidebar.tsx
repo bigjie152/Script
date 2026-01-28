@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -51,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   useEffect(() => {
     if (!activeModule) return;
-    if (!["roles", "clues", "timeline", "dm"].includes(activeModule)) return;
+    if (!(["roles", "clues", "timeline", "dm"] as EditorModuleKey[]).includes(activeModule)) return;
     setExpandedModules((prev) => new Set(prev).add(activeModule));
   }, [activeModule]);
 
@@ -67,12 +67,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = useMemo(
     () => [
-      { id: "overview" as const, icon: LayoutDashboard, label: "??", hasChildren: false },
-      { id: "truth" as const, icon: Eye, label: "??", hasChildren: false },
-      { id: "roles" as const, icon: Users, label: "??", hasChildren: true },
-      { id: "clues" as const, icon: Search, label: "??", hasChildren: true },
-      { id: "timeline" as const, icon: Clock, label: "???", hasChildren: false },
-      { id: "dm" as const, icon: BookOpen, label: "DM ??", hasChildren: false }
+      { id: "overview" as const, icon: LayoutDashboard, label: "概览", hasChildren: false },
+      { id: "truth" as const, icon: Eye, label: "真相", hasChildren: false },
+      { id: "roles" as const, icon: Users, label: "角色", hasChildren: true },
+      { id: "clues" as const, icon: Search, label: "线索", hasChildren: true },
+      { id: "timeline" as const, icon: Clock, label: "时间线", hasChildren: false },
+      { id: "dm" as const, icon: BookOpen, label: "DM 手册", hasChildren: false }
     ],
     []
   );
@@ -106,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">
-          Workspace
+          项目导航
         </div>
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -158,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           <input
                             autoFocus
                             className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1 text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                            placeholder="新条目..."
+                            placeholder="新条目名称..."
                             value={editing?.value ?? ""}
                             onChange={(event) =>
                               setEditing((prev) =>
@@ -228,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }}
                   >
                     <Plus size={12} />
-                    <span>新建{item.label}</span>
+                    <span>新增{item.label}</span>
                   </button>
                 </div>
               )}

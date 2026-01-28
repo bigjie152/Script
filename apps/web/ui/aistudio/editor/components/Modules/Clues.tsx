@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+﻿import { useEffect, useMemo } from "react";
 import { Compass, Star, ShieldCheck } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
@@ -9,6 +9,7 @@ type ModuleCollectionState = {
   setDocument: (next: EditorDocument) => void;
   setActiveEntry: (entryId: string) => void;
   updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
+  save?: () => Promise<boolean>;
 };
 
 interface CluesProps {
@@ -16,13 +17,15 @@ interface CluesProps {
   entryId?: string;
   onSelectEntry: (entryId: string) => void;
   onCreateEntry: () => void;
+  onSave?: () => void;
 }
 
 const Clues: React.FC<CluesProps> = ({
   collection,
   entryId,
   onSelectEntry,
-  onCreateEntry
+  onCreateEntry,
+  onSave
 }) => {
   const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
 
@@ -121,7 +124,7 @@ const Clues: React.FC<CluesProps> = ({
         <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck size={14} className="text-green-500" />
-            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">真实度</span>
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">真实性</span>
           </div>
           <select
             className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
@@ -145,7 +148,7 @@ const Clues: React.FC<CluesProps> = ({
           </span>
         </div>
         <div className="flex-1 overflow-hidden">
-          <DocumentEditor value={document} onChange={setDocument} />
+          <DocumentEditor value={document} onChange={setDocument} onSave={onSave} />
         </div>
       </div>
     </div>

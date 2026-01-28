@@ -12,7 +12,16 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
     let items: SuggestionItem[] = [];
     let command: ((item: SuggestionItem) => void) | null = null;
     let selectedIndex = 0;
+    let destroyed = false;
     const debugEnabled = process.env.NEXT_PUBLIC_EDITOR_DEBUG === "true";
+
+    const safeRemove = () => {
+      if (!container) return;
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+      container = null;
+    };
 
     const renderItems = () => {
       if (!container) return;
@@ -65,9 +74,11 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
 
     return {
       onStart: (props: any) => {
+        destroyed = false;
         items = props.items || [];
         command = props.command;
         selectedIndex = 0;
+        safeRemove();
         container = document.createElement("div");
         container.className =
           className +
@@ -80,6 +91,7 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         }
       },
       onUpdate: (props: any) => {
+        if (destroyed) return;
         items = props.items || [];
         command = props.command;
         selectedIndex = 0;
@@ -103,15 +115,15 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
           return true;
         }
         if (props.event.key === "Escape") {
-          container?.remove();
-          container = null;
+          safeRemove();
           return true;
         }
         return false;
       },
       onExit: () => {
-        container?.remove();
-        container = null;
+        if (destroyed) return;
+        destroyed = true;
+        safeRemove();
         if (debugEnabled) {
           console.info("[editor] suggestion exit", className);
         }

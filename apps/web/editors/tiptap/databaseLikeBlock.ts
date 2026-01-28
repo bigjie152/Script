@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Node, mergeAttributes } from "@tiptap/core";
 
@@ -94,7 +94,7 @@ export const DatabaseLikeBlock = Node.create({
         const columns = attrs.columns?.length ? attrs.columns : DEFAULT_COLUMNS;
         const rows = attrs.rows?.length ? attrs.rows : DEFAULT_ROWS;
 
-        meta.textContent = attrs.metadata ? `备注：${attrs.metadata}` : "结构化区块";
+        meta.textContent = attrs.metadata ? `备注：${attrs.metadata}` : "结构化区域";
 
         const thead = document.createElement("thead");
         const headRow = document.createElement("tr");
@@ -121,7 +121,7 @@ export const DatabaseLikeBlock = Node.create({
 
       let panel: HTMLDivElement | null = null;
       const closePanel = () => {
-        panel?.remove();
+        if (panel?.parentNode) panel.parentNode.removeChild(panel);
         panel = null;
       };
 

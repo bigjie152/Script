@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Lock, Sparkles, Target, User, Pencil, Check, X } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
@@ -11,6 +11,7 @@ type ModuleCollectionState = {
   setDocument: (next: EditorDocument) => void;
   setActiveEntry: (entryId: string) => void;
   updateMeta: (entryId: string, meta: Record<string, unknown>) => void;
+  save?: () => Promise<boolean>;
 };
 
 interface RolesProps {
@@ -19,6 +20,7 @@ interface RolesProps {
   onSelectEntry: (entryId: string) => void;
   onCreateEntry: () => void;
   onRenameEntry: (entryId: string, name: string) => Promise<boolean>;
+  onSave?: () => void;
 }
 
 const Roles: React.FC<RolesProps> = ({
@@ -26,7 +28,8 @@ const Roles: React.FC<RolesProps> = ({
   entryId,
   onSelectEntry,
   onCreateEntry,
-  onRenameEntry
+  onRenameEntry,
+  onSave
 }) => {
   const {
     entries,
@@ -252,7 +255,7 @@ const Roles: React.FC<RolesProps> = ({
           </span>
         </div>
         <div className="flex-1 overflow-hidden">
-          <DocumentEditor value={document} onChange={setDocument} />
+          <DocumentEditor value={document} onChange={setDocument} onSave={onSave} />
         </div>
       </div>
     </div>

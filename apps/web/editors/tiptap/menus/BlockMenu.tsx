@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
@@ -53,7 +53,7 @@ export function BlockMenu({
   return (
     <div
       ref={ref}
-      className="absolute z-20 w-48 rounded-lg border border-slate-200 bg-white shadow-lg"
+      className="absolute z-20 w-52 rounded-lg border border-slate-200 bg-white shadow-lg"
       style={{ top: top + 8, left: left + 32 }}
     >
       <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
