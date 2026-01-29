@@ -28,7 +28,7 @@ import { FontSize } from "./fontSize";
 type BlockEditorProps = {
   value: EditorDocument;
   onChange: (next: EditorDocument) => void;
-  onSave?: () => void;
+  onSave?: () => void | Promise<void>;
   readonly?: boolean;
   mentionItems?: MentionItem[];
   onMentionClick?: (item: MentionItem) => void;
@@ -54,6 +54,7 @@ function getBlockRange(editor: ReturnType<typeof useEditor>): BlockRange | null 
 export function BlockEditor({
   value,
   onChange,
+  onSave,
   readonly = false,
   mentionItems = [],
   onMentionClick
@@ -121,7 +122,7 @@ export function BlockEditor({
         types: ["heading", "paragraph"]
       }),
       Placeholder.configure({
-        placeholder: "开始书写你的内容…"
+        placeholder: "写下你的故事背景，这里是灵感的起点..."
       }),
       BlockNodeClass,
       DatabaseLikeBlock,
@@ -202,12 +203,13 @@ export function BlockEditor({
     () => ({
       attributes: {
         class:
-          "tiptap block-editor min-h-[520px] text-[16px] leading-7 text-slate-800 focus:outline-none prose prose-slate max-w-none"
+          "tiptap block-editor min-h-[560px] text-[16px] leading-7 text-slate-800 focus:outline-none prose prose-slate prose-lg max-w-none"
       },
       handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
           event.preventDefault();
-          onSave?.();
+          event.stopPropagation();
+          void onSave?.();
           return true;
         }
         return false;
@@ -227,7 +229,7 @@ export function BlockEditor({
         return true;
       }
     }),
-    [onMentionClick]
+    [onMentionClick, onSave]
   );
 
   const editor = useEditor({
@@ -315,16 +317,43 @@ export function BlockEditor({
 
   useEffect(() => {
     if (!editor) return;
-    editor.setEditable(!readonly);
+    if ((editor as any).isDestroyed) return;
+    if (!editor.view?.dom?.isConnected) return;
+    try {
+      if (editor.isEditable !== !readonly) {
+        editor.setEditable(!readonly);
+      }
+    } catch (err) {
+      console.error("[editor] setEditable failed", err);
+    }
   }, [editor, readonly]);
 
   useEffect(() => {
     if (!editor) return;
     const serialized = JSON.stringify(value.content ?? {});
     if (serialized === lastContentRef.current) return;
-    editor.commands.setContent(value.content ?? { type: "doc", content: [] }, false);
-    lastContentRef.current = serialized;
+    if ((editor as any).isDestroyed) return;
+    if (!editor.view?.dom?.isConnected) return;
+    try {
+      editor.commands.setContent(value.content ?? { type: "doc", content: [] }, false);
+      lastContentRef.current = serialized;
+    } catch (err) {
+      console.error("[editor] setContent failed", err);
+    }
   }, [editor, value.content]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;
+      event.preventDefault();
+      event.stopPropagation();
+      void onSave?.();
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [editor, onSave]);
+
 
   useEffect(() => {
     setMenuOpen(false);
@@ -372,14 +401,17 @@ export function BlockEditor({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full flex-col rounded-xl border border-slate-100 bg-white"
+      className="relative flex h-full w-full flex-col bg-white"
     >
-      {editor ? (
+      {editor && !readonly ? (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 120 }}
+          tippyOptions={{
+            duration: 120,
+            appendTo: () => containerRef.current || document.body
+          }}
           shouldShow={({ editor }) =>
-            !readonly && !editor.state.selection.empty
+            editor.isFocused && !editor.state.selection.empty
           }
         >
           <BubbleMenuBar editor={editor} />

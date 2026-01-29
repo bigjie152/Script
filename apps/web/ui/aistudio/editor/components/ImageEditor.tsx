@@ -33,7 +33,7 @@ const ImageEditor: React.FC = () => {
       const result = await editImageWithGemini(selectedImage, prompt);
       setGeneratedImage(result);
     } catch (err: any) {
-      setError(err.message || "生成失败，请稍后再试。");
+      setError(err.message || "生成失败，请稍后重试");
     } finally {
       setIsGenerating(false);
     }
@@ -75,7 +75,7 @@ const ImageEditor: React.FC = () => {
                 <X size={14} />
               </button>
               <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
-                原图
+                已上传
               </div>
             </>
           ) : (
@@ -86,7 +86,7 @@ const ImageEditor: React.FC = () => {
               <span className="text-sm text-gray-600 font-medium">
                 点击上传图片
               </span>
-              <span className="text-xs text-gray-400 mt-1">支持 JPG, PNG</span>
+              <span className="text-xs text-gray-400 mt-1">支持 JPG、PNG</span>
             </>
           )}
           <input
@@ -105,7 +105,7 @@ const ImageEditor: React.FC = () => {
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="例如：添加复古滤镜，或移除背景中的路人..."
+            placeholder="例如：添加复古滤镜，或替换图中的路人..."
             className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] resize-none"
             disabled={isGenerating}
           />

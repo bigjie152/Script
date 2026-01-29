@@ -20,7 +20,7 @@ const Timeline: React.FC<TimelineProps> = ({ collection }) => {
   if (!entry) {
     return (
       <div className="max-w-5xl mx-auto text-sm text-gray-500">
-        暂无时间线内容。
+        暂无时间线内容，请先添加时间线信息。
       </div>
     );
   }

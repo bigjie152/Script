@@ -20,7 +20,7 @@ const Manual: React.FC<ManualProps> = ({ collection }) => {
   if (!entry) {
     return (
       <div className="max-w-5xl mx-auto text-sm text-gray-500">
-        暂无 DM 手册内容。
+        暂无 DM 手册内容，请先创建章节。
       </div>
     );
   }
@@ -39,7 +39,7 @@ const Manual: React.FC<ManualProps> = ({ collection }) => {
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              开场难度
+              开本难度
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
@@ -64,7 +64,7 @@ const Manual: React.FC<ManualProps> = ({ collection }) => {
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="例如：5 人"
+              placeholder="例如：5 人固定"
               value={players}
               onChange={(event) =>
                 collection.updateMeta(entry.id, {

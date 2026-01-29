@@ -120,10 +120,15 @@ const EditorApp: React.FC = () => {
       if (!projectId) return false;
       const target =
         module === "roles" ? roles : module === "clues" ? clues : null;
-    if (!target) return false;
-    target.renameEntry(entryId, name);
-    return target.save();
-  },
+      if (!target) return false;
+      target.renameEntry(entryId, name);
+      const ok = await target.save();
+      if (!ok) {
+        target.refresh();
+        return false;
+      }
+      return true;
+    },
     [projectId, roles, clues]
   );
 
@@ -132,12 +137,17 @@ const EditorApp: React.FC = () => {
       if (!projectId) return false;
       const target =
         module === "roles" ? roles : module === "clues" ? clues : null;
-    if (!target) return false;
-    target.removeEntry(entryId);
-    const ok = await target.save();
-    navigate(module);
-    return ok;
-  },
+      if (!target) return false;
+      target.removeEntry(entryId);
+      const ok = await target.save();
+      if (!ok) {
+        target.refresh();
+        return false;
+      }
+      const nextEntry = target.activeEntryId ?? undefined;
+      navigate(module, nextEntry || undefined);
+      return true;
+    },
     [projectId, roles, clues, navigate]
   );
 

@@ -52,7 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     if (!activeModule) return;
     if (!(["roles", "clues", "timeline", "dm"] as EditorModuleKey[]).includes(activeModule)) return;
-    setExpandedModules((prev) => new Set(prev).add(activeModule));
+    if (activeModule === "roles" || activeModule === "clues") {
+      setExpandedModules(new Set([activeModule]));
+    }
   }, [activeModule]);
 
   const toggleExpand = (module: EditorModuleKey, event: React.MouseEvent) => {

@@ -292,6 +292,7 @@ export function useModuleCollection(
     removeEntry,
     setActiveEntry,
     updateMeta,
-    updateData
+    updateData,
+    refresh
   };
 }

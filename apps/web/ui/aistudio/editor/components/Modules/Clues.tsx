@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Compass, Star, ShieldCheck } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
@@ -28,6 +28,8 @@ const Clues: React.FC<CluesProps> = ({
   onSave
 }) => {
   const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
 
   const selectedEntry = useMemo(() => {
     if (!entryId) return null;
