@@ -391,10 +391,10 @@ export function BlockEditor({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const original = Node.prototype.removeChild;
-    Node.prototype.removeChild = function (child: Node) {
+    Node.prototype.removeChild = function <T extends Node>(child: T): T {
       try {
         if (child && this.contains(child)) {
-          return original.call(this, child);
+          return original.call(this, child) as T;
         }
         return child;
       } catch (err) {
