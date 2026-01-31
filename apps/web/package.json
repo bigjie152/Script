@@ -9,7 +9,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@tiptap/core": "^2.6.6",
     "@tiptap/extension-color": "^2.27.2",
     "@tiptap/extension-font-family": "^2.27.2",

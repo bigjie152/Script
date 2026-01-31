@@ -1,5 +1,4 @@
 import { drizzle } from "drizzle-orm/d1";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import * as schema from "./schema";
 
 type D1Binding = {
@@ -19,23 +18,59 @@ function resolveBinding(): D1Binding | null {
     return globalBinding as D1Binding;
   }
 
-  let env: Record<string, unknown> | undefined;
+  const pickFromEnv = (env: Record<string, unknown> | undefined) => {
+    if (!env) return null;
+    const binding =
+      env[bindingName] ?? (bindingName !== "DB" ? env.DB : undefined);
+    if (binding && typeof (binding as D1Binding).prepare === "function") {
+      return binding as D1Binding;
+    }
+    return null;
+  };
+
+  const ctx = (globalThis as Record<symbol, unknown>)[
+    cloudflareContextSymbol
+  ] as { env?: Record<string, unknown> } | undefined;
+  const fromSymbol = pickFromEnv(ctx?.env);
+  if (fromSymbol) return fromSymbol;
+
   try {
-    env = getRequestContext()?.env as Record<string, unknown> | undefined;
+    for (const sym of Object.getOwnPropertySymbols(globalThis)) {
+      const candidate = (globalThis as Record<symbol, unknown>)[sym];
+      if (
+        candidate &&
+        typeof candidate === "object" &&
+        "env" in (candidate as Record<string, unknown>)
+      ) {
+        const env = (candidate as { env?: Record<string, unknown> }).env;
+        const resolved = pickFromEnv(env);
+        if (resolved) return resolved;
+      }
+    }
   } catch {
-    env = undefined;
+    // ignore symbol probing failures
   }
-  if (!env) {
-    const ctx = (globalThis as Record<symbol, unknown>)[
-      cloudflareContextSymbol
-    ] as { env?: Record<string, unknown> } | undefined;
-    env = ctx?.env;
-  }
-  const binding =
-    env?.[bindingName] ??
-    (bindingName !== "DB" ? env?.DB : undefined);
-  if (binding && typeof (binding as D1Binding).prepare === "function") {
-    return binding as D1Binding;
+
+  try {
+    for (const key of Object.getOwnPropertyNames(globalThis)) {
+      if (!key.toLowerCase().includes("cloudflare") && key !== "env") continue;
+      const candidate = (globalThis as Record<string, unknown>)[key];
+      if (
+        candidate &&
+        typeof candidate === "object" &&
+        "env" in (candidate as Record<string, unknown>)
+      ) {
+        const env = (candidate as { env?: Record<string, unknown> }).env;
+        const resolved = pickFromEnv(env);
+        if (resolved) return resolved;
+      }
+      if (key === "env" && candidate && typeof candidate === "object") {
+        const resolved = pickFromEnv(candidate as Record<string, unknown>);
+        if (resolved) return resolved;
+      }
+    }
+  } catch {
+    // ignore name probing failures
   }
 
   return null;
