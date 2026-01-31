@@ -101,6 +101,15 @@ Invoke-Request -Title "get project" -Method "GET" -Url "$BaseUrl/api/projects/$p
 $truthBody = '{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Truth draft v0.1"}]}]}}'
 Invoke-Request -Title "update truth" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/truth" -Body $truthBody -ExpectedStatus @("200") | Out-Null
 
+$moduleBody = '{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"MVP placeholder"}]}]}}'
+Invoke-Request -Title "update module story" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/modules/story" -Body $moduleBody -ExpectedStatus @("200") | Out-Null
+Invoke-Request -Title "update module roles" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/modules/roles" -Body $moduleBody -ExpectedStatus @("200") | Out-Null
+Invoke-Request -Title "update module clues" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/modules/clues" -Body $moduleBody -ExpectedStatus @("200") | Out-Null
+Invoke-Request -Title "update module timeline" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/modules/timeline" -Body $moduleBody -ExpectedStatus @("200") | Out-Null
+Invoke-Request -Title "update module dm" -Method "PUT" -Url "$BaseUrl/api/projects/$projectId/modules/dm" -Body $moduleBody -ExpectedStatus @("200") | Out-Null
+
+Invoke-Request -Title "lock truth" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/truth/lock" -ExpectedStatus @("200") | Out-Null
+
 Invoke-Request -Title "list issues" -Method "GET" -Url "$BaseUrl/api/projects/$projectId/issues" -ExpectedStatus @("200") | Out-Null
 
 Invoke-Request -Title "publish project" -Method "POST" -Url "$BaseUrl/api/projects/$projectId/publish" -ExpectedStatus @("200","201") | Out-Null

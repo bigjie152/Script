@@ -91,6 +91,15 @@ invoke_request "get project" "GET" "${BASE_URL}/api/projects/${project_id}" "" "
 truth_body='{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Truth draft v0.1"}]}]}}'
 invoke_request "update truth" "PUT" "${BASE_URL}/api/projects/${project_id}/truth" "$truth_body" "200" > /dev/null
 
+module_body='{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"MVP placeholder"}]}]}}'
+invoke_request "update module story" "PUT" "${BASE_URL}/api/projects/${project_id}/modules/story" "$module_body" "200" > /dev/null
+invoke_request "update module roles" "PUT" "${BASE_URL}/api/projects/${project_id}/modules/roles" "$module_body" "200" > /dev/null
+invoke_request "update module clues" "PUT" "${BASE_URL}/api/projects/${project_id}/modules/clues" "$module_body" "200" > /dev/null
+invoke_request "update module timeline" "PUT" "${BASE_URL}/api/projects/${project_id}/modules/timeline" "$module_body" "200" > /dev/null
+invoke_request "update module dm" "PUT" "${BASE_URL}/api/projects/${project_id}/modules/dm" "$module_body" "200" > /dev/null
+
+invoke_request "lock truth" "POST" "${BASE_URL}/api/projects/${project_id}/truth/lock" "" "200" > /dev/null
+
 invoke_request "list issues" "GET" "${BASE_URL}/api/projects/${project_id}/issues" "" "200" > /dev/null
 
 invoke_request "publish project" "POST" "${BASE_URL}/api/projects/${project_id}/publish" "" "200|201" > /dev/null
