@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { spawnSync } from "child_process";
 
@@ -61,7 +62,7 @@ if (!dbName) {
 }
 
 const wranglerConfig = getArgValue("--config");
-const wranglerBin = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+const wranglerBin = "wrangler";
 
 function runWrangler(commandArgs) {
   const argsWithConfig = wranglerConfig
@@ -69,7 +70,8 @@ function runWrangler(commandArgs) {
     : commandArgs;
   const result = spawnSync(wranglerBin, argsWithConfig, {
     encoding: "utf8",
-    cwd: repoRoot
+    cwd: repoRoot,
+    shell: process.platform === "win32"
   });
   if (result.error) {
     throw result.error;
@@ -81,7 +83,33 @@ function runWrangler(commandArgs) {
   return result.stdout.trim();
 }
 
-function execSql(sql) {
+function execSqlFile(sql) {
+  const cleanSql = sql.replace(/\s+/g, " ").trim();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "d1-migrate-"));
+  const tmpFile = path.join(tmpDir, "stmt.sql");
+  fs.writeFileSync(tmpFile, cleanSql + ";\n", "utf8");
+  const output = runWrangler([
+    "d1",
+    "execute",
+    dbName,
+    modeFlag,
+    "--json",
+    "--file",
+    tmpFile
+  ]);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  if (!output) return [];
+  const jsonStart = output.indexOf("[");
+  if (jsonStart === -1) return [];
+  return JSON.parse(output.slice(jsonStart));
+}
+
+function execSqlCommand(sql) {
+  const cleanSql = sql.replace(/\s+/g, " ").trim();
+  const commandValue =
+    process.platform === "win32"
+      ? `"${cleanSql.replace(/\"/g, '\\"')}"`
+      : cleanSql;
   const output = runWrangler([
     "d1",
     "execute",
@@ -89,7 +117,7 @@ function execSql(sql) {
     modeFlag,
     "--json",
     "--command",
-    sql
+    commandValue
   ]);
   if (!output) return [];
   return JSON.parse(output);
@@ -125,7 +153,7 @@ console.log(`DB=${dbName}`);
 console.log(`MODE=${modeFlag.replace("--", "")}`);
 console.log("Applying create table/index statements...");
 for (const stmt of createStatements) {
-  execSql(stmt + ";");
+  execSqlFile(stmt);
 }
 
 const columnsToEnsure = {
@@ -152,13 +180,21 @@ const columnsToEnsure = {
 
 console.log("Checking and adding missing columns...");
 for (const [table, columns] of Object.entries(columnsToEnsure)) {
-  const pragma = execSql(`PRAGMA table_info(${table});`);
+  const pragma = execSqlCommand(`PRAGMA table_info(${table})`);
   const existing = extractColumns(pragma);
   for (const col of columns) {
     if (existing.has(col.name)) continue;
     const alterSql = `ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.sql}`;
     console.log(`- ${table}.${col.name}`);
-    execSql(alterSql + ";");
+    try {
+      execSqlCommand(alterSql);
+    } catch (error) {
+      const message = String(error || "");
+      if (message.includes("duplicate column name")) {
+        continue;
+      }
+      throw error;
+    }
   }
 }
 
