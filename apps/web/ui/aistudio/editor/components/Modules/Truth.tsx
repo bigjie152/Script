@@ -33,7 +33,7 @@ const Truth: React.FC<TruthProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col gap-5 p-1">
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
             最新快照
@@ -44,19 +44,6 @@ const Truth: React.FC<TruthProps> = ({
               <span className="font-mono text-sm bg-gray-100 px-2 py-0.5 rounded">{snapshotLabel}</span>
             </div>
             <span className="text-[10px] text-gray-400">SHA-29F8</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <span className="text-xs text-gray-400 uppercase font-semibold mb-1 tracking-wider">
-            派生覆盖率
-          </span>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 w-full rounded-full"></div>
-            </div>
-            <span className="text-sm font-medium text-green-700">5/5 同步</span>
-            <ShieldCheck size={16} className="text-green-500" />
           </div>
         </div>
 

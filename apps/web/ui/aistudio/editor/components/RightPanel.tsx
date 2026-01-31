@@ -147,12 +147,13 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
   const structureAlert = Boolean(structure && !structure.healthy);
 
   const targetLabel = (target: string) => {
-    if (target === "role") return "角色档案";
-    if (target === "clue") return "线索草案";
-    if (target === "timeline") return "时间线草案";
-    if (target === "dm") return "主持人手册";
-    if (target === "story") return "剧情草案";
-    return "结构建议";
+    if (target === "role") return "角色剧本生成";
+    if (target === "clue") return "线索结构生成";
+    if (target === "timeline") return "时间线生成";
+    if (target === "dm") return "DM 手册生成";
+    if (target === "story") return "故事剧情生成";
+    if (target === "insight") return "真相生成";
+    return "真相生成";
   };
 
   const runDerive = async () => {
@@ -280,13 +281,13 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
                   value={aiAction}
                   onChange={(event) => setAiAction(event.target.value)}
                 >
-                  <option value="outline">故事主线建议</option>
+                  <option value="outline">真相（Truth）生成</option>
                   <option value="worldcheck">设定漏洞检查</option>
-                  <option value="story">剧情梗概草案</option>
-                  <option value="role">角色档案草案</option>
-                  <option value="clue">线索结构草案</option>
-                  <option value="timeline">时间线草案</option>
-                  <option value="dm">主持人指引草案</option>
+                  <option value="story">故事剧情生成</option>
+                  <option value="role">角色剧本生成</option>
+                  <option value="clue">线索结构生成</option>
+                  <option value="timeline">时间线生成</option>
+                  <option value="dm">DM 手册生成</option>
                 </select>
                 <textarea
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 min-h-[70px] resize-none"

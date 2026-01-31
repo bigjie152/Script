@@ -1,4 +1,4 @@
-import { EditorDocument, EditorModuleKey } from "../../types/editorDocument";
+﻿import { EditorDocument, EditorModuleKey } from "../../types/editorDocument";
 
 type TruthNode = {
   type?: string;

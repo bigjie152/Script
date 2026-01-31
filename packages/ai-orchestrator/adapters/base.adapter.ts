@@ -22,7 +22,47 @@ function readEnv(key: string): string | undefined {
     cloudflareContextSymbol
   ] as { env?: Record<string, unknown> } | undefined;
   const value = ctx?.env?.[key];
-  return typeof value === "string" ? value : undefined;
+  if (typeof value === "string") return value;
+
+  const pickFromEnv = (env: Record<string, unknown> | undefined) => {
+    if (!env) return undefined;
+    const resolved = env[key];
+    return typeof resolved === "string" ? resolved : undefined;
+  };
+
+  try {
+    for (const sym of Object.getOwnPropertySymbols(globalThis)) {
+      const candidate = (globalThis as Record<symbol, unknown>)[sym];
+      if (
+        candidate &&
+        typeof candidate === "object" &&
+        "env" in (candidate as Record<string, unknown>)
+      ) {
+        const resolved = pickFromEnv((candidate as { env?: Record<string, unknown> }).env);
+        if (resolved) return resolved;
+      }
+    }
+  } catch {
+    // ignore symbol probing failures
+  }
+
+  try {
+    for (const name of Object.getOwnPropertyNames(globalThis)) {
+      const candidate = (globalThis as Record<string, unknown>)[name];
+      if (
+        candidate &&
+        typeof candidate === "object" &&
+        "env" in (candidate as Record<string, unknown>)
+      ) {
+        const resolved = pickFromEnv((candidate as { env?: Record<string, unknown> }).env);
+        if (resolved) return resolved;
+      }
+    }
+  } catch {
+    // ignore name probing failures
+  }
+
+  return undefined;
 }
 
 function resolveProvider(purpose?: AIPurpose) {

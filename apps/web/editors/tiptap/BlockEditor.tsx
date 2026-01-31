@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BubbleMenu, EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import Underline from "@tiptap/extension-underline";
@@ -20,9 +20,6 @@ import { DatabaseLikeBlock } from "./databaseLikeBlock";
 import { SlashCommand } from "./slashCommand";
 import { MentionItem, createMentionSuggestion } from "./mentionSuggestion";
 import { BlockNodeClass } from "./blockNodeClass";
-import { BubbleMenuBar } from "./menus/BubbleMenuBar";
-import { BlockHandle } from "./ui/BlockHandle";
-import { BlockMenu } from "./menus/BlockMenu";
 import { FontSize } from "./fontSize";
 
 type BlockEditorProps = {
@@ -33,23 +30,6 @@ type BlockEditorProps = {
   mentionItems?: MentionItem[];
   onMentionClick?: (item: MentionItem) => void;
 };
-
-type BlockRange = {
-  from: number;
-  to: number;
-};
-
-function getBlockRange(editor: ReturnType<typeof useEditor>): BlockRange | null {
-  if (!editor) return null;
-  const { $from } = editor.state.selection;
-  for (let depth = $from.depth; depth > 0; depth -= 1) {
-    const node = $from.node(depth);
-    if (node.type.isBlock) {
-      return { from: $from.start(depth), to: $from.end(depth) };
-    }
-  }
-  return null;
-}
 
 export function BlockEditor({
   value,
@@ -68,8 +48,6 @@ export function BlockEditor({
   const lastContentRef = useRef("");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeBlockRef = useRef<HTMLElement | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [handlePos, setHandlePos] = useState({ top: 0, left: 0, visible: false });
 
   const roleItems = useMemo(
     () => mentionItems.filter((item) => item.entityType === "role"),
@@ -312,42 +290,6 @@ export function BlockEditor({
     };
   }, [editor, debugEnabled, value.module, value.projectId]);
 
-  const updateHandle = useCallback(() => {
-    if (!editor || !containerRef.current) return;
-    if ((editor as any).isDestroyed) return;
-    if (!containerRef.current.contains(editor.view.dom)) return;
-    const range = getBlockRange(editor);
-    if (!range) return;
-    let domAtPos: HTMLElement | Text | null = null;
-    try {
-      domAtPos = editor.view.domAtPos(range.from).node as HTMLElement | Text | null;
-    } catch {
-      return;
-    }
-    const element = (
-      (domAtPos instanceof Text ? domAtPos.parentElement : domAtPos)?.closest(
-        "[data-block-node=\"true\"]"
-      ) ?? null
-    ) as HTMLElement | null;
-
-    if (activeBlockRef.current && activeBlockRef.current !== element) {
-      activeBlockRef.current.classList.remove("is-active");
-    }
-    if (element && !element.classList.contains("is-active")) {
-      element.classList.add("is-active");
-    }
-    activeBlockRef.current = element;
-
-    const coords = editor.view.coordsAtPos(range.from);
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const top = coords.top - containerRect.top;
-    const left = coords.left - containerRect.left;
-    setHandlePos({
-      top,
-      left,
-      visible: editor.isEditable
-    });
-  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
@@ -411,83 +353,15 @@ export function BlockEditor({
 
 
   useEffect(() => {
-    setMenuOpen(false);
     activeBlockRef.current?.classList.remove("is-active");
     activeBlockRef.current = null;
   }, [readonly, value.content]);
-
-  useEffect(() => {
-    if (!editor) return;
-    updateHandle();
-    const onUpdate = () => updateHandle();
-    editor.on("selectionUpdate", onUpdate);
-    editor.on("transaction", onUpdate);
-    window.addEventListener("resize", onUpdate);
-    window.addEventListener("scroll", onUpdate, true);
-    return () => {
-      editor.off("selectionUpdate", onUpdate);
-      editor.off("transaction", onUpdate);
-      window.removeEventListener("resize", onUpdate);
-      window.removeEventListener("scroll", onUpdate, true);
-      activeBlockRef.current?.classList.remove("is-active");
-    };
-  }, [editor, updateHandle]);
-
-  const insertBlockBelow = useCallback(() => {
-    if (!editor) return;
-    const range = getBlockRange(editor);
-    if (!range) return;
-    const insertPos = range.to + 1;
-    editor
-      .chain()
-      .focus()
-      .insertContentAt(insertPos, { type: "paragraph" })
-      .setTextSelection(insertPos + 1)
-      .run();
-  }, [editor]);
-
-  const deleteCurrentBlock = useCallback(() => {
-    if (!editor) return;
-    const range = getBlockRange(editor);
-    if (!range) return;
-    editor.chain().focus().setTextSelection(range).deleteSelection().run();
-  }, [editor]);
 
   return (
     <div
       ref={containerRef}
       className="relative flex h-full w-full flex-col bg-white"
     >
-      {editor && !readonly ? (
-        <BubbleMenu
-          editor={editor}
-          tippyOptions={{
-            duration: 120,
-            appendTo: () => containerRef.current || document.body
-          }}
-          shouldShow={({ editor }) =>
-            editor.isFocused && !editor.state.selection.empty
-          }
-        >
-          <BubbleMenuBar editor={editor} />
-        </BubbleMenu>
-      ) : null}
-      <BlockHandle
-        top={handlePos.top}
-        left={handlePos.left}
-        visible={handlePos.visible && !readonly}
-        onOpenMenu={() => setMenuOpen(true)}
-        onInsert={insertBlockBelow}
-      />
-      <BlockMenu
-        editor={editor}
-        open={menuOpen}
-        top={handlePos.top}
-        left={handlePos.left}
-        onClose={() => setMenuOpen(false)}
-        onDelete={deleteCurrentBlock}
-        onInsert={insertBlockBelow}
-      />
       <div className="editor-scroll flex-1 overflow-y-auto px-6 py-5">
         <EditorContent editor={editor} />
       </div>

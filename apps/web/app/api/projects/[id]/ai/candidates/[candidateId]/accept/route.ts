@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+﻿import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { getAuthUser } from "@/lib/auth";
@@ -44,6 +44,8 @@ export async function POST(
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
   const { id: projectId, candidateId } = await Promise.resolve(params);
+  const body = await request.json().catch(() => ({}));
+  const targetEntryId = typeof body?.entryId === "string" ? body.entryId : null;
 
   const user = await getAuthUser(request);
   if (!user) {
@@ -141,7 +143,10 @@ export async function POST(
     } else {
       const collection = ensureCollection(doc?.content);
       const entries = Array.isArray(collection.entries) ? collection.entries : [];
-      const entryId = crypto.randomUUID();
+      const entryId =
+        targetEntryId && entries.some((entry) => entry.id === targetEntryId)
+          ? targetEntryId
+          : crypto.randomUUID();
       const nameBase =
         candidate.title ||
         (module === "roles"
@@ -151,19 +156,44 @@ export async function POST(
             : module === "timeline"
               ? "时间线"
               : "DM 手册");
-      const entry = {
-        id: entryId,
-        name: nameBase,
-        content: normalizeDoc(candidate.content, candidate.summary || candidate.title || ""),
-        meta: candidate.meta ?? {},
-        data: {},
-        placeholderId: entryId,
-        updatedAt: now
+      const incoming = normalizeDoc(candidate.content, candidate.summary || candidate.title || "");
+      const mergeDoc = (base: unknown) => {
+        const baseDoc = normalizeDoc(base, "");
+        return {
+          type: "doc",
+          content: [
+            ...(((baseDoc as any).content as unknown[]) || []),
+            ...(((incoming as any).content as unknown[]) || [])
+          ]
+        };
       };
+      const updatedEntries = entries.map((entry) =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              content: mergeDoc(entry.content),
+              updatedAt: now
+            }
+          : entry
+      );
+      const nextEntries = updatedEntries.some((entry) => entry.id === entryId)
+        ? updatedEntries
+        : [
+            ...entries,
+            {
+              id: entryId,
+              name: nameBase,
+              content: incoming,
+              meta: candidate.meta ?? {},
+              data: {},
+              placeholderId: entryId,
+              updatedAt: now
+            }
+          ];
       const next = {
         kind: "collection",
         activeId: entryId,
-        entries: [...entries, entry]
+        entries: nextEntries
       };
       if (doc) {
         await db

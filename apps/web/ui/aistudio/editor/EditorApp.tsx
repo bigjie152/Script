@@ -20,6 +20,7 @@ import { useModuleDocument } from "@/hooks/useModuleDocument";
 import { useModuleCollection } from "@/hooks/useModuleCollection";
 import { useProjectMeta } from "@/hooks/useProjectMeta";
 import { MentionItem } from "@/editors/tiptap/mentionSuggestion";
+import { updateDocumentContent } from "@/editors/adapters/plainTextAdapter";
 import { getStructureStatus, StructureStatusResponse } from "@/services/projectApi";
 
 type SaveState = "idle" | "saving" | "success" | "error";
@@ -247,6 +248,20 @@ const EditorApp: React.FC = () => {
     manual.hasUnsaved
   ]);
 
+  const currentEntryId = useMemo(() => {
+    if (moduleKey === "roles") return roles.activeEntryId;
+    if (moduleKey === "clues") return clues.activeEntryId;
+    if (moduleKey === "timeline") return timeline.activeEntryId;
+    if (moduleKey === "dm") return manual.activeEntryId;
+    return null;
+  }, [
+    moduleKey,
+    roles.activeEntryId,
+    clues.activeEntryId,
+    timeline.activeEntryId,
+    manual.activeEntryId
+  ]);
+
   const navigate = useCallback(
     async (module: EditorModuleKey, entry?: string) => {
       if (!projectId) return;
@@ -273,6 +288,53 @@ const EditorApp: React.FC = () => {
   const handleCandidatesUpdated = useCallback(() => {
     setCandidatesVersion((value) => value + 1);
   }, []);
+
+  const insertCandidateIntoEditor = useCallback(
+    (candidate: { target: string; content?: Record<string, unknown> | null }) => {
+      const incoming = candidate.content ?? { type: "doc", content: [] };
+      const mergeDoc = (base: Record<string, unknown>) => {
+        const baseContent = (base as any).content;
+        const incomingContent = (incoming as any).content;
+        return {
+          type: "doc",
+          content: [
+            ...(Array.isArray(baseContent) ? baseContent : []),
+            ...(Array.isArray(incomingContent) ? incomingContent : [])
+          ]
+        } as Record<string, unknown>;
+      };
+
+      if (candidate.target === "insight" && moduleKey === "truth") {
+        truthState.setDocument(updateDocumentContent(truthState.document, mergeDoc(truthState.document.content)));
+        return;
+      }
+
+      if (candidate.target === "story" && moduleKey === "story") {
+        storyDoc.setDocument(updateDocumentContent(storyDoc.document, mergeDoc(storyDoc.document.content)));
+        return;
+      }
+
+      if (candidate.target === "role" && moduleKey === "roles") {
+        roles.setDocument(updateDocumentContent(roles.document, mergeDoc(roles.document.content)));
+        return;
+      }
+
+      if (candidate.target === "clue" && moduleKey === "clues") {
+        clues.setDocument(updateDocumentContent(clues.document, mergeDoc(clues.document.content)));
+        return;
+      }
+
+      if (candidate.target === "timeline" && moduleKey === "timeline") {
+        timeline.setDocument(updateDocumentContent(timeline.document, mergeDoc(timeline.document.content)));
+        return;
+      }
+
+      if (candidate.target === "dm" && moduleKey === "dm") {
+        manual.setDocument(updateDocumentContent(manual.document, mergeDoc(manual.document.content)));
+      }
+    },
+    [moduleKey, truthState, storyDoc, roles, clues, timeline, manual]
+  );
 
   const createEntry = useCallback(
     (module: EditorModuleKey) => {
@@ -460,7 +522,13 @@ const EditorApp: React.FC = () => {
           )}
 
           {moduleKey !== "overview" && projectId ? (
-            <AiCandidatePanel projectId={projectId} refreshKey={candidatesVersion} />
+            <AiCandidatePanel
+              projectId={projectId}
+              refreshKey={candidatesVersion}
+              currentModule={moduleKey}
+              currentEntryId={currentEntryId}
+              onInsertCandidate={insertCandidateIntoEditor}
+            />
           ) : null}
         </main>
       </div>

@@ -119,11 +119,16 @@ export async function listAiCandidates(
   );
 }
 
-export async function acceptAiCandidate(projectId: string, candidateId: string) {
+export async function acceptAiCandidate(
+  projectId: string,
+  candidateId: string,
+  entryId?: string
+) {
   return apiRequest<{ status: string }>(
     `/api/projects/${projectId}/ai/candidates/${candidateId}/accept`,
     {
-      method: "POST"
+      method: "POST",
+      body: entryId ? JSON.stringify({ entryId }) : undefined
     }
   );
 }

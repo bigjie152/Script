@@ -8,23 +8,33 @@ import { acceptAiCandidate, listAiCandidates, rejectAiCandidate, CandidateItem }
 interface AiCandidatePanelProps {
   projectId: string;
   refreshKey?: number;
+  currentModule?: string;
+  currentEntryId?: string | null;
+  onInsertCandidate?: (candidate: CandidateItem) => void;
 }
 
 const targetLabel = (target: string) => {
-  if (target === "role") return "角色档案";
-  if (target === "clue") return "线索草案";
-  if (target === "timeline") return "时间线草案";
-  if (target === "dm") return "主持人手册";
-  if (target === "story") return "剧情草案";
-  if (target === "insight") return "结构建议";
-  return "结构建议";
+  if (target === "role") return "角色剧本生成";
+  if (target === "clue") return "线索结构生成";
+  if (target === "timeline") return "时间线生成";
+  if (target === "dm") return "DM 手册生成";
+  if (target === "story") return "故事剧情生成";
+  if (target === "insight") return "真相生成";
+  return "真相生成";
 };
 
-export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandidatePanelProps) {
+export default function AiCandidatePanel({
+  projectId,
+  refreshKey = 0,
+  currentModule,
+  currentEntryId,
+  onInsertCandidate
+}: AiCandidatePanelProps) {
   const [candidates, setCandidates] = useState<CandidateItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState(false);
 
   const loadCandidates = async () => {
     if (!projectId) return;
@@ -44,9 +54,34 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
     void loadCandidates();
   }, [projectId, refreshKey]);
 
-  const handleAccept = async (id: string) => {
+  const canInsert = (candidate: CandidateItem) => {
+    if (!onInsertCandidate) return false;
+    if (candidate.target === "insight") return currentModule === "truth";
+    const map: Record<string, string> = {
+      story: "story",
+      role: "roles",
+      clue: "clues",
+      timeline: "timeline",
+      dm: "dm"
+    };
+    if (!currentModule) return false;
+    if (map[candidate.target] !== currentModule) return false;
+    if (["role", "clue", "timeline", "dm"].includes(candidate.target)) {
+      return Boolean(currentEntryId);
+    }
+    return true;
+  };
+
+  const handleAccept = async (candidate: CandidateItem) => {
     try {
-      await acceptAiCandidate(projectId, id);
+      const entryId =
+        ["role", "clue", "timeline", "dm"].includes(candidate.target) && currentEntryId
+          ? currentEntryId
+          : undefined;
+      await acceptAiCandidate(projectId, candidate.id, entryId);
+      if (canInsert(candidate)) {
+        onInsertCandidate?.(candidate);
+      }
       await loadCandidates();
     } catch (err) {
       setError(err instanceof Error ? err.message : "采纳失败");
@@ -75,17 +110,27 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
           <div className="text-sm font-semibold text-gray-800">AI 候选区（阅读与采纳）</div>
           <div className="text-xs text-gray-500 mt-1">{summary}</div>
         </div>
-        <button
-          type="button"
-          onClick={loadCandidates}
-          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-        >
-          <RefreshCcw size={14} />
-          刷新
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setCollapsed((prev) => !prev)}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            {collapsed ? "展开" : "收起"}
+          </button>
+          <button
+            type="button"
+            onClick={loadCandidates}
+            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+          >
+            <RefreshCcw size={14} />
+            刷新
+          </button>
+        </div>
       </div>
 
-      <div className="px-5 py-4 space-y-4">
+      {collapsed ? null : (
+        <div className="px-5 py-4 space-y-4">
         {error ? <div className="text-xs text-rose-500">{error}</div> : null}
         {!loading && candidates.length === 0 ? (
           <div className="text-xs text-gray-400">暂无候选内容</div>
@@ -114,11 +159,11 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleAccept(candidate.id)}
+                    onClick={() => handleAccept(candidate)}
                     className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700"
                   >
                     <Check size={12} />
-                    采纳
+                    {canInsert(candidate) ? "采纳并插入" : "采纳"}
                   </button>
                   <button
                     type="button"
@@ -156,6 +201,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
           );
         })}
       </div>
+      )}
     </div>
   );
 }

@@ -27,6 +27,25 @@ type CollectionSeed = {
   defaultName: string;
 };
 
+const MOJIBAKE_NAME_MAP = new Map<string, string>([
+  ["瑙掕壊", "角色"],
+  ["绾跨储", "线索"],
+  ["鏃堕棿绾", "时间线"],
+  ["鏃堕棿绾?", "时间线"],
+  ["DM 鎵嬪唽", "DM 手册"]
+]);
+
+function normalizeEntryName(name: string | undefined, fallback: string) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return fallback;
+  if (MOJIBAKE_NAME_MAP.has(trimmed)) {
+    return MOJIBAKE_NAME_MAP.get(trimmed) || fallback;
+  }
+  if (trimmed.includes("鏃堕棿")) return "时间线";
+  if (trimmed.includes("鎵嬪唽")) return "DM 手册";
+  return trimmed;
+}
+
 function isCollection(value: unknown): value is ModuleCollection {
   if (!value || typeof value !== "object") return false;
   const maybe = value as ModuleCollection;
@@ -62,7 +81,7 @@ export function normalizeModuleCollection(
         const id = entry.id || crypto.randomUUID();
         return {
           id,
-          name: entry.name || seed.defaultName,
+          name: normalizeEntryName(entry.name, seed.defaultName),
           content: normalizeContent(entry.content),
           meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
           data: entry.data && typeof entry.data === "object" ? entry.data : {},
