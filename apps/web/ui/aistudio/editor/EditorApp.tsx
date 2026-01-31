@@ -12,6 +12,7 @@ import Roles from "./components/Modules/Roles";
 import Clues from "./components/Modules/Clues";
 import Timeline from "./components/Modules/Timeline";
 import Manual from "./components/Modules/Manual";
+import AiCandidatePanel from "./components/AiCandidatePanel";
 import { resolveModuleKey, MODULE_CONFIG_MAP } from "@/modules/modules.config";
 import { EditorModuleKey } from "@/types/editorDocument";
 import { useTruthDocument } from "@/hooks/useTruthDocument";
@@ -60,6 +61,7 @@ const EditorApp: React.FC = () => {
   const [structureStatus, setStructureStatus] = useState<StructureStatusResponse | null>(null);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [structureVersion, setStructureVersion] = useState(0);
+  const [candidatesVersion, setCandidatesVersion] = useState(0);
 
   const mentionItems = useMemo<MentionItem[]>(
     () => [
@@ -268,6 +270,10 @@ const EditorApp: React.FC = () => {
     navigate(resolveModuleKey(target));
   }, [structureStatus, navigate]);
 
+  const handleCandidatesUpdated = useCallback(() => {
+    setCandidatesVersion((value) => value + 1);
+  }, []);
+
   const createEntry = useCallback(
     (module: EditorModuleKey) => {
       if (!projectId) return null;
@@ -452,10 +458,14 @@ const EditorApp: React.FC = () => {
               readOnly={isReadOnly}
             />
           )}
+
+          {moduleKey !== "overview" && projectId ? (
+            <AiCandidatePanel projectId={projectId} refreshKey={candidatesVersion} />
+          ) : null}
         </main>
       </div>
 
-      <RightPanel projectId={projectId} />
+      <RightPanel projectId={projectId} onCandidatesUpdated={handleCandidatesUpdated} />
     </div>
   );
 };

@@ -1,21 +1,14 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles, Check, X } from "lucide-react";
+import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
-import ImageEditor from "./ImageEditor";
 import { getStructureStatus, listImpactReports, ImpactReportItem, listIssues, IssueItem } from "@/services/projectApi";
-import {
-  deriveCandidates,
-  listAiCandidates,
-  acceptAiCandidate,
-  rejectAiCandidate,
-  CandidateItem,
-  runLogicCheck
-} from "@/services/aiApi";
+import { deriveCandidates, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
 
 interface RightPanelProps {
   projectId?: string;
+  onCandidatesUpdated?: () => void;
 }
 
 type StructureStatus = {
@@ -26,7 +19,7 @@ type StructureStatus = {
   p0IssueCount: number;
 };
 
-const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
+const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated }) => {
   const params = useParams();
   const resolvedProjectId =
     projectId || (typeof params?.projectId === "string" ? params.projectId : "");
@@ -39,6 +32,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
   const [aiAction, setAiAction] = useState("story");
   const [aiIntent, setAiIntent] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateItem[]>([]);
@@ -66,6 +60,19 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
       alive = false;
     };
   }, [resolvedProjectId]);
+
+  useEffect(() => {
+    if (!aiLoading) return;
+    setAiProgress(10);
+    const timer = window.setInterval(() => {
+      setAiProgress((prev) => {
+        if (prev >= 90) return prev;
+        const bump = Math.max(2, Math.round(Math.random() * 6));
+        return Math.min(90, prev + bump);
+      });
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [aiLoading]);
 
   useEffect(() => {
     if (!resolvedProjectId) return;
@@ -140,12 +147,12 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
   const structureAlert = Boolean(structure && !structure.healthy);
 
   const targetLabel = (target: string) => {
-    if (target === "role") return "角色";
-    if (target === "clue") return "线索";
-    if (target === "timeline") return "时间线";
-    if (target === "dm") return "DM 手册";
-    if (target === "story") return "Story";
-    return "构思建议";
+    if (target === "role") return "角色档案";
+    if (target === "clue") return "线索草案";
+    if (target === "timeline") return "时间线草案";
+    if (target === "dm") return "主持人手册";
+    if (target === "story") return "剧情草案";
+    return "结构建议";
   };
 
   const runDerive = async () => {
@@ -159,40 +166,15 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
         intent: aiIntent || undefined
       });
       setCandidates((prev) => [...result.candidates, ...prev]);
-      setAiNotice("已生成候选内容，请在候选区采纳或拒绝。");
+      setAiNotice(`已生成候选内容（${result.provider}/${result.model}），请在候选区采纳或拒绝。`);
       setAiIntent("");
+      onCandidatesUpdated?.();
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
     } finally {
+      setAiProgress(100);
+      window.setTimeout(() => setAiProgress(0), 800);
       setAiLoading(false);
-    }
-  };
-
-  const refreshCandidates = async () => {
-    if (!resolvedProjectId) return;
-    const result = await listAiCandidates(resolvedProjectId, "pending");
-    setCandidates(result.candidates || []);
-  };
-
-  const handleAccept = async (candidateId: string) => {
-    if (!resolvedProjectId) return;
-    try {
-      await acceptAiCandidate(resolvedProjectId, candidateId);
-      setAiNotice("采纳成功，可切换到对应模块查看。");
-      await refreshCandidates();
-      setIssuesVersion((v) => v + 1);
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : "采纳失败");
-    }
-  };
-
-  const handleReject = async (candidateId: string) => {
-    if (!resolvedProjectId) return;
-    try {
-      await rejectAiCandidate(resolvedProjectId, candidateId);
-      await refreshCandidates();
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : "拒绝失败");
     }
   };
 
@@ -288,9 +270,9 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                   <Sparkles size={14} className="text-indigo-500" />
-                  AI 创作
+                  AI 写作助手
                 </h3>
-                <span className="text-[10px] text-gray-400">候选区</span>
+                <span className="text-[10px] text-gray-400">候选区（主编辑区查看）</span>
               </div>
               <div className="space-y-2">
                 <select
@@ -298,13 +280,13 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
                   value={aiAction}
                   onChange={(event) => setAiAction(event.target.value)}
                 >
-                  <option value="outline">构思建议</option>
-                  <option value="worldcheck">世界观检查</option>
-                  <option value="story">Story 草案</option>
-                  <option value="role">角色草案</option>
-                  <option value="clue">线索草案</option>
+                  <option value="outline">故事主线建议</option>
+                  <option value="worldcheck">设定漏洞检查</option>
+                  <option value="story">剧情梗概草案</option>
+                  <option value="role">角色档案草案</option>
+                  <option value="clue">线索结构草案</option>
                   <option value="timeline">时间线草案</option>
-                  <option value="dm">DM 手册草案</option>
+                  <option value="dm">主持人指引草案</option>
                 </select>
                 <textarea
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 min-h-[70px] resize-none"
@@ -318,48 +300,29 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId }) => {
                   disabled={aiLoading}
                   className="w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  {aiLoading ? "生成中..." : "生成候选"}
+                  {aiLoading ? `生成中... ${Math.min(99, aiProgress || 0)}%` : "生成候选"}
                 </button>
+                {aiLoading || aiProgress > 0 ? (
+                  <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 transition-all"
+                      style={{ width: `${aiProgress}%` }}
+                    />
+                  </div>
+                ) : null}
                 {aiError ? <div className="text-xs text-rose-500">{aiError}</div> : null}
                 {aiNotice ? <div className="text-xs text-emerald-600">{aiNotice}</div> : null}
               </div>
               <div className="space-y-2">
                 {candidates.length === 0 ? (
-                  <div className="text-xs text-gray-400">暂无候选内容</div>
+                  <div className="text-xs text-gray-400">暂无候选内容，请在主编辑区查看与处理。</div>
                 ) : (
-                  candidates.slice(0, 5).map((candidate) => (
-                    <div key={candidate.id} className="rounded-lg border border-gray-100 bg-gray-50 px-2 py-2">
-                      <div className="text-xs text-gray-700 font-medium">
-                        {candidate.title} · {targetLabel(candidate.target)}
-                      </div>
-                      {candidate.summary ? (
-                        <div className="text-[11px] text-gray-500 mt-1">{candidate.summary}</div>
-                      ) : null}
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAccept(candidate.id)}
-                          className="flex items-center gap-1 text-[11px] text-emerald-600 hover:text-emerald-700"
-                        >
-                          <Check size={12} />
-                          采纳
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReject(candidate.id)}
-                          className="flex items-center gap-1 text-[11px] text-rose-500 hover:text-rose-600"
-                        >
-                          <X size={12} />
-                          拒绝
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                  <div className="text-xs text-gray-500">
+                    当前待处理候选：{candidates.length} 条（请在主编辑区阅读与采纳）
+                  </div>
                 )}
               </div>
             </div>
-
-            <ImageEditor />
           </div>
         ) : (
           <div className="space-y-4">
