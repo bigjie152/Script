@@ -56,38 +56,53 @@ export async function POST(request: Request) {
     return jsonError(400, "username or password is required", undefined, requestId);
   }
 
-  const [user] = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.username, username))
-    .limit(1);
+  try {
+    const [user] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.username, username))
+      .limit(1);
 
-  if (!user) {
-    return jsonError(401, "invalid credentials", undefined, requestId);
+    if (!user) {
+      return jsonError(401, "invalid credentials", undefined, requestId);
+    }
+
+    const verified = await verifyPassword(password, user.passwordSalt, user.passwordHash);
+    if (!verified) {
+      return jsonError(401, "invalid credentials", undefined, requestId);
+    }
+
+    const session = await createSession(user.id);
+
+    const response = jsonResponse(
+      {
+        user: { id: user.id, username: user.username }
+      },
+      { requestId }
+    );
+
+    applySessionCookie(response, session.token, session.expiresAt);
+
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt
+    });
+
+    return response;
+  } catch (err) {
+    console.error(routeLabel, {
+      requestId,
+      status: 500,
+      latencyMs: Date.now() - startedAt,
+      error: err instanceof Error ? err.message : String(err)
+    });
+    return jsonError(
+      500,
+      "login failed",
+      { message: err instanceof Error ? err.message : String(err) },
+      requestId
+    );
   }
-
-  const verified = await verifyPassword(password, user.passwordSalt, user.passwordHash);
-  if (!verified) {
-    return jsonError(401, "invalid credentials", undefined, requestId);
-  }
-
-  const session = await createSession(user.id);
-
-  const response = jsonResponse(
-    {
-      user: { id: user.id, username: user.username }
-    },
-    { requestId }
-  );
-
-  applySessionCookie(response, session.token, session.expiresAt);
-
-  console.log(routeLabel, {
-    route: routeLabel,
-    requestId,
-    status: 200,
-    latencyMs: Date.now() - startedAt
-  });
-
-  return response;
 }
