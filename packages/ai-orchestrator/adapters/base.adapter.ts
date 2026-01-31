@@ -47,11 +47,13 @@ function resolveModel(provider: string, purpose?: AIPurpose) {
     );
   }
   if (provider === "deepseek") {
-    return (
-      readEnv("AI_DEEPSEEK_MODEL") ||
-      readEnv("AI_MODEL") ||
-      "DeepSeek-R1"
-    );
+    const raw =
+      readEnv("AI_DEEPSEEK_MODEL") || readEnv("AI_MODEL") || "deepseek-reasoner";
+    const normalized = raw.toLowerCase().replace(/\s+/g, "");
+    if (normalized === "deepseek-r1" || normalized === "deepseekr1" || normalized === "r1") {
+      return "deepseek-reasoner";
+    }
+    return raw;
   }
   if (purpose === "check") {
     return readEnv("AI_MODEL") || "DeepSeek-R1";
