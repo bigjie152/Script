@@ -121,8 +121,18 @@ export const DatabaseLikeBlock = Node.create({
 
       let panel: HTMLDivElement | null = null;
       const closePanel = () => {
-        if (panel?.parentNode) panel.parentNode.removeChild(panel);
-        panel = null;
+        if (!panel) return;
+        try {
+          if (typeof panel.remove === "function") {
+            panel.remove();
+          } else if (panel.parentNode && panel.parentNode.contains(panel)) {
+            panel.parentNode.removeChild(panel);
+          }
+        } catch {
+          // ignore removal errors to avoid crashing the editor
+        } finally {
+          panel = null;
+        }
       };
 
       editButton.addEventListener("click", () => {
@@ -233,6 +243,9 @@ export const DatabaseLikeBlock = Node.create({
           currentNode = updatedNode;
           renderTable();
           return true;
+        },
+        destroy() {
+          closePanel();
         }
       };
     };

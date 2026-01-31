@@ -17,10 +17,18 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
 
     const safeRemove = () => {
       if (!container) return;
-      if (container.parentNode) {
-        container.parentNode.removeChild(container);
+      try {
+        const parent = container.parentNode;
+        if (parent && parent.contains(container)) {
+          parent.removeChild(container);
+        }
+      } catch (err) {
+        if (debugEnabled) {
+          console.warn("[editor] suggestion remove failed", err);
+        }
+      } finally {
+        container = null;
       }
-      container = null;
     };
 
     const renderItems = () => {
