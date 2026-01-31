@@ -388,6 +388,27 @@ export function BlockEditor({
     return () => window.removeEventListener("keydown", handler, true);
   }, [editor, onSave]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const original = Node.prototype.removeChild;
+    Node.prototype.removeChild = function (child: Node) {
+      try {
+        if (child && this.contains(child)) {
+          return original.call(this, child);
+        }
+        return child;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "NotFoundError") {
+          return child;
+        }
+        throw err;
+      }
+    };
+    return () => {
+      Node.prototype.removeChild = original;
+    };
+  }, []);
+
 
   useEffect(() => {
     setMenuOpen(false);
