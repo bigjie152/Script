@@ -4,6 +4,7 @@ compatibility_flags = ["nodejs_compat"]
 
 pages_build_output_dir = ".vercel/output/static"
 
-#
-# D1 bindings are managed in Cloudflare Pages settings
-# to avoid duplicate bindings during Functions publish.
+[[d1_databases]]
+binding = "DB"
+database_name = "script-staging"
+database_id = "d8526a53-8fda-40f7-b330-e23f6d4c3858"
