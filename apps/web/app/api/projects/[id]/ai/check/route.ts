@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+﻿import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { logicCheck } from "@/lib/ai";
@@ -64,67 +64,86 @@ export async function POST(
     return jsonError(409, "未找到 Truth 快照，请先锁定 Truth", undefined, requestId);
   }
 
-  const docs = await db
-    .select()
-    .from(schema.moduleDocuments)
-    .where(eq(schema.moduleDocuments.projectId, projectId));
-  const context = {
-    story: docs.find((doc) => doc.module === "story")?.content ?? null,
-    roles: docs.find((doc) => doc.module === "roles")?.content ?? null,
-    clues: docs.find((doc) => doc.module === "clues")?.content ?? null,
-    timeline: docs.find((doc) => doc.module === "timeline")?.content ?? null,
-    dm: docs.find((doc) => doc.module === "dm")?.content ?? null
-  };
+  try {
+    const docs = await db
+      .select()
+      .from(schema.moduleDocuments)
+      .where(eq(schema.moduleDocuments.projectId, projectId));
+    const context = {
+      story: docs.find((doc) => doc.module === "story")?.content ?? null,
+      roles: docs.find((doc) => doc.module === "roles")?.content ?? null,
+      clues: docs.find((doc) => doc.module === "clues")?.content ?? null,
+      timeline: docs.find((doc) => doc.module === "timeline")?.content ?? null,
+      dm: docs.find((doc) => doc.module === "dm")?.content ?? null
+    };
 
-  const prompt = await loadPrompt("check/logic.v1.md");
-  const result = await logicCheck({
-    prompt,
-    project,
-    truthSnapshot: snapshot,
-    context
-  });
+    const prompt = await loadPrompt("check/logic.v1.md");
+    const result = await logicCheck({
+      prompt,
+      project,
+      truthSnapshot: snapshot,
+      context
+    });
 
-  await db
-    .delete(schema.issues)
-    .where(eq(schema.issues.truthSnapshotId, snapshot.id));
+    await db
+      .delete(schema.issues)
+      .where(eq(schema.issues.truthSnapshotId, snapshot.id));
 
-  if (result.issues.length > 0) {
-    await db.insert(schema.issues).values(
-      result.issues.map((issue) => ({
-        id: crypto.randomUUID(),
-        projectId,
+    if (result.issues.length > 0) {
+      await db.insert(schema.issues).values(
+        result.issues.map((issue) => ({
+          id: crypto.randomUUID(),
+          projectId,
+          truthSnapshotId: snapshot.id,
+          type: issue.type,
+          severity: issue.severity,
+          title: issue.title,
+          description: issue.description ?? null,
+          refs: issue.refs ?? null
+        }))
+      );
+    }
+
+    await db.insert(schema.aiRequestLogs).values({
+      id: crypto.randomUUID(),
+      projectId,
+      truthSnapshotId: snapshot.id,
+      actionType: "logic_check",
+      provider: result.provider,
+      model: result.model,
+      meta: { prompt: "check/logic.v1.md" }
+    });
+
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt
+    });
+
+    return jsonResponse(
+      {
         truthSnapshotId: snapshot.id,
-        type: issue.type,
-        severity: issue.severity,
-        title: issue.title,
-        description: issue.description ?? null,
-        refs: issue.refs ?? null
-      }))
+        issues: result.issues
+      },
+      { requestId }
+    );
+  } catch (error) {
+    console.error(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 500,
+      latencyMs: Date.now() - startedAt,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error
+    });
+    return jsonError(
+      500,
+      "AI 逻辑审查失败",
+      { message: error instanceof Error ? error.message : String(error) },
+      requestId
     );
   }
-
-  await db.insert(schema.aiRequestLogs).values({
-    id: crypto.randomUUID(),
-    projectId,
-    truthSnapshotId: snapshot.id,
-    actionType: "logic_check",
-    provider: result.provider,
-    model: result.model,
-    meta: { prompt: "check/logic.v1.md" }
-  });
-
-  console.log(routeLabel, {
-    route: routeLabel,
-    requestId,
-    status: 200,
-    latencyMs: Date.now() - startedAt
-  });
-
-  return jsonResponse(
-    {
-      truthSnapshotId: snapshot.id,
-      issues: result.issues
-    },
-    { requestId }
-  );
 }
