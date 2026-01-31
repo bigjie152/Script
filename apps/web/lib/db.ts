@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 import * as schema from "./schema";
 
 type D1Binding = {
@@ -18,10 +19,18 @@ function resolveBinding(): D1Binding | null {
     return globalBinding as D1Binding;
   }
 
-  const ctx = (globalThis as Record<symbol, unknown>)[
-    cloudflareContextSymbol
-  ] as { env?: Record<string, unknown> } | undefined;
-  const env = ctx?.env;
+  let env: Record<string, unknown> | undefined;
+  try {
+    env = getRequestContext()?.env as Record<string, unknown> | undefined;
+  } catch {
+    env = undefined;
+  }
+  if (!env) {
+    const ctx = (globalThis as Record<symbol, unknown>)[
+      cloudflareContextSymbol
+    ] as { env?: Record<string, unknown> } | undefined;
+    env = ctx?.env;
+  }
   const binding =
     env?.[bindingName] ??
     (bindingName !== "DB" ? env?.DB : undefined);
