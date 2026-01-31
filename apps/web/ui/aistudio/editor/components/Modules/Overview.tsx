@@ -14,6 +14,7 @@ interface OverviewProps {
     loading: boolean;
     error: string | null;
   };
+  readOnly?: boolean;
   latestSnapshotId?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -25,6 +26,7 @@ const playerOptions = ["4 人", "5 人", "6 人", "7 人", "8 人"];
 const Overview: React.FC<OverviewProps> = ({
   projectMeta,
   overviewDoc,
+  readOnly = false,
   latestSnapshotId,
   createdAt,
   updatedAt
@@ -44,6 +46,7 @@ const Overview: React.FC<OverviewProps> = ({
               className="text-sm text-gray-800 font-medium bg-transparent outline-none"
               value={form.genre}
               onChange={(event) => updateField("genre", event.target.value)}
+              disabled={readOnly}
             >
               <option value="">请选择</option>
               {genreOptions.map((option) => (
@@ -69,6 +72,7 @@ const Overview: React.FC<OverviewProps> = ({
                 className="text-sm text-gray-800 font-medium bg-transparent outline-none"
                 value={form.players}
                 onChange={(event) => updateField("players", event.target.value)}
+                disabled={readOnly}
               >
                 <option value="">请选择</option>
                 {playerOptions.map((option) => (
@@ -107,7 +111,7 @@ const Overview: React.FC<OverviewProps> = ({
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold text-gray-800">剧本简介</h2>
             <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-              Core
+              核心
             </span>
           </div>
         </div>
@@ -116,6 +120,7 @@ const Overview: React.FC<OverviewProps> = ({
           <DocumentEditor
             value={overviewDoc.document}
             onChange={overviewDoc.setDocument}
+            readonly={readOnly}
           />
         </div>
       </section>

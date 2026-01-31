@@ -25,6 +25,10 @@ function collectText(node: TruthNode | undefined): string {
     const label = node.attrs?.label;
     return label ? `#${label}` : "#线索";
   }
+  if (node.type === "timelineMention") {
+    const label = node.attrs?.label;
+    return label ? `⏱${label}` : "⏱时间点";
+  }
   if (node.type === "mention") {
     const label = node.attrs?.label;
     return label ? `@${label}` : "@提及";

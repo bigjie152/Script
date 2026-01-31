@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DocumentModuleKey } from "../types/editorDocument";
 import {
   getModuleDocument,
@@ -159,6 +159,7 @@ export function useModuleCollection(
       content: { type: "doc", content: [] },
       meta: {},
       data: {},
+      placeholderId: id,
       updatedAt: null
     };
     setCollection((prev) => {
@@ -194,16 +195,20 @@ export function useModuleCollection(
         const nextEntries =
           filtered.length > 0
             ? filtered
-            : [
-                {
-                  id: crypto.randomUUID(),
-                  name: defaultName,
-                  content: { type: "doc", content: [] },
-                  meta: {},
-                  data: {},
-                  updatedAt: null
-                }
-              ];
+            : (() => {
+                const fallbackId = crypto.randomUUID();
+                return [
+                  {
+                    id: fallbackId,
+                    name: defaultName,
+                    content: { type: "doc", content: [] },
+                    meta: {},
+                    data: {},
+                    placeholderId: fallbackId,
+                    updatedAt: null
+                  }
+                ];
+              })();
         const nextActiveId =
           prev.activeId === entryId ? nextEntries[0].id : prev.activeId;
         const nextActive =
@@ -254,6 +259,15 @@ export function useModuleCollection(
   const save = useCallback(async () => {
     if (!projectId) return false;
     const snapshot = collectionRef.current;
+    const placeholderIds = snapshot.entries
+      .map((entry) => entry.placeholderId ?? entry.id)
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+    const uniqueIds = new Set(placeholderIds);
+    if (placeholderIds.length !== uniqueIds.size) {
+      setSaveState("error");
+      setSaveError("存在重复的占位符 ID，请先调整后再保存。");
+      return false;
+    }
     setSaveState("saving");
     setSaveError(null);
     try {

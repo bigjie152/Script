@@ -41,6 +41,7 @@ export async function POST(
       .set({
         isPublic: 0,
         publishedAt: null,
+        status: "ARCHIVED",
         updatedAt: now
       })
       .where(eq(schema.projects.id, projectId));

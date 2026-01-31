@@ -121,6 +121,10 @@ export async function PUT(
     return jsonError(403, "forbidden", undefined, requestId);
   }
 
+  if (project.status === "PUBLISHED" || project.status === "ARCHIVED") {
+    return jsonError(409, "项目已发布或归档，当前为只读", undefined, requestId);
+  }
+
   if (!project.ownerId) {
     await db
       .update(schema.projects)

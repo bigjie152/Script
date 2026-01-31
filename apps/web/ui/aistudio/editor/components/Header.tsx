@@ -10,9 +10,20 @@ interface HeaderProps {
   projectStatusLabel: string;
   truthStatusLabel: string;
   truthLocked: boolean;
+  readOnly?: boolean;
+  readOnlyReason?: string;
   saveState: SaveState;
   onSave: () => void | Promise<boolean>;
   onBack: () => void;
+  structureStatus?: {
+    ready: boolean;
+    healthy: boolean;
+    missingModules: string[];
+    needsReviewModules: string[];
+    p0IssueCount: number;
+  } | null;
+  structureError?: string | null;
+  onFixStructure?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -21,9 +32,14 @@ const Header: React.FC<HeaderProps> = ({
   projectStatusLabel,
   truthStatusLabel,
   truthLocked,
+  readOnly = false,
+  readOnlyReason,
   saveState,
   onSave,
-  onBack
+  onBack,
+  structureStatus,
+  structureError,
+  onFixStructure
 }) => {
   const saveLabel =
     saveState === "saving"
@@ -61,6 +77,26 @@ const Header: React.FC<HeaderProps> = ({
             {truthLocked ? <Lock size={12} /> : <Unlock size={12} />}
             <span className="text-xs font-medium">真相：{truthStatusLabel}</span>
           </div>
+
+          {readOnly ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-rose-200 bg-rose-50 text-rose-700">
+              <span className="text-xs font-medium">{readOnlyReason || "只读模式"}</span>
+            </div>
+          ) : null}
+          {structureError ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-rose-200 bg-rose-50 text-rose-700">
+              <span className="text-xs font-medium">结构状态加载失败</span>
+            </div>
+          ) : structureStatus && !structureStatus.healthy ? (
+            <button
+              type="button"
+              onClick={onFixStructure}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors"
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              <span className="text-xs font-medium">结构未完成</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -70,13 +106,13 @@ const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onBack}
         >
-          返回 Workspace
+          返回工作台
         </button>
         <button
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-70"
           type="button"
           onClick={onSave}
-          disabled={saveState === "saving"}
+          disabled={saveState === "saving" || readOnly}
         >
           <Save size={16} />
           <span>{saveLabel}</span>

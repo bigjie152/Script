@@ -28,6 +28,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     editorType: "truth"
   },
   {
+    key: "story",
+    label: "故事",
+    apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/story`,
+    requiresTruthLocked: false,
+    editorType: "document",
+    entryMode: "single"
+  },
+  {
     key: "roles",
     label: "角色",
     apiEndpoint: (projectId) => `/api/projects/${projectId}/modules/roles`,

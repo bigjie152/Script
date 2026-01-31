@@ -1,9 +1,10 @@
-import type { ElementType } from "react";
+﻿import type { ElementType } from "react";
 
 export enum ProjectStatus {
   DRAFT = "草稿",
   LOCKED = "已锁定",
   PUBLISHED = "已发布",
+  ARCHIVED = "已归档"
 }
 
 export interface Project {

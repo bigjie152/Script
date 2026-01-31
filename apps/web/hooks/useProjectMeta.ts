@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Project, updateProject } from "../services/projectApi";
 import { normalizeContent } from "../editors/adapters/plainTextAdapter";
 

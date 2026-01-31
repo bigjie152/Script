@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Lock, Sparkles, Target, User, Pencil, Check, X } from "lucide-react";
+import { Lock, Sparkles, Target, User, Users, BookOpenText, Pencil, Check, X } from "lucide-react";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
 
@@ -21,6 +21,7 @@ interface RolesProps {
   onCreateEntry: () => void;
   onRenameEntry: (entryId: string, name: string) => Promise<boolean>;
   onSave?: () => void;
+  readOnly?: boolean;
 }
 
 const Roles: React.FC<RolesProps> = ({
@@ -29,7 +30,8 @@ const Roles: React.FC<RolesProps> = ({
   onSelectEntry,
   onCreateEntry,
   onRenameEntry,
-  onSave
+  onSave,
+  readOnly = false
 }) => {
   const {
     entries,
@@ -53,6 +55,7 @@ const Roles: React.FC<RolesProps> = ({
   }, [entryId, setActiveEntry]);
 
   const beginRename = (entryId: string, name: string) => {
+    if (readOnly) return;
     setEditingId(entryId);
     setNameDraft(name);
   };
@@ -88,8 +91,9 @@ const Roles: React.FC<RolesProps> = ({
                 </div>
                 <button
                   type="button"
-                  className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                  className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed"
                   onClick={() => beginRename(role.id, role.name)}
+                  disabled={readOnly}
                 >
                   <Pencil size={14} />
                 </button>
@@ -114,9 +118,10 @@ const Roles: React.FC<RolesProps> = ({
           ))}
 
           <button
-            className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors min-h-[180px]"
+            className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors min-h-[180px] disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-400"
             type="button"
             onClick={onCreateEntry}
+            disabled={readOnly}
           >
             <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-2">
               <span className="text-2xl font-light">+</span>
@@ -125,7 +130,7 @@ const Roles: React.FC<RolesProps> = ({
           </button>
         </div>
 
-        {editingId && (
+        {editingId && !readOnly && (
           <div className="mt-6 max-w-md">
             <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 shadow-sm">
               <input
@@ -160,8 +165,10 @@ const Roles: React.FC<RolesProps> = ({
 
   const meta = selectedEntry.meta ?? {};
   const motivation = (meta.motivation as string) || "";
-  const knownTruth = (meta.knownTruth as string) || "无所知 (Low)";
-  const secretCount = (meta.secretCount as string) || "";
+  const gender = (meta.gender as string) || "";
+  const camp = (meta.camp as string) || "";
+  const relationRefs = (meta.relationRefs as string) || "";
+  const background = (meta.background as string) || "";
 
   return (
     <div className="h-full flex flex-col min-w-0">
@@ -178,25 +185,22 @@ const Roles: React.FC<RolesProps> = ({
             onChange={(event) =>
               updateMeta(selectedEntry.id, { ...meta, motivation: event.target.value })
             }
+            disabled={readOnly}
           />
         </div>
 
         <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={14} className="text-purple-500" />
-            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">已知真相</span>
+            <User size={14} className="text-purple-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">性别</span>
           </div>
-          <select
+          <input
             className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
-            value={knownTruth}
-            onChange={(event) =>
-              updateMeta(selectedEntry.id, { ...meta, knownTruth: event.target.value })
-            }
-          >
-            <option value="无所知 (Low)">无所知 (Low)</option>
-            <option value="部分知晓 (Mid)">部分知晓 (Mid)</option>
-            <option value="完全知晓 (High)">完全知晓 (High)</option>
-          </select>
+            value={gender}
+            placeholder="例如：男 / 女 / 其他"
+            onChange={(event) => updateMeta(selectedEntry.id, { ...meta, gender: event.target.value })}
+            disabled={readOnly}
+          />
         </div>
 
         <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col relative overflow-hidden">
@@ -204,23 +208,57 @@ const Roles: React.FC<RolesProps> = ({
             <Lock size={40} />
           </div>
           <div className="flex items-center gap-2 mb-1">
-            <User size={14} className="text-amber-500" />
-            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">秘密数量</span>
+            <Sparkles size={14} className="text-amber-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">阵营</span>
           </div>
           <input
             className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
-            value={secretCount}
-            placeholder="例如：3"
+            value={camp}
+            placeholder="例如：守序 / 反派 / 中立"
             onChange={(event) =>
-              updateMeta(selectedEntry.id, { ...meta, secretCount: event.target.value })
+              updateMeta(selectedEntry.id, { ...meta, camp: event.target.value })
             }
+            disabled={readOnly}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
+            <Users size={14} className="text-indigo-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">角色关系</span>
+          </div>
+          <input
+            className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+            value={relationRefs}
+            placeholder="例如：与 A 为亲属 / 与 B 有债务"
+            onChange={(event) =>
+              updateMeta(selectedEntry.id, { ...meta, relationRefs: event.target.value })
+            }
+            disabled={readOnly}
+          />
+        </div>
+        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
+            <BookOpenText size={14} className="text-emerald-500" />
+            <span className="text-[11px] uppercase text-gray-400 font-semibold tracking-wider">背景摘要</span>
+          </div>
+          <input
+            className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+            value={background}
+            placeholder="例如：前警探，三年前失去搭档"
+            onChange={(event) =>
+              updateMeta(selectedEntry.id, { ...meta, background: event.target.value })
+            }
+            disabled={readOnly}
           />
         </div>
       </div>
 
       <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
-          {editingId === selectedEntry.id ? (
+          {editingId === selectedEntry.id && !readOnly ? (
             <input
               className="flex-1 text-lg font-semibold text-gray-800 bg-transparent focus:outline-none"
               value={nameDraft}
@@ -243,19 +281,20 @@ const Roles: React.FC<RolesProps> = ({
               <h2 className="font-semibold text-gray-800 text-lg">{selectedEntry.name}</h2>
               <button
                 type="button"
-                className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed"
                 onClick={() => beginRename(selectedEntry.id, selectedEntry.name)}
+                disabled={readOnly}
               >
                 <Pencil size={14} />
               </button>
             </div>
           )}
           <span className="text-xs px-2 py-1 bg-white text-gray-500 rounded border border-gray-200 shadow-sm">
-            Source: v1
+            来源：v1
           </span>
         </div>
         <div className="flex-1 overflow-hidden">
-          <DocumentEditor value={document} onChange={setDocument} onSave={onSave} />
+          <DocumentEditor value={document} onChange={setDocument} onSave={onSave} readonly={readOnly} />
         </div>
       </div>
     </div>

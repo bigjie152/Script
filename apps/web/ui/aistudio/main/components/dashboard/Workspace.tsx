@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -188,7 +188,7 @@ const Workspace: React.FC = () => {
           </button>
         </div>
         {loading ? (
-          <div className="text-sm text-gray-400">加载中…</div>
+          <div className="text-sm text-gray-400">加载中...</div>
         ) : recentProjects.length === 0 ? (
           <div className="text-sm text-gray-400">暂无项目</div>
         ) : (
@@ -210,10 +210,20 @@ const Workspace: React.FC = () => {
 function resolveStatus(status?: string, truthStatus?: string) {
   const rawStatus = (status || "").toLowerCase();
   const rawTruth = (truthStatus || "").toLowerCase();
+  if (rawStatus.includes("archived") || rawStatus.includes("归档")) {
+    return ProjectStatus.ARCHIVED;
+  }
   if (rawStatus.includes("published") || rawStatus.includes("公开") || rawStatus.includes("发布")) {
     return ProjectStatus.PUBLISHED;
   }
-  if (rawTruth.includes("locked") || rawTruth.includes("锁定")) {
+  if (
+    rawStatus.includes("truth_locked") ||
+    rawStatus.includes("truthlocked") ||
+    rawStatus.includes("locked") ||
+    rawStatus.includes("锁定") ||
+    rawTruth.includes("locked") ||
+    rawTruth.includes("锁定")
+  ) {
     return ProjectStatus.LOCKED;
   }
   return ProjectStatus.DRAFT;

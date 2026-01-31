@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Clock, MoreHorizontal, Lock } from "lucide-react";
 import { ProjectStatus } from "../../types/types";
@@ -24,6 +24,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick }) => {
         return "bg-gray-100 text-gray-600 border-gray-200";
       case ProjectStatus.PUBLISHED:
         return "bg-green-100 text-green-700 border-green-200";
+      case ProjectStatus.ARCHIVED:
+        return "bg-slate-100 text-slate-600 border-slate-200";
       default:
         return "bg-amber-50 text-amber-700 border-amber-100";
     }

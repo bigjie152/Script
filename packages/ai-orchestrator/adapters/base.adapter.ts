@@ -34,17 +34,34 @@ function createMockClient(): AIClient {
       const fallback = {
         roles: [
           {
-            name: "Primary Role",
-            summary: "Stable mock role for V0.1 integration.",
+            name: "主要角色",
+            summary: "用于 MVP 的稳定 mock 角色。",
             meta: { source: "mock" }
+          }
+        ],
+        items: [
+          {
+            title: "候选内容",
+            summary: "用于 MVP 的稳定 mock 候选。",
+            content: {
+              type: "doc",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "这是 AI 生成的候选段落（mock）。" }]
+                }
+              ]
+            },
+            refs: [],
+            risk_flags: []
           }
         ],
         issues: [
           {
-            type: "consistency",
-            severity: "low",
-            title: "Stable Issue",
-            description: "Stable mock issue for V0.1 integration.",
+            type: "logic_check",
+            severity: "P1",
+            title: "稳定提示",
+            description: "用于 MVP 的稳定 mock 问题。",
             refs: []
           }
         ]
@@ -70,7 +87,19 @@ function createMockClient(): AIClient {
         return JSON.stringify({ issues: fallback.issues });
       }
 
-      return JSON.stringify({});
+      if (action.startsWith("derive_")) {
+        return JSON.stringify({ items: fallback.items });
+      }
+
+      if (action === "logic_check") {
+        return JSON.stringify({ issues: fallback.issues });
+      }
+
+      if (action === "outline" || action === "worldcheck") {
+        return JSON.stringify({ items: fallback.items });
+      }
+
+      return JSON.stringify({ items: fallback.items });
     }
   };
 }

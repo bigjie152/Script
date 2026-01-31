@@ -5,12 +5,20 @@ export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  status: text("status"),
   meta: text("meta", { mode: "json" }),
+  cover: text("cover"),
+  tags: text("tags", { mode: "json" }),
+  genre: text("genre"),
+  players: text("players"),
+  duration: text("duration"),
+  difficulty: text("difficulty"),
   ownerId: text("owner_id"),
   isPublic: integer("is_public").notNull().default(0),
   publishedAt: text("published_at"),
   communitySummary: text("community_summary", { mode: "json" }),
   aiStatus: text("ai_status", { mode: "json" }),
+  deletedAt: text("deleted_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
@@ -77,8 +85,25 @@ export const moduleDocuments = sqliteTable("module_documents", {
   projectId: text("project_id").notNull(),
   module: text("module").notNull(),
   content: text("content", { mode: "json" }).notNull(),
+  needsReview: integer("needs_review").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const truthUnlockLogs = sqliteTable("truth_unlock_logs", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  reason: text("reason").notNull(),
+  unlockedBy: text("unlocked_by").notNull(),
+  unlockedAt: text("unlocked_at").notNull()
+});
+
+export const impactReports = sqliteTable("impact_reports", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  truthSnapshotId: text("truth_snapshot_id"),
+  affectedItems: text("affected_items", { mode: "json" }).notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
 
 export const feedback = sqliteTable("feedback", {
@@ -99,6 +124,21 @@ export const aiRequestLogs = sqliteTable("ai_request_logs", {
   model: text("model"),
   meta: text("meta", { mode: "json" }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const aiCandidates = sqliteTable("ai_candidates", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  target: text("target").notNull(),
+  title: text("title"),
+  summary: text("summary"),
+  content: text("content", { mode: "json" }),
+  meta: text("meta", { mode: "json" }),
+  refs: text("refs", { mode: "json" }),
+  riskFlags: text("risk_flags", { mode: "json" }),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
 
 export const ratings = sqliteTable("ratings", {

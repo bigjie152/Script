@@ -19,7 +19,7 @@ export async function POST(
 
   const user = await getAuthUser(request);
   if (!user) {
-    return jsonError(401, "login required");
+    return jsonError(401, "请先登录");
   }
 
   const [project] = await db
@@ -29,11 +29,11 @@ export async function POST(
     .limit(1);
 
   if (!project) {
-    return jsonError(404, "project not found");
+    return jsonError(404, "项目不存在");
   }
 
   if (project.ownerId && project.ownerId !== user.id) {
-    return jsonError(403, "forbidden");
+    return jsonError(403, "无权限访问");
   }
 
   if (!project.ownerId) {
@@ -58,7 +58,7 @@ export async function POST(
     .limit(1);
 
   if (!snapshot) {
-    return jsonError(404, "truth snapshot not found");
+    return jsonError(404, "未找到 Truth 快照");
   }
 
   const prompt = await loadPrompt("derive/role.v1.md");

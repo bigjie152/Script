@@ -14,6 +14,8 @@ export type LockTruthResponse = {
 export type UnlockTruthResponse = {
   truthId: string;
   status: string;
+  impactReportId?: string;
+  affectedItems?: Record<string, unknown>;
 };
 
 export async function updateTruth(
@@ -32,11 +34,12 @@ export async function lockTruth(projectId: string) {
   });
 }
 
-export async function unlockTruth(projectId: string) {
+export async function unlockTruth(projectId: string, reason: string) {
   return apiRequest<UnlockTruthResponse>(
     `/api/projects/${projectId}/truth/unlock`,
     {
-      method: "POST"
+      method: "POST",
+      body: JSON.stringify({ reason })
     }
   );
 }

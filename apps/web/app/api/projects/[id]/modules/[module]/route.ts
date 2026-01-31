@@ -6,7 +6,7 @@ import { getAuthUser } from "@/lib/auth";
 export const runtime = "edge";
 
 const routeLabel = "API /api/projects/:id/modules/:module";
-const MODULES = ["overview", "roles", "clues", "timeline", "dm"] as const;
+const MODULES = ["overview", "story", "roles", "clues", "timeline", "dm"] as const;
 
 type ModuleKey = (typeof MODULES)[number];
 
@@ -20,6 +20,37 @@ function resolveModule(value: string | undefined | null) {
     return value as ModuleKey;
   }
   return null;
+}
+
+function normalizeCollectionContent(content: Record<string, unknown>) {
+  if (content?.kind !== "collection") return content;
+  const entries = Array.isArray((content as any).entries) ? (content as any).entries : [];
+  const nextEntries = entries.map((entry: any) => {
+    if (!entry || typeof entry !== "object") return entry;
+    const id = typeof entry.id === "string" && entry.id.trim() ? entry.id : crypto.randomUUID();
+    const placeholderId =
+      typeof entry.placeholderId === "string" && entry.placeholderId.trim()
+        ? entry.placeholderId
+        : id;
+    return { ...entry, id, placeholderId };
+  });
+  return { ...content, entries: nextEntries };
+}
+
+function hasDuplicatePlaceholderIds(content: Record<string, unknown>) {
+  if (content?.kind !== "collection") return false;
+  const entries = Array.isArray((content as any).entries) ? (content as any).entries : [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    const placeholderId =
+      entry && typeof entry === "object" && typeof entry.placeholderId === "string"
+        ? entry.placeholderId
+        : null;
+    if (!placeholderId) continue;
+    if (seen.has(placeholderId)) return true;
+    seen.add(placeholderId);
+  }
+  return false;
 }
 
 async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
@@ -90,11 +121,12 @@ export async function GET(
     latencyMs: Date.now() - startedAt
   });
 
-  return jsonResponse(
+    return jsonResponse(
     {
       module: moduleKey,
       documentId: doc?.id ?? null,
-      content: doc?.content ?? { type: "doc", content: [] }
+      content: doc?.content ?? { type: "doc", content: [] },
+      needsReview: doc?.needsReview ?? 0
     },
     { requestId }
   );
@@ -120,10 +152,14 @@ export async function PUT(
   }
 
   const body = parsed.body;
-  const content = body?.content;
+  const rawContent = body?.content as Record<string, unknown> | undefined;
 
-  if (!content) {
+  if (!rawContent) {
     return jsonError(400, "content is required", undefined, requestId);
+  }
+  const content = normalizeCollectionContent(rawContent);
+  if (hasDuplicatePlaceholderIds(content)) {
+    return jsonError(409, "存在重复的占位符 ID，请先调整后再保存。", undefined, requestId);
   }
 
   const user = await getAuthUser(request);
@@ -143,6 +179,10 @@ export async function PUT(
 
   if (project.ownerId && project.ownerId !== user.id) {
     return jsonError(403, "forbidden", undefined, requestId);
+  }
+
+  if (project.status === "PUBLISHED" || project.status === "ARCHIVED") {
+    return jsonError(409, "项目已发布或归档，当前为只读", undefined, requestId);
   }
 
   if (!project.ownerId) {
@@ -167,7 +207,11 @@ export async function PUT(
   if (existing) {
     await db
       .update(schema.moduleDocuments)
-      .set({ content, updatedAt: new Date().toISOString() })
+      .set({
+        content,
+        needsReview: 0,
+        updatedAt: new Date().toISOString()
+      })
       .where(eq(schema.moduleDocuments.id, existing.id));
   } else {
     documentId = crypto.randomUUID();
@@ -175,7 +219,8 @@ export async function PUT(
       id: documentId,
       projectId,
       module: moduleKey,
-      content
+      content,
+      needsReview: 0
     });
   }
   await db

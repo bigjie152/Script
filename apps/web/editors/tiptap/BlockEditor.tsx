@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BubbleMenu, EditorContent, useEditor } from "@tiptap/react";
@@ -77,6 +77,10 @@ export function BlockEditor({
   );
   const clueItems = useMemo(
     () => mentionItems.filter((item) => item.entityType === "clue"),
+    [mentionItems]
+  );
+  const timelineItems = useMemo(
+    () => mentionItems.filter((item) => item.entityType === "timeline"),
     [mentionItems]
   );
 
@@ -186,9 +190,39 @@ export function BlockEditor({
           return `#${node.attrs.label}`;
         }
       }),
+      Mention.extend({
+        name: "timelineMention",
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            entityType: { default: "timeline" }
+          };
+        }
+      }).configure({
+        HTMLAttributes: {
+          class: "mention mention-timeline"
+        },
+        suggestion: createMentionSuggestion("⏱", timelineItems),
+        renderHTML(props: any) {
+          const { node, HTMLAttributes } = props;
+          return [
+            "span",
+            mergeAttributes(HTMLAttributes, {
+              "data-mention": "true",
+              "data-entity-id": node.attrs.id,
+              "data-entity-type": node.attrs.entityType,
+              "data-label": node.attrs.label
+            }),
+            `⏱${node.attrs.label}`
+          ];
+        },
+        renderText({ node }) {
+          return `⏱${node.attrs.label}`;
+        }
+      }),
       SlashCommand
     ];
-  }, [roleItems, clueItems, debugEnabled, value.module]);
+  }, [roleItems, clueItems, timelineItems, debugEnabled, value.module]);
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: Editor }) => {
@@ -439,3 +473,4 @@ export function BlockEditor({
     </div>
   );
 }
+

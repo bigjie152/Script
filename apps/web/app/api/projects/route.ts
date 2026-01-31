@@ -145,7 +145,8 @@ export async function POST(request: Request) {
       id: projectId,
       name,
       description,
-      ownerId: user.id
+      ownerId: user.id,
+      status: "DRAFT"
     });
 
     await db.insert(schema.truths).values({
@@ -251,15 +252,28 @@ export async function GET(request: Request) {
     latencyMs: Date.now() - startedAt
   });
 
-  const statusOrder = ["Draft", "In Progress", "Completed"];
+  const statusOrder = [
+    "DRAFT",
+    "TruthLocked",
+    "TRUTH_LOCKED",
+    "Draft",
+    "In Progress",
+    "Completed",
+    "Published",
+    "PUBLISHED",
+    "Archived",
+    "ARCHIVED"
+  ];
   const truthOrder = ["Draft", "Locked"];
 
   let result = projects.map((project) => {
     const meta = project.meta && typeof project.meta === "object" ? project.meta : null;
+    const storedStatus = typeof project.status === "string" ? project.status : null;
     const statusValue =
-      meta && typeof (meta as Record<string, unknown>).status === "string"
+      storedStatus ??
+      (meta && typeof (meta as Record<string, unknown>).status === "string"
         ? ((meta as Record<string, unknown>).status as string)
-        : "Draft";
+        : "Draft");
     const truthStatus = statusMap.get(project.id) ?? "Draft";
     return {
       id: project.id,
