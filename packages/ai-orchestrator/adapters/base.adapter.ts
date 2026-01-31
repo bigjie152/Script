@@ -1,4 +1,5 @@
-import { createDeepSeekClient } from "./deepseek.adapter";
+﻿import { createDeepSeekClient } from "./deepseek.adapter";
+import { createQwenClient } from "./qwen.adapter";
 
 export type AIClient = {
   provider: string;
@@ -10,16 +11,72 @@ export type AIClient = {
   }) => Promise<string>;
 };
 
-export function getAIClient(): AIClient {
-  const provider = (process.env.AI_PROVIDER || "mock").toLowerCase();
-  const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL || "deepseek-chat";
+export type AIPurpose = "derive" | "check";
+
+function resolveProvider(purpose?: AIPurpose) {
+  const fallback = (process.env.AI_PROVIDER || "mock").toLowerCase();
+  const deriveProvider = (process.env.AI_PROVIDER_DERIVE || "").toLowerCase();
+  const checkProvider = (process.env.AI_PROVIDER_CHECK || "").toLowerCase();
+  if (purpose === "check") {
+    return checkProvider || fallback;
+  }
+  if (purpose === "derive") {
+    return deriveProvider || fallback;
+  }
+  return fallback;
+}
+
+function resolveModel(provider: string, purpose?: AIPurpose) {
+  if (provider === "qwen") {
+    return process.env.AI_QWEN_MODEL || process.env.AI_MODEL || "qwen3-max-2026-01-23";
+  }
+  if (provider === "deepseek") {
+    return process.env.AI_DEEPSEEK_MODEL || process.env.AI_MODEL || "DeepSeek-R1";
+  }
+  if (purpose === "check") {
+    return process.env.AI_MODEL || "DeepSeek-R1";
+  }
+  return process.env.AI_MODEL || "mock";
+}
+
+function resolveApiKey(provider: string) {
+  if (provider === "qwen") {
+    return process.env.AI_QWEN_API_KEY || process.env.AI_API_KEY;
+  }
+  if (provider === "deepseek") {
+    return process.env.AI_DEEPSEEK_API_KEY || process.env.AI_API_KEY;
+  }
+  return process.env.AI_API_KEY;
+}
+
+function resolveBaseUrl(provider: string) {
+  if (provider === "qwen") {
+    return process.env.AI_QWEN_BASE_URL || process.env.AI_BASE_URL;
+  }
+  if (provider === "deepseek") {
+    return process.env.AI_DEEPSEEK_BASE_URL || process.env.AI_BASE_URL;
+  }
+  return process.env.AI_BASE_URL;
+}
+
+export function getAIClient(purpose?: AIPurpose): AIClient {
+  const provider = resolveProvider(purpose);
+  const apiKey = resolveApiKey(provider);
+  const model = resolveModel(provider, purpose);
+
+  if (provider === "qwen" && apiKey) {
+    return createQwenClient({
+      apiKey,
+      model,
+      baseUrl: resolveBaseUrl(provider)
+    });
+  }
 
   if (provider === "deepseek" && apiKey) {
     return createDeepSeekClient({
       apiKey,
       model,
-      baseUrl: process.env.AI_BASE_URL
+      baseUrl: resolveBaseUrl(provider)
     });
   }
 
@@ -35,14 +92,14 @@ function createMockClient(): AIClient {
         roles: [
           {
             name: "主要角色",
-            summary: "用于 MVP 的稳定 mock 角色。",
+            summary: "用于 MVP 稳定性测试的 mock 角色。",
             meta: { source: "mock" }
           }
         ],
         items: [
           {
             title: "候选内容",
-            summary: "用于 MVP 的稳定 mock 候选。",
+            summary: "用于 MVP 稳定性测试的 mock 候选。",
             content: {
               type: "doc",
               content: [
@@ -60,8 +117,8 @@ function createMockClient(): AIClient {
           {
             type: "logic_check",
             severity: "P1",
-            title: "稳定提示",
-            description: "用于 MVP 的稳定 mock 问题。",
+            title: "稳定性提示",
+            description: "用于 MVP 稳定性测试的 mock 问题。",
             refs: []
           }
         ]

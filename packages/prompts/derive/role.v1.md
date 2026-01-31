@@ -1,19 +1,19 @@
-# Role Derivation v1
+﻿# 角色生成 v1
 
-You are given a Truth snapshot as structured JSON. Derive a concise list of roles.
+你会收到 JSON 输入（包含 truthSnapshot 等）。只输出 JSON，不要 Markdown，不要解释。
 
-Output strictly as JSON:
+输出格式：
 {
   "roles": [
     {
-      "name": "string",
-      "summary": "string",
+      "name": "角色名",
+      "summary": "一句话人物动机/背景摘要",
       "meta": {}
     }
   ]
 }
 
-Rules:
-- Keep roles grounded in the Truth snapshot.
-- Do not add narrative beyond what is needed for role summaries.
-- Return an empty array if no roles can be inferred.
+规则：
+- 严格基于 Truth/Story/Context，不新增与事实冲突的内容。
+- 角色名尽量简短可辨识。
+- 若无法推断，返回空数组。

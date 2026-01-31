@@ -47,7 +47,7 @@ function normalizeContent(item: Record<string, unknown>, fallback: string) {
 }
 
 export async function deriveCandidates(input: DeriveCandidatesInput) {
-  const client = getAIClient();
+  const client = getAIClient("derive");
   const payload = {
     action: `derive_${input.actionType}`,
     project: { id: input.project.id, name: input.project.name || undefined },

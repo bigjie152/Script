@@ -14,7 +14,7 @@ type DeriveRolesInput = {
 };
 
 export async function deriveRoles(input: DeriveRolesInput) {
-  const client = getAIClient();
+  const client = getAIClient("derive");
   const payload = {
     action: "derive_roles",
     project: { id: input.project.id, name: input.project.name || undefined },

@@ -6,6 +6,10 @@ pages_build_output_dir = ".vercel/output/static"
 
 [vars]
 AI_PROVIDER = "mock"
+AI_PROVIDER_DERIVE = "qwen"
+AI_PROVIDER_CHECK = "deepseek"
+AI_QWEN_MODEL = "qwen3-max-2026-01-23"
+AI_DEEPSEEK_MODEL = "DeepSeek-R1"
 D1_BINDING = "DB"
 NEXT_PUBLIC_EDITOR_DEBUG = "true"
 

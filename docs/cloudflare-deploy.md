@@ -45,9 +45,16 @@ npx wrangler pages deploy apps/web/.vercel/output/static \
 
 ## 6) 配置环境变量（Cloudflare Pages / staging）
 在 Pages 项目设置中添加：
-- `AI_PROVIDER=mock`
 - `D1_BINDING=DB`
-- 其他占位 key（如 `AI_API_KEY=`，请用 Secrets/Vars 配置）
+- `AI_PROVIDER_DERIVE=qwen`
+- `AI_PROVIDER_CHECK=deepseek`
+- `AI_QWEN_API_KEY=...`
+- `AI_QWEN_MODEL=qwen3-max-2026-01-23`
+- `AI_QWEN_BASE_URL=...`（如使用兼容模式，可填写供应商提供的兼容地址）
+- `AI_DEEPSEEK_API_KEY=...`
+- `AI_DEEPSEEK_MODEL=DeepSeek-R1`
+- `AI_DEEPSEEK_BASE_URL=...`（可选，默认 DeepSeek 官方地址）
+- 其他占位 key（如 `AI_API_KEY`/`AI_MODEL`/`AI_BASE_URL`，作为通用兜底）
 
 ## 7) Git 构建配置（推荐）
 Cloudflare Pages 控制台中设置：

@@ -18,7 +18,7 @@ type ConsistencyInput = {
 };
 
 export async function consistencyCheck(input: ConsistencyInput) {
-  const client = getAIClient();
+  const client = getAIClient("check");
   const payload = {
     action: "consistency_check",
     project: { id: input.project.id, name: input.project.name || undefined },

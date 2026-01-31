@@ -1,4 +1,4 @@
-﻿# 时间线生成 v1
+﻿# 主线构思 v1
 
 你会收到 JSON 输入（包含 truthSnapshot 等）。只输出 JSON，不要 Markdown，不要解释。
 
@@ -6,12 +6,12 @@
 {
   "items": [
     {
-      "title": "时间点标题",
+      "title": "主线建议",
       "summary": "一句话摘要",
       "content": {
         "type": "doc",
         "content": [
-          { "type": "paragraph", "content": [{ "type": "text", "text": "时间线事件描述" }] }
+          { "type": "paragraph", "content": [{ "type": "text", "text": "主线构思内容" }] }
         ]
       },
       "refs": [],

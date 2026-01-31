@@ -1,14 +1,13 @@
-const PROMPTS: Record<string, string> = {
-  "derive/role.v1.md": "你是角色生成助手。只输出 JSON。",
-  "derive/story.v1.md": "你是剧本叙事生成助手。只输出 JSON。",
-  "derive/clue.v1.md": "你是线索生成助手。只输出 JSON。",
-  "derive/timeline.v1.md": "你是时间线生成助手。只输出 JSON。",
-  "derive/dm.v1.md": "你是 DM 手册生成助手。只输出 JSON。",
-  "derive/outline.v1.md": "你是剧本构思助手。只输出 JSON。",
-  "derive/worldcheck.v1.md": "你是世界观合理性检查助手。只输出 JSON。",
-  "check/consistency.v1.md":
-    "你是事实一致性检查助手。只输出 JSON。",
-  "check/logic.v1.md": "你是逻辑审查助手。只输出 JSON。"
+﻿const PROMPTS: Record<string, string> = {
+  "derive/role.v1.md": `你是剧本创作的角色生成助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "roles": [\n    {\n      "name": "角色名",\n      "summary": "一句话人物动机/背景摘要",\n      "meta": {}\n    }\n  ]\n}\n\n规则：\n- 严格基于 Truth/Story/Context，不新增与事实冲突的内容。\n- 角色名尽量简短可辨识。\n- 若无法推断，返回空数组。`,
+  "derive/story.v1.md": `你是剧本复盘剧情（Story）生成助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "剧情段落标题",\n      "summary": "一句话总结",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "剧情正文" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc 结构。\n- refs 可为空；risk_flags 可为空。`,
+  "derive/clue.v1.md": `你是线索生成助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "线索名",\n      "summary": "一句话摘要",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "线索描述" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc。\n- 不得违反 Truth。`,
+  "derive/timeline.v1.md": `你是时间线生成助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "时间点标题",\n      "summary": "一句话摘要",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "时间线事件描述" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc。\n- 不得违反 Truth。`,
+  "derive/dm.v1.md": `你是主持人手册（DM Guide）生成助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "主持提示标题",\n      "summary": "一句话摘要",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "主持提示正文" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc。\n- 不得违反 Truth。`,
+  "derive/outline.v1.md": `你是剧本主线构思助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "主线建议",\n      "summary": "一句话摘要",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "主线构思内容" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc。\n- 不得违反 Truth。`,
+  "derive/worldcheck.v1.md": `你是世界观合理性检查与修复建议助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/intent/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "items": [\n    {\n      "title": "问题或建议标题",\n      "summary": "一句话摘要",\n      "content": {\n        "type": "doc",\n        "content": [\n          { "type": "paragraph", "content": [{ "type": "text", "text": "问题描述与修复建议" }] }\n        ]\n      },\n      "refs": [],\n      "risk_flags": []\n    }\n  ]\n}\n\n规则：\n- items 建议 1~3 条。\n- content 必须是 TipTap doc。`,
+  "check/consistency.v1.md": `你是事实一致性（Truth ↔ Story/角色）检查助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/roles）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "issues": [\n    {\n      "type": "consistency",\n      "severity": "P0|P1|P2",\n      "title": "问题标题",\n      "description": "问题说明",\n      "refs": []\n    }\n  ]\n}\n\n规则：\n- 仅输出真正冲突或高风险问题。\n- 若无问题，issues 为空数组。`,
+  "check/logic.v1.md": `你是剧本逻辑审查助手。\n你会收到 JSON 输入（包含 action/project/truthSnapshot/context）。\n只输出 JSON，不要 Markdown，不要解释。\n\n输出格式：\n{\n  "issues": [\n    {\n      "type": "logic_check",\n      "severity": "P0|P1|P2",\n      "title": "问题标题",\n      "description": "问题说明",\n      "refs": []\n    }\n  ]\n}\n\n规则：\n- P0：硬逻辑冲突（时间线冲突/Truth 冲突/视角污染）。\n- P1：重要缺失或可导致跑偏的问题。\n- P2：改进建议类。\n- 若无问题，issues 为空数组。`
 };
 
 export async function loadPrompt(relativePath: string) {

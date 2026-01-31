@@ -17,7 +17,7 @@ type LogicCheckInput = {
 };
 
 export async function logicCheck(input: LogicCheckInput) {
-  const client = getAIClient();
+  const client = getAIClient("check");
   const payload = {
     action: "logic_check",
     project: { id: input.project.id, name: input.project.name || undefined },

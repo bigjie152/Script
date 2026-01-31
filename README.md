@@ -1,7 +1,7 @@
 ﻿# script-ai-platform
 
-## 本地开发环境（Cloudflare D1 + Mock AI）
-1) 配置环境变量：在根目录 `.env` 中填写 `D1_DB_PATH`（本地 SQLite 路径），可选 `D1_BINDING`（远程绑定名），并设置 `AI_PROVIDER=mock`
+## 本地开发环境（Cloudflare D1 + AI）
+1) 配置环境变量：在根目录 `.env` 中填写 `D1_DB_PATH`（本地 SQLite 路径），可选 `D1_BINDING`（远程绑定名），并设置 AI 路由变量（见 `.env.example`）
 2) 安装依赖：`cd apps/api` 然后执行 `npm install`
 3) 初始化数据库：`npm run db:init`
 4) 启动后端：`npm run dev`（默认 3001 端口）
@@ -15,7 +15,7 @@
 
 ## Cloudflare Staging 部署
 - 配置入口：`docs/cloudflare-deploy.md`
-- 关键变量：`D1_BINDING=DB`、`AI_PROVIDER=mock`
+- 关键变量：`D1_BINDING=DB`、`AI_PROVIDER_DERIVE`、`AI_PROVIDER_CHECK`（以及对应的 API Key）
 
 ## 1. 项目简介
 script-ai-platform 是面向剧本创作与协作的 AI 平台 Monorepo，提供清晰的工程边界与团队协作规范，覆盖应用层、领域层（Domain）、AI 编排（Orchestrator）、Prompt 库、数据库与基础设施文档。
