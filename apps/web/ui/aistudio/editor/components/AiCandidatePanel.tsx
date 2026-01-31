@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, RefreshCcw, X } from "lucide-react";
@@ -11,13 +11,13 @@ interface AiCandidatePanelProps {
 }
 
 const targetLabel = (target: string) => {
-  if (target === "role") return "½ÇÉ«µµ°¸";
-  if (target === "clue") return "ÏßË÷²İ°¸";
-  if (target === "timeline") return "Ê±¼äÏß²İ°¸";
-  if (target === "dm") return "Ö÷³ÖÈËÊÖ²á";
-  if (target === "story") return "¾çÇé²İ°¸";
-  if (target === "insight") return "½á¹¹½¨Òé";
-  return "½á¹¹½¨Òé";
+  if (target === "role") return "è§’è‰²æ¡£æ¡ˆ";
+  if (target === "clue") return "çº¿ç´¢è‰æ¡ˆ";
+  if (target === "timeline") return "æ—¶é—´çº¿è‰æ¡ˆ";
+  if (target === "dm") return "ä¸»æŒäººæ‰‹å†Œ";
+  if (target === "story") return "å‰§æƒ…è‰æ¡ˆ";
+  if (target === "insight") return "ç»“æ„å»ºè®®";
+  return "ç»“æ„å»ºè®®";
 };
 
 export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandidatePanelProps) {
@@ -34,7 +34,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
       const result = await listAiCandidates(projectId, "pending");
       setCandidates(result.candidates || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "¼ÓÔØºòÑ¡ÄÚÈİÊ§°Ü");
+      setError(err instanceof Error ? err.message : "åŠ è½½å€™é€‰å†…å®¹å¤±è´¥");
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
       await acceptAiCandidate(projectId, id);
       await loadCandidates();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "²ÉÄÉÊ§°Ü");
+      setError(err instanceof Error ? err.message : "é‡‡çº³å¤±è´¥");
     }
   };
 
@@ -58,21 +58,21 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
       await rejectAiCandidate(projectId, id);
       await loadCandidates();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "¾Ü¾øÊ§°Ü");
+      setError(err instanceof Error ? err.message : "æ‹’ç»å¤±è´¥");
     }
   };
 
   const summary = useMemo(() => {
-    if (loading) return "¼ÓÔØºòÑ¡ÄÚÈİ...";
-    if (!candidates.length) return "ÔİÎŞºòÑ¡ÄÚÈİ";
-    return `´ı´¦ÀíºòÑ¡£º${candidates.length}`;
+    if (loading) return "åŠ è½½å€™é€‰å†…å®¹...";
+    if (!candidates.length) return "æš‚æ— å€™é€‰å†…å®¹";
+    return `å¾…å¤„ç†å€™é€‰ï¼š${candidates.length}`;
   }, [loading, candidates.length]);
 
   return (
     <div className="mt-6 border border-gray-100 bg-white rounded-2xl shadow-sm">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <div>
-          <div className="text-sm font-semibold text-gray-800">AI ºòÑ¡Çø£¨ÔÄ¶ÁÓë²ÉÄÉ£©</div>
+          <div className="text-sm font-semibold text-gray-800">AI å€™é€‰åŒºï¼ˆé˜…è¯»ä¸é‡‡çº³ï¼‰</div>
           <div className="text-xs text-gray-500 mt-1">{summary}</div>
         </div>
         <button
@@ -81,14 +81,14 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
           className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
         >
           <RefreshCcw size={14} />
-          Ë¢ĞÂ
+          åˆ·æ–°
         </button>
       </div>
 
       <div className="px-5 py-4 space-y-4">
         {error ? <div className="text-xs text-rose-500">{error}</div> : null}
         {!loading && candidates.length === 0 ? (
-          <div className="text-xs text-gray-400">ÔİÎŞºòÑ¡ÄÚÈİ</div>
+          <div className="text-xs text-gray-400">æš‚æ— å€™é€‰å†…å®¹</div>
         ) : null}
 
         {candidates.map((candidate) => {
@@ -105,7 +105,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-medium text-gray-800">
-                    {candidate.title || "ºòÑ¡ÄÚÈİ"}
+                    {candidate.title || "å€™é€‰å†…å®¹"}
                   </div>
                   <div className="text-[11px] text-gray-500 mt-1">
                     {targetLabel(candidate.target)}
@@ -118,7 +118,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
                     className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700"
                   >
                     <Check size={12} />
-                    ²ÉÄÉ
+                    é‡‡çº³
                   </button>
                   <button
                     type="button"
@@ -126,7 +126,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
                     className="inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600"
                   >
                     <X size={12} />
-                    ¾Ü¾ø
+                    æ‹’ç»
                   </button>
                 </div>
               </div>
@@ -149,7 +149,7 @@ export default function AiCandidatePanel({ projectId, refreshKey = 0 }: AiCandid
                     setExpandedIds((prev) => ({ ...prev, [candidate.id]: !isExpanded }))
                   }
                 >
-                  {isExpanded ? "ÊÕÆğÄÚÈİ" : "Õ¹¿ªÈ«²¿"}
+                  {isExpanded ? "æ”¶èµ·å†…å®¹" : "å±•å¼€å…¨éƒ¨"}
                 </button>
               ) : null}
             </div>
