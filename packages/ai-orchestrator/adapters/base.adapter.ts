@@ -13,10 +13,22 @@ export type AIClient = {
 
 export type AIPurpose = "derive" | "check";
 
+const cloudflareContextSymbol = Symbol.for("__cloudflare-request-context__");
+
+function readEnv(key: string): string | undefined {
+  const direct = process.env[key];
+  if (direct) return direct;
+  const ctx = (globalThis as Record<symbol, unknown>)[
+    cloudflareContextSymbol
+  ] as { env?: Record<string, unknown> } | undefined;
+  const value = ctx?.env?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
 function resolveProvider(purpose?: AIPurpose) {
-  const fallback = (process.env.AI_PROVIDER || "mock").toLowerCase();
-  const deriveProvider = (process.env.AI_PROVIDER_DERIVE || "").toLowerCase();
-  const checkProvider = (process.env.AI_PROVIDER_CHECK || "").toLowerCase();
+  const fallback = (readEnv("AI_PROVIDER") || "mock").toLowerCase();
+  const deriveProvider = (readEnv("AI_PROVIDER_DERIVE") || "").toLowerCase();
+  const checkProvider = (readEnv("AI_PROVIDER_CHECK") || "").toLowerCase();
   if (purpose === "check") {
     return checkProvider || fallback;
   }
@@ -28,35 +40,43 @@ function resolveProvider(purpose?: AIPurpose) {
 
 function resolveModel(provider: string, purpose?: AIPurpose) {
   if (provider === "qwen") {
-    return process.env.AI_QWEN_MODEL || process.env.AI_MODEL || "qwen3-max-2026-01-23";
+    return (
+      readEnv("AI_QWEN_MODEL") ||
+      readEnv("AI_MODEL") ||
+      "qwen3-max-2026-01-23"
+    );
   }
   if (provider === "deepseek") {
-    return process.env.AI_DEEPSEEK_MODEL || process.env.AI_MODEL || "DeepSeek-R1";
+    return (
+      readEnv("AI_DEEPSEEK_MODEL") ||
+      readEnv("AI_MODEL") ||
+      "DeepSeek-R1"
+    );
   }
   if (purpose === "check") {
-    return process.env.AI_MODEL || "DeepSeek-R1";
+    return readEnv("AI_MODEL") || "DeepSeek-R1";
   }
-  return process.env.AI_MODEL || "mock";
+  return readEnv("AI_MODEL") || "mock";
 }
 
 function resolveApiKey(provider: string) {
   if (provider === "qwen") {
-    return process.env.AI_QWEN_API_KEY || process.env.AI_API_KEY;
+    return readEnv("AI_QWEN_API_KEY") || readEnv("AI_API_KEY");
   }
   if (provider === "deepseek") {
-    return process.env.AI_DEEPSEEK_API_KEY || process.env.AI_API_KEY;
+    return readEnv("AI_DEEPSEEK_API_KEY") || readEnv("AI_API_KEY");
   }
-  return process.env.AI_API_KEY;
+  return readEnv("AI_API_KEY");
 }
 
 function resolveBaseUrl(provider: string) {
   if (provider === "qwen") {
-    return process.env.AI_QWEN_BASE_URL || process.env.AI_BASE_URL;
+    return readEnv("AI_QWEN_BASE_URL") || readEnv("AI_BASE_URL");
   }
   if (provider === "deepseek") {
-    return process.env.AI_DEEPSEEK_BASE_URL || process.env.AI_BASE_URL;
+    return readEnv("AI_DEEPSEEK_BASE_URL") || readEnv("AI_BASE_URL");
   }
-  return process.env.AI_BASE_URL;
+  return readEnv("AI_BASE_URL");
 }
 
 export function getAIClient(purpose?: AIPurpose): AIClient {
