@@ -11,6 +11,7 @@ export type ModuleEntry = {
   content: Record<string, unknown>;
   meta?: Record<string, unknown>;
   data?: Record<string, unknown>;
+  placeholderId?: string;
   updatedAt?: string | null;
 };
 
@@ -38,12 +39,14 @@ function createEntry(
   content?: Record<string, unknown>
 ): ModuleEntry {
   const emptyDoc = createEmptyDocument(seed.projectId, seed.module).content;
+  const id = crypto.randomUUID();
   return {
-    id: crypto.randomUUID(),
+    id,
     name,
     content: normalizeContent(content ?? emptyDoc),
     meta: {},
     data: {},
+    placeholderId: id,
     updatedAt: null
   };
 }
@@ -55,14 +58,21 @@ export function normalizeModuleCollection(
   if (isCollection(raw)) {
     return {
       kind: "collection",
-      entries: raw.entries.map((entry) => ({
-        id: entry.id || crypto.randomUUID(),
-        name: entry.name || seed.defaultName,
-        content: normalizeContent(entry.content),
-        meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
-        data: entry.data && typeof entry.data === "object" ? entry.data : {},
-        updatedAt: entry.updatedAt ?? null
-      })),
+      entries: raw.entries.map((entry) => {
+        const id = entry.id || crypto.randomUUID();
+        return {
+          id,
+          name: entry.name || seed.defaultName,
+          content: normalizeContent(entry.content),
+          meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
+          data: entry.data && typeof entry.data === "object" ? entry.data : {},
+          placeholderId:
+            typeof entry.placeholderId === "string" && entry.placeholderId.trim()
+              ? entry.placeholderId
+              : id,
+          updatedAt: entry.updatedAt ?? null
+        };
+      }),
       activeId: raw.activeId ?? raw.entries[0]?.id ?? null
     };
   }
@@ -85,7 +95,8 @@ export function serializeModuleCollection(
       ...entry,
       content: normalizeContent(entry.content),
       meta: entry.meta && typeof entry.meta === "object" ? entry.meta : {},
-      data: entry.data && typeof entry.data === "object" ? entry.data : {}
+      data: entry.data && typeof entry.data === "object" ? entry.data : {},
+      placeholderId: entry.placeholderId ?? entry.id
     }))
   };
 }

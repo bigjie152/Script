@@ -1,13 +1,13 @@
-export enum ProjectStatus {
+﻿export enum ProjectStatus {
   InProgress = "进行中",
   Completed = "已完成",
-  Archived = "已归档",
+  Archived = "已归档"
 }
 
 export enum TruthStatus {
   Locked = "已锁定",
   Draft = "草稿",
-  Review = "审核中",
+  Review = "审核中"
 }
 
 export enum ModuleType {
@@ -16,7 +16,7 @@ export enum ModuleType {
   Characters = "角色",
   Clues = "线索",
   Timeline = "时间线",
-  Manual = "DM 手册",
+  Manual = "DM 手册"
 }
 
 export enum ScriptGenre {
@@ -24,7 +24,7 @@ export enum ScriptGenre {
   Emotion = "情感",
   Horror = "恐怖",
   Mechanism = "机制",
-  Hardcore = "硬核",
+  Hardcore = "硬核"
 }
 
 export interface ScriptMetadata {

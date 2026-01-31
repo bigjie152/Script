@@ -140,14 +140,33 @@ export async function PUT(
       return jsonError(403, "forbidden", undefined, requestId);
     }
 
-    const { name, description, meta } = parsed.body;
+    const { name, description, meta, cover, tags, genre, players, duration, difficulty, status } =
+      parsed.body;
 
-    if (!name && !description && !meta) {
+    if (
+      !name &&
+      !description &&
+      !meta &&
+      !cover &&
+      !tags &&
+      !genre &&
+      !players &&
+      !duration &&
+      !difficulty &&
+      !status
+    ) {
       return jsonError(400, "no fields to update", undefined, requestId);
     }
 
     const existingMeta =
       project.meta && typeof project.meta === "object" ? project.meta : null;
+
+    const nextStatus =
+      typeof status === "string"
+        ? status
+        : typeof project.status === "string"
+          ? project.status
+          : null;
 
     await db
       .update(schema.projects)
@@ -156,6 +175,13 @@ export async function PUT(
         description:
           typeof description === "string" ? description : project.description,
         meta: meta && typeof meta === "object" ? meta : existingMeta,
+        cover: typeof cover === "string" ? cover : project.cover,
+        tags: Array.isArray(tags) ? tags : project.tags,
+        genre: typeof genre === "string" ? genre : project.genre,
+        players: typeof players === "string" ? players : project.players,
+        duration: typeof duration === "string" ? duration : project.duration,
+        difficulty: typeof difficulty === "string" ? difficulty : project.difficulty,
+        status: nextStatus,
         updatedAt: new Date().toISOString()
       })
       .where(eq(schema.projects.id, projectId));

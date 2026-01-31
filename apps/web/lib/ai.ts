@@ -1,1 +1,6 @@
-export { deriveRoles, consistencyCheck } from "../../../packages/ai-orchestrator";
+export {
+  deriveRoles,
+  consistencyCheck,
+  deriveCandidates,
+  logicCheck
+} from "../../../packages/ai-orchestrator";

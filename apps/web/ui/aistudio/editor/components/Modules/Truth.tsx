@@ -17,15 +17,18 @@ interface TruthProps {
   latestSnapshotId?: string | null;
   mentionItems: MentionItem[];
   onMentionClick: (item: MentionItem) => void;
+  readOnly?: boolean;
 }
 
 const Truth: React.FC<TruthProps> = ({
   truthState,
   latestSnapshotId,
   mentionItems,
-  onMentionClick
+  onMentionClick,
+  readOnly = false
 }) => {
   const isLocked = truthState.locked;
+  const isReadOnly = readOnly || isLocked;
   const snapshotLabel = latestSnapshotId || "v0.1";
 
   return (
@@ -85,6 +88,7 @@ const Truth: React.FC<TruthProps> = ({
               }`}
               title={isLocked ? "点击解锁" : "点击锁定"}
               type="button"
+              disabled={readOnly}
             >
               {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
             </button>
@@ -113,7 +117,7 @@ const Truth: React.FC<TruthProps> = ({
           <DocumentEditor
             value={truthState.document}
             onChange={truthState.setDocument}
-            readonly={isLocked}
+            readonly={isReadOnly}
             mentionItems={mentionItems}
             onMentionClick={onMentionClick}
           />

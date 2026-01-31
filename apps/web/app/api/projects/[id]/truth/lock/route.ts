@@ -67,6 +67,12 @@ export async function POST(
     .limit(1);
 
   if (truth.status === "LOCKED" && latestSnapshot) {
+    if (project.status !== "TRUTH_LOCKED") {
+      await db
+        .update(schema.projects)
+        .set({ status: "TRUTH_LOCKED", updatedAt: new Date().toISOString() })
+        .where(eq(schema.projects.id, projectId));
+    }
     console.log(routeLabel, {
       route: routeLabel,
       requestId,
@@ -103,6 +109,11 @@ export async function POST(
     .update(schema.truths)
     .set({ status: "LOCKED", updatedAt: new Date().toISOString() })
     .where(eq(schema.truths.id, truth.id));
+
+  await db
+    .update(schema.projects)
+    .set({ status: "TRUTH_LOCKED", updatedAt: new Date().toISOString() })
+    .where(eq(schema.projects.id, projectId));
 
   console.log(routeLabel, {
     route: routeLabel,

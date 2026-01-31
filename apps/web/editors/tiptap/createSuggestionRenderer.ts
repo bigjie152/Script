@@ -77,7 +77,7 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         destroyed = false;
         items = props.items || [];
         command = props.command;
-        selectedIndex = 0;
+        selectedIndex = items.length === 1 ? 0 : -1;
         safeRemove();
         container = document.createElement("div");
         container.className =
@@ -94,24 +94,35 @@ export function createSuggestionRenderer(className: string, emptyText = "无匹�
         if (destroyed) return;
         items = props.items || [];
         command = props.command;
-        selectedIndex = 0;
+        selectedIndex = items.length === 1 ? 0 : -1;
         renderItems();
         setPosition(props.clientRect?.());
       },
       onKeyDown: (props: any) => {
         if (!items.length) return false;
         if (props.event.key === "ArrowDown") {
-          selectedIndex = (selectedIndex + 1) % items.length;
+          if (selectedIndex < 0) {
+            selectedIndex = 0;
+          } else {
+            selectedIndex = (selectedIndex + 1) % items.length;
+          }
           renderItems();
           return true;
         }
         if (props.event.key === "ArrowUp") {
-          selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+          if (selectedIndex < 0) {
+            selectedIndex = items.length - 1;
+          } else {
+            selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+          }
           renderItems();
           return true;
         }
         if (props.event.key === "Enter") {
-          command?.(items[selectedIndex]);
+          if (selectedIndex >= 0) {
+            command?.(items[selectedIndex]);
+            return true;
+          }
           return true;
         }
         if (props.event.key === "Escape") {

@@ -97,7 +97,11 @@ export function useTruthDocument(projectId: string) {
   }, [projectId, refresh]);
 
   const unlock = useCallback(async () => {
-    const result = await unlockTruth(projectId);
+    const reason = window.prompt("请输入解锁原因");
+    if (!reason || !reason.trim()) {
+      return { cancelled: true };
+    }
+    const result = await unlockTruth(projectId, reason.trim());
     refresh();
     return result;
   }, [projectId, refresh]);

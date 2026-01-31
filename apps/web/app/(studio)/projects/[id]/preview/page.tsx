@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -98,14 +98,12 @@ export default function ProjectPreviewPage() {
         </div>
       ) : !project ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-gray-500">
-          项目不存在或无权访问。
+          项目不存在或无权限访问。
         </div>
       ) : (
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="text-xl font-semibold text-gray-900">
-              {project.name}
-            </div>
+            <div className="text-xl font-semibold text-gray-900">{project.name}</div>
             <div className="mt-2 whitespace-pre-wrap text-sm text-gray-600">
               {overviewText}
             </div>
@@ -118,9 +116,7 @@ export default function ProjectPreviewPage() {
               <div>社区状态：{isPublic ? "已发布" : "未发布"}</div>
             </div>
             {publishError ? (
-              <div className="mt-2 text-xs text-rose-500">
-                {publishError}
-              </div>
+              <div className="mt-2 text-xs text-rose-500">{publishError}</div>
             ) : null}
           </div>
         </div>

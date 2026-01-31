@@ -6,6 +6,7 @@ export type ModuleDocumentResponse = {
   module: DocumentModuleKey;
   documentId: string | null;
   content: Record<string, unknown>;
+  needsReview?: number;
 };
 
 export type ModuleUpdateResponse = {

@@ -1,17 +1,20 @@
-import { NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { jsonError } from "@/lib/http";
-import { consistencyCheck } from "@/lib/ai";
+import { jsonError, jsonResponse } from "@/lib/http";
+import { logicCheck } from "@/lib/ai";
 import { loadPrompt } from "@/lib/prompts";
 import { getAuthUser } from "@/lib/auth";
 
 export const runtime = "edge";
 
+const routeLabel = "POST /api/projects/:id/ai/check";
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   const { id: projectId } = await Promise.resolve(params);
   const body = await request.json().catch(() => ({}));
   const requestedSnapshotId =
@@ -19,7 +22,7 @@ export async function POST(
 
   const user = await getAuthUser(request);
   if (!user) {
-    return jsonError(401, "请先登录");
+    return jsonError(401, "请先登录", undefined, requestId);
   }
 
   const [project] = await db
@@ -29,11 +32,11 @@ export async function POST(
     .limit(1);
 
   if (!project) {
-    return jsonError(404, "项目不存在");
+    return jsonError(404, "项目不存在", undefined, requestId);
   }
 
   if (project.ownerId && project.ownerId !== user.id) {
-    return jsonError(403, "无权限访问");
+    return jsonError(403, "无权限访问", undefined, requestId);
   }
 
   if (!project.ownerId) {
@@ -58,27 +61,27 @@ export async function POST(
     .limit(1);
 
   if (!snapshot) {
-    return jsonError(404, "未找到 Truth 快照");
+    return jsonError(409, "未找到 Truth 快照，请先锁定 Truth", undefined, requestId);
   }
 
-  type RoleRow = typeof schema.roles.$inferSelect;
-  const storedRoles = (await db
+  const docs = await db
     .select()
-    .from(schema.roles)
-    .where(eq(schema.roles.truthSnapshotId, snapshot.id))) as RoleRow[];
+    .from(schema.moduleDocuments)
+    .where(eq(schema.moduleDocuments.projectId, projectId));
+  const context = {
+    story: docs.find((doc) => doc.module === "story")?.content ?? null,
+    roles: docs.find((doc) => doc.module === "roles")?.content ?? null,
+    clues: docs.find((doc) => doc.module === "clues")?.content ?? null,
+    timeline: docs.find((doc) => doc.module === "timeline")?.content ?? null,
+    dm: docs.find((doc) => doc.module === "dm")?.content ?? null
+  };
 
-  const roles = storedRoles.map((role: RoleRow) => ({
-    name: role.name,
-    summary: role.summary ?? undefined,
-    meta: role.meta ?? undefined
-  }));
-
-  const prompt = await loadPrompt("check/consistency.v1.md");
-  const result = await consistencyCheck({
+  const prompt = await loadPrompt("check/logic.v1.md");
+  const result = await logicCheck({
     prompt,
     project,
     truthSnapshot: snapshot,
-    roles
+    context
   });
 
   await db
@@ -104,15 +107,24 @@ export async function POST(
     id: crypto.randomUUID(),
     projectId,
     truthSnapshotId: snapshot.id,
-    actionType: "consistency_check",
+    actionType: "logic_check",
     provider: result.provider,
     model: result.model,
-    meta: { prompt: "check/consistency.v1.md" }
+    meta: { prompt: "check/logic.v1.md" }
   });
 
-  return NextResponse.json({
-    truthSnapshotId: snapshot.id,
-    issues: result.issues
+  console.log(routeLabel, {
+    route: routeLabel,
+    requestId,
+    status: 200,
+    latencyMs: Date.now() - startedAt
   });
+
+  return jsonResponse(
+    {
+      truthSnapshotId: snapshot.id,
+      issues: result.issues
+    },
+    { requestId }
+  );
 }
-

@@ -8,6 +8,7 @@ import {
   Search,
   Clock,
   BookOpen,
+  BookOpenText,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -21,6 +22,14 @@ export type NavStructure = Partial<
   Record<EditorModuleKey, { id: string; label: string }[]>
 >;
 
+type StructureStatus = {
+  ready: boolean;
+  healthy: boolean;
+  missingModules: string[];
+  needsReviewModules: string[];
+  p0IssueCount: number;
+};
+
 interface SidebarProps {
   activeModule: EditorModuleKey;
   activeEntryId?: string;
@@ -29,6 +38,7 @@ interface SidebarProps {
   onRenameEntry?: (module: EditorModuleKey, entryId: string, name: string) => Promise<boolean>;
   onDeleteEntry?: (module: EditorModuleKey, entryId: string) => Promise<boolean>;
   structure: NavStructure;
+  structureStatus?: StructureStatus | null;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +48,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onCreateEntry,
   onRenameEntry,
   onDeleteEntry,
-  structure
+  structure,
+  structureStatus
 }) => {
   const [expandedModules, setExpandedModules] = useState<Set<EditorModuleKey>>(
     new Set(["roles"])
@@ -52,9 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     if (!activeModule) return;
     if (!(["roles", "clues", "timeline", "dm"] as EditorModuleKey[]).includes(activeModule)) return;
-    if (activeModule === "roles" || activeModule === "clues") {
-      setExpandedModules(new Set([activeModule]));
-    }
+    setExpandedModules(new Set([activeModule]));
   }, [activeModule]);
 
   const toggleExpand = (module: EditorModuleKey, event: React.MouseEvent) => {
@@ -71,13 +80,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     () => [
       { id: "overview" as const, icon: LayoutDashboard, label: "概览", hasChildren: false },
       { id: "truth" as const, icon: Eye, label: "真相", hasChildren: false },
+      { id: "story" as const, icon: BookOpen, label: "故事", hasChildren: false },
       { id: "roles" as const, icon: Users, label: "角色", hasChildren: true },
       { id: "clues" as const, icon: Search, label: "线索", hasChildren: true },
-      { id: "timeline" as const, icon: Clock, label: "时间线", hasChildren: false },
-      { id: "dm" as const, icon: BookOpen, label: "DM 手册", hasChildren: false }
+      { id: "timeline" as const, icon: Clock, label: "时间线", hasChildren: true },
+      { id: "dm" as const, icon: BookOpenText, label: "DM 手册", hasChildren: true }
     ],
     []
   );
+
+  const alertModules = useMemo(() => {
+    const set = new Set<string>();
+    if (structureStatus?.missingModules) {
+      structureStatus.missingModules.forEach((item) => set.add(item));
+    }
+    if (structureStatus?.needsReviewModules) {
+      structureStatus.needsReviewModules.forEach((item) => set.add(item));
+    }
+    return set;
+  }, [structureStatus]);
 
   const handleCreate = async (module: EditorModuleKey) => {
     const id = onCreateEntry?.(module);
@@ -129,7 +150,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Icon size={16} className={isActive ? "text-indigo-600" : "text-gray-400"} />
-                  {item.label}
+                  <span className="flex items-center gap-2">
+                    {item.label}
+                    {alertModules.has(item.id) ? (
+                      <span className="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+                    ) : null}
+                  </span>
                 </div>
                 {hasChildren ? (
                   <button

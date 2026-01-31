@@ -1,6 +1,7 @@
 export type EditorModuleKey =
   | "overview"
   | "truth"
+  | "story"
   | "roles"
   | "clues"
   | "timeline"
