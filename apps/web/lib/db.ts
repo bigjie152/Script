@@ -53,7 +53,18 @@ function resolveBinding(): D1Binding | null {
 
   try {
     for (const key of Object.getOwnPropertyNames(globalThis)) {
-      if (!key.toLowerCase().includes("cloudflare") && key !== "env") continue;
+      const lowered = key.toLowerCase();
+      if (!lowered.includes("cloudflare") && !lowered.includes("env")) {
+        const candidate = (globalThis as Record<string, unknown>)[key];
+        if (
+          candidate &&
+          typeof candidate === "object" &&
+          typeof (candidate as D1Binding).prepare === "function"
+        ) {
+          return candidate as D1Binding;
+        }
+        continue;
+      }
       const candidate = (globalThis as Record<string, unknown>)[key];
       if (
         candidate &&
