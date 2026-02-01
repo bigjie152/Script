@@ -51,6 +51,18 @@ async function selectAiAction(page, value) {
     await select.selectOption({ value });
     return true;
   }
+  const fallback = page.locator("select").filter({
+    has: page.locator(`option[value="${value}"]`)
+  });
+  if (await fallback.count()) {
+    await fallback.first().selectOption({ value });
+    return true;
+  }
+  const anySelect = page.locator("select");
+  if (await anySelect.count()) {
+    await anySelect.first().selectOption({ value });
+    return true;
+  }
   return false;
 }
 
@@ -58,6 +70,13 @@ async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
   const acceptBtn = page.getByRole("button", { name: /采纳/ }).first();
   await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
+}
+
+async function throwIfAiError(page) {
+  const error = page.locator("text=AI 生成失败").first();
+  if (await error.count()) {
+    throw new Error("AI 生成失败");
+  }
 }
 
 async function acceptFirstCandidate(page) {
@@ -256,6 +275,7 @@ async function run() {
       }
       await clickFirst(page, ['[data-testid="ai-generate-btn"]', 'button:has-text("生成候选")']);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
+      await throwIfAiError(page);
       await waitForCandidate(page);
       const accepted = await acceptFirstCandidate(page);
       if (!accepted) {
