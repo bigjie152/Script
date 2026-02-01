@@ -22,7 +22,7 @@ const Workspace: React.FC = () => {
     () =>
       projects.map((item) => ({
         id: item.id,
-        title: item.name,
+        title: item.name || "未命名剧本",
         description: item.description || "",
         status: resolveStatus(item.status, item.truthStatus),
         updatedAt: item.updatedAt || null,

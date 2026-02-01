@@ -172,6 +172,12 @@ export async function updateProjectStatus(
   });
 }
 
+export async function deleteProject(projectId: string) {
+  return apiRequest<{ status: string }>(`/api/projects/${projectId}`, {
+    method: "DELETE"
+  });
+}
+
 export async function getStructureStatus(projectId: string) {
   return apiRequest<StructureStatusResponse>(
     `/api/projects/${projectId}/structure-status`

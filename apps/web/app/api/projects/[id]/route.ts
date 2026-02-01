@@ -7,6 +7,7 @@ export const runtime = "edge";
 
 const routeLabel = "GET /api/projects/:id";
 const updateLabel = "PUT /api/projects/:id";
+const deleteLabel = "DELETE /api/projects/:id";
 
 type ParsedJsonBody =
   | { ok: true; body: Record<string, unknown>; raw: string }
@@ -52,7 +53,7 @@ export async function GET(
       .where(eq(schema.projects.id, projectId))
       .limit(1);
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       console.error(routeLabel, {
         route: routeLabel,
         requestId,
@@ -132,7 +133,7 @@ export async function PUT(
       .where(eq(schema.projects.id, projectId))
       .limit(1);
 
-    if (!project) {
+    if (!project || project.deletedAt) {
       return jsonError(404, "project not found", undefined, requestId);
     }
 
@@ -217,6 +218,67 @@ export async function PUT(
           : error
     });
     return jsonError(500, "failed to update project", undefined, requestId);
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+
+  try {
+    const { id: projectId } = await Promise.resolve(params);
+    const user = await getAuthUser(request);
+    if (!user) {
+      return jsonError(401, "login required", undefined, requestId);
+    }
+
+    const [project] = await db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, projectId))
+      .limit(1);
+
+    if (!project || project.deletedAt) {
+      return jsonError(404, "project not found", undefined, requestId);
+    }
+
+    if (project.ownerId && project.ownerId !== user.id) {
+      return jsonError(403, "forbidden", undefined, requestId);
+    }
+
+    const now = new Date().toISOString();
+    await db
+      .update(schema.projects)
+      .set({
+        deletedAt: now,
+        status: "ARCHIVED",
+        updatedAt: now
+      })
+      .where(eq(schema.projects.id, projectId));
+
+    console.log(deleteLabel, {
+      route: deleteLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt
+    });
+
+    return jsonResponse({ status: "deleted" }, { requestId });
+  } catch (error) {
+    console.error(deleteLabel, {
+      route: deleteLabel,
+      requestId,
+      status: 500,
+      latencyMs: Date.now() - startedAt,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error
+    });
+    return jsonError(500, "failed to delete project", undefined, requestId);
   }
 }
 

@@ -9,6 +9,7 @@ type UseProjectsOptions = {
   status?: string;
   truthStatus?: string;
   scope?: "mine";
+  refreshKey?: number;
 };
 
 type ProjectsState = {
@@ -32,9 +33,17 @@ export function useProjects(options: UseProjectsOptions = {}) {
         sort: options.sort || "updatedAt",
         q: options.q || "",
         status: options.status || "",
-        truthStatus: options.truthStatus || ""
+        truthStatus: options.truthStatus || "",
+        refreshKey: options.refreshKey || 0
       }),
-    [options.scope, options.sort, options.q, options.status, options.truthStatus]
+    [
+      options.scope,
+      options.sort,
+      options.q,
+      options.status,
+      options.truthStatus,
+      options.refreshKey
+    ]
   );
 
   useEffect(() => {

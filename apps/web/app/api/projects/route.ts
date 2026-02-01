@@ -1,4 +1,4 @@
-import { and, desc, eq, like, or } from "drizzle-orm";
+import { and, desc, eq, isNull, like, or } from "drizzle-orm";
 import { db, getD1Binding, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { getAuthUser } from "@/lib/auth";
@@ -205,7 +205,7 @@ export async function GET(request: Request) {
     return jsonError(400, "unsupported scope", undefined, requestId);
   }
 
-  const filters = [eq(schema.projects.ownerId, user.id)];
+  const filters = [eq(schema.projects.ownerId, user.id), isNull(schema.projects.deletedAt)];
   if (q) {
     const keyword = `%${q}%`;
     const searchCondition = or(
@@ -275,9 +275,12 @@ export async function GET(request: Request) {
         ? ((meta as Record<string, unknown>).status as string)
         : "Draft");
     const truthStatus = statusMap.get(project.id) ?? "Draft";
+    const safeName = typeof project.name === "string" && project.name.trim()
+      ? project.name.trim()
+      : "未命名剧本";
     return {
       id: project.id,
-      name: project.name,
+      name: safeName,
       description: project.description ?? "",
       updatedAt: project.updatedAt,
       status: statusValue,

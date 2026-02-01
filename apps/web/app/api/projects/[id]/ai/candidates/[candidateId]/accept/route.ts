@@ -1,4 +1,4 @@
-﻿import { and, eq } from "drizzle-orm";
+﻿import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { getAuthUser } from "@/lib/auth";
@@ -209,6 +209,40 @@ export async function POST(
           needsReview: 0
         });
       }
+    }
+  } else {
+    const [truth] = await db
+      .select()
+      .from(schema.truths)
+      .where(eq(schema.truths.projectId, projectId))
+      .orderBy(desc(schema.truths.createdAt))
+      .limit(1);
+
+    const baseDoc = normalizeDoc(truth?.content, "");
+    const incoming = normalizeDoc(
+      candidate.content,
+      candidate.summary || candidate.title || ""
+    );
+    const merged = {
+      type: "doc",
+      content: [
+        ...(((baseDoc as any).content as unknown[]) || []),
+        ...(((incoming as any).content as unknown[]) || [])
+      ]
+    };
+
+    if (truth) {
+      await db
+        .update(schema.truths)
+        .set({ content: merged, updatedAt: now })
+        .where(eq(schema.truths.id, truth.id));
+    } else {
+      await db.insert(schema.truths).values({
+        id: crypto.randomUUID(),
+        projectId,
+        status: "DRAFT",
+        content: merged
+      });
     }
   }
 

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Clock, MoreHorizontal, Lock } from "lucide-react";
+import { Clock, Lock, Trash2 } from "lucide-react";
 import { ProjectStatus } from "../../types/types";
 
 export type ProjectCardItem = {
@@ -15,9 +15,10 @@ export type ProjectCardItem = {
 interface ProjectCardProps {
   project: ProjectCardItem;
   onClick?: () => void;
+  onDelete?: () => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick }) => {
+const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, onDelete }) => {
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
       case ProjectStatus.LOCKED:
@@ -48,9 +49,19 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick }) => {
           {project.status === ProjectStatus.LOCKED && <Lock size={10} />}
           {project.status}
         </span>
-        <span className="text-gray-300 group-hover:text-gray-600 transition-colors">
-          <MoreHorizontal size={18} />
-        </span>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            className="text-gray-300 hover:text-rose-500 transition-colors"
+            title="删除项目"
+          >
+            <Trash2 size={16} />
+          </button>
+        ) : null}
       </div>
 
       <div className="mb-6">

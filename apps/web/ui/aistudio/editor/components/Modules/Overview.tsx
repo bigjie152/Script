@@ -37,6 +37,33 @@ const Overview: React.FC<OverviewProps> = ({
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col gap-5 p-1">
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="md:col-span-2 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+          <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider block">
+            项目名称
+          </span>
+          <input
+            className="w-full text-base font-semibold text-gray-800 bg-transparent outline-none"
+            value={form.name}
+            onChange={(event) => updateField("name", event.target.value)}
+            placeholder="输入项目名称"
+            disabled={readOnly}
+          />
+        </div>
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+          <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider block">
+            项目简介
+          </span>
+          <textarea
+            className="w-full text-sm text-gray-700 bg-transparent outline-none resize-none min-h-[72px]"
+            value={form.description}
+            onChange={(event) => updateField("description", event.target.value)}
+            placeholder="一句话介绍你的剧本"
+            disabled={readOnly}
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group">
           <div className="flex flex-col">
             <span className="text-[11px] text-gray-400 uppercase font-semibold mb-1 tracking-wider">

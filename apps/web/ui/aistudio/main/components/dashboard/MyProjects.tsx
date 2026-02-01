@@ -7,6 +7,7 @@ import ProjectCard, { ProjectCardItem } from "./ProjectCard";
 import { ProjectStatus } from "../../types/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
+import { deleteProject } from "@/services/projectApi";
 
 const MyProjects: React.FC = () => {
   const router = useRouter();
@@ -15,6 +16,8 @@ const MyProjects: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -25,14 +28,15 @@ const MyProjects: React.FC = () => {
 
   const { projects, loading, error } = useProjects({
     sort: "updatedAt",
-    q: searchQuery
+    q: searchQuery,
+    refreshKey
   });
 
   const cardProjects = useMemo<ProjectCardItem[]>(
     () =>
       projects.map((item) => ({
         id: item.id,
-        title: item.name,
+        title: item.name || "未命名剧本",
         description: item.description || "",
         status: resolveStatus(item.status, item.truthStatus),
         updatedAt: item.updatedAt || null,
@@ -61,6 +65,11 @@ const MyProjects: React.FC = () => {
       {error ? (
         <div className="rounded-2xl border border-red-200/60 bg-red-50/70 px-4 py-3 text-xs text-red-700 mb-6">
           {error}
+        </div>
+      ) : null}
+      {actionError ? (
+        <div className="rounded-2xl border border-red-200/60 bg-red-50/70 px-4 py-3 text-xs text-red-700 mb-6">
+          {actionError}
         </div>
       ) : null}
 
@@ -129,6 +138,21 @@ const MyProjects: React.FC = () => {
               key={project.id}
               project={project}
               onClick={() => router.push(`/projects/${project.id}/preview`)}
+              onDelete={async () => {
+                if (!user) {
+                  setActionError("请先登录后再删除项目");
+                  return;
+                }
+                const ok = window.confirm("确认删除该项目吗？该操作可在后台恢复。");
+                if (!ok) return;
+                try {
+                  setActionError(null);
+                  await deleteProject(project.id);
+                  setRefreshKey((value) => value + 1);
+                } catch (err) {
+                  setActionError(err instanceof Error ? err.message : "删除失败，请重试");
+                }
+              }}
             />
           ))}
         </div>
