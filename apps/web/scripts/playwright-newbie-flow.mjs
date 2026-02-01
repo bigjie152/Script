@@ -254,20 +254,22 @@ async function run() {
     await page.waitForTimeout(1200);
 
     const steps = [
-      { module: "真相", actionValue: "outline" },
-      { module: "故事", actionValue: "story" },
-      { module: "角色", actionValue: "role" },
-      { module: "线索", actionValue: "clue" },
-      { module: "时间线", actionValue: "timeline" },
-      { module: "DM 手册", actionValue: "dm" }
+      { label: "真相", route: "truth", actionValue: "outline" },
+      { label: "故事", route: "story", actionValue: "story" },
+      { label: "角色", route: "roles", actionValue: "role" },
+      { label: "线索", route: "clues", actionValue: "clue" },
+      { label: "时间线", route: "timeline", actionValue: "timeline" },
+      { label: "DM 手册", route: "dm", actionValue: "dm" }
     ];
 
     for (const step of steps) {
-      await clickFirst(page, [`text=${step.module}`, `a:has-text("${step.module}")`]);
+      await page.goto(`${base}/projects/${projectId}/editor/${step.route}`, {
+        waitUntil: "domcontentloaded"
+      });
       await page.waitForTimeout(800);
       const selected = await selectAiAction(page, step.actionValue);
       if (!selected) {
-        throw new Error("未找到 AI 动作选择框");
+        throw new Error(`未找到 AI 动作选择框：${step.label}`);
       }
       const textarea = page.getByTestId("ai-intent-input");
       if (await textarea.count()) {
