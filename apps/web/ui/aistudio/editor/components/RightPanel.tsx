@@ -24,6 +24,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
   const resolvedProjectId =
     projectId || (typeof params?.projectId === "string" ? params.projectId : "");
   const [activeTab, setActiveTab] = useState<"canvas" | "issues">("canvas");
+  const currentModule = typeof params?.module === "string" ? params.module : "";
 
   const [structure, setStructure] = useState<StructureStatus | null>(null);
   const [structureError, setStructureError] = useState<string | null>(null);
@@ -161,13 +162,37 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
     setAiLoading(true);
     setAiError(null);
     setAiNotice(null);
+    const targetMap: Record<string, string> = {
+      outline: "truth",
+      worldcheck: "truth",
+      story: "story",
+      role: "roles",
+      clue: "clues",
+      timeline: "timeline",
+      dm: "dm"
+    };
+    const moduleLabelMap: Record<string, string> = {
+      truth: "Truth",
+      story: "故事",
+      roles: "角色",
+      clues: "线索",
+      timeline: "时间线",
+      dm: "DM 手册"
+    };
+    const targetModule = targetMap[aiAction] || "";
     try {
       const result = await deriveCandidates(resolvedProjectId, {
         actionType: aiAction,
         intent: aiIntent || undefined
       });
       setCandidates((prev) => [...result.candidates, ...prev]);
-      setAiNotice(`已生成候选内容（${result.provider}/${result.model}），请在候选区采纳或拒绝。`);
+      const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
+      const targetLabel = moduleLabelMap[targetModule] || "对应模块";
+      const crossModuleNotice =
+        targetModule && currentModule && targetModule !== currentModule
+          ? `请到 ${targetLabel} 模块查看。`
+          : "请在候选区采纳或拒绝。";
+      setAiNotice(`${noticeBase} ${crossModuleNotice}`);
       setAiIntent("");
       onCandidatesUpdated?.();
     } catch (err) {
