@@ -85,6 +85,7 @@ export type ImpactReportResponse = {
 
 export type IssueItem = {
   id: string;
+  source?: string | null;
   type: string;
   severity: string;
   title: string;

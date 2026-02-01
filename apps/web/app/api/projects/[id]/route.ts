@@ -162,12 +162,14 @@ export async function PUT(
     const existingMeta =
       project.meta && typeof project.meta === "object" ? project.meta : null;
 
-    const nextStatus =
-      typeof status === "string"
-        ? status
-        : typeof project.status === "string"
-          ? project.status
-          : null;
+    if (typeof status === "string" && status !== project.status) {
+      return jsonError(
+        409,
+        "项目状态需通过 /api/projects/:id/status 更新",
+        undefined,
+        requestId
+      );
+    }
 
     await db
       .update(schema.projects)
@@ -182,7 +184,7 @@ export async function PUT(
         players: typeof players === "string" ? players : project.players,
         duration: typeof duration === "string" ? duration : project.duration,
         difficulty: typeof difficulty === "string" ? difficulty : project.difficulty,
-        status: nextStatus,
+        status: project.status,
         updatedAt: new Date().toISOString()
       })
       .where(eq(schema.projects.id, projectId));

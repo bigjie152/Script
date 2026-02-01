@@ -8,6 +8,7 @@ import { getAuthUser } from "@/lib/auth";
 export const runtime = "edge";
 
 const routeLabel = "POST /api/projects/:id/ai/check";
+const issueSource = "ai";
 
 export async function POST(
   request: Request,
@@ -87,7 +88,12 @@ export async function POST(
 
     await db
       .delete(schema.issues)
-      .where(eq(schema.issues.truthSnapshotId, snapshot.id));
+      .where(
+        and(
+          eq(schema.issues.truthSnapshotId, snapshot.id),
+          eq(schema.issues.source, issueSource)
+        )
+      );
 
     if (result.issues.length > 0) {
       await db.insert(schema.issues).values(
@@ -95,6 +101,7 @@ export async function POST(
           id: crypto.randomUUID(),
           projectId,
           truthSnapshotId: snapshot.id,
+          source: issueSource,
           type: issue.type,
           severity: issue.severity,
           title: issue.title,

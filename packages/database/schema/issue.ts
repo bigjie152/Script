@@ -5,6 +5,7 @@ export const issues = sqliteTable("issues", {
   id: text("id").primaryKey(),
   projectId: text("project_id").notNull(),
   truthSnapshotId: text("truth_snapshot_id").notNull(),
+  source: text("source"),
   type: text("type").notNull(),
   severity: text("severity").notNull(),
   title: text("title").notNull(),

@@ -1,15 +1,18 @@
-﻿import { desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { getAuthUser } from "@/lib/auth";
+import {
+  canTransitionProjectStatus,
+  getAllowedNextStatuses,
+  normalizeProjectStatus
+} from "@/lib/domain";
+import { getCommunitySummary } from "@/app/api/community/utils";
+import { runPublishGate } from "@/lib/publishGate";
 
 export const runtime = "edge";
 
 const routeLabel = "POST /api/projects/:id/status";
-
-const STATUS_FLOW = ["DRAFT", "TRUTH_LOCKED", "PUBLISHED", "ARCHIVED"] as const;
-
-type ProjectStatus = (typeof STATUS_FLOW)[number];
 
 type ParsedJsonBody =
   | { ok: true; body: Record<string, unknown>; raw: string }
@@ -39,12 +42,6 @@ async function parseJsonBody(request: Request): Promise<ParsedJsonBody> {
   return { ok: false, message: "invalid json", raw };
 }
 
-function isValidNext(current: ProjectStatus, next: ProjectStatus) {
-  const currentIndex = STATUS_FLOW.indexOf(current);
-  const nextIndex = STATUS_FLOW.indexOf(next);
-  return currentIndex !== -1 && nextIndex === currentIndex + 1;
-}
-
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -58,19 +55,16 @@ export async function POST(
     return jsonError(400, parsed.message, undefined, requestId);
   }
 
-  const nextStatusRaw = parsed.body?.nextStatus;
-  if (typeof nextStatusRaw !== "string") {
-    return jsonError(400, "nextStatus 必填", undefined, requestId);
-  }
-
-  const nextStatus = nextStatusRaw.toUpperCase() as ProjectStatus;
-  if (!STATUS_FLOW.includes(nextStatus)) {
-    return jsonError(400, "无效状态", undefined, requestId);
+  const rawNextStatus =
+    typeof parsed.body?.nextStatus === "string" ? parsed.body.nextStatus : "";
+  const nextStatus = normalizeProjectStatus(rawNextStatus);
+  if (!nextStatus) {
+    return jsonError(400, "不支持的状态值", { nextStatus: rawNextStatus }, requestId);
   }
 
   const user = await getAuthUser(request);
   if (!user) {
-    return jsonError(401, "login required", undefined, requestId);
+    return jsonError(401, "请先登录", undefined, requestId);
   }
 
   const [project] = await db
@@ -80,22 +74,37 @@ export async function POST(
     .limit(1);
 
   if (!project) {
-    return jsonError(404, "project not found", undefined, requestId);
+    return jsonError(404, "项目不存在", undefined, requestId);
   }
 
   if (project.ownerId && project.ownerId !== user.id) {
-    return jsonError(403, "forbidden", undefined, requestId);
+    return jsonError(403, "无权限访问", undefined, requestId);
   }
 
-  const current =
-    typeof project.status === "string" ? project.status.toUpperCase() : "DRAFT";
-  if (!STATUS_FLOW.includes(current as ProjectStatus)) {
-    return jsonError(400, "当前状态无效", undefined, requestId);
+  if (!project.ownerId) {
+    await db
+      .update(schema.projects)
+      .set({ ownerId: user.id, updatedAt: new Date().toISOString() })
+      .where(eq(schema.projects.id, projectId));
   }
 
-  if (!isValidNext(current as ProjectStatus, nextStatus)) {
-    return jsonError(400, "状态流转不合法", undefined, requestId);
+  const currentStatus =
+    normalizeProjectStatus(project.status) ?? "DRAFT";
+
+  if (currentStatus === nextStatus) {
+    return jsonResponse({ status: currentStatus }, { requestId });
   }
+
+  if (!canTransitionProjectStatus(currentStatus, nextStatus)) {
+    return jsonError(
+      409,
+      "非法状态流转",
+      { currentStatus, nextStatus, allowed: getAllowedNextStatuses(currentStatus) },
+      requestId
+    );
+  }
+
+  const now = new Date().toISOString();
 
   if (nextStatus === "TRUTH_LOCKED") {
     const [truth] = await db
@@ -105,21 +114,77 @@ export async function POST(
       .orderBy(desc(schema.truths.createdAt))
       .limit(1);
     if (!truth || truth.status !== "LOCKED") {
-      return jsonError(409, "需先锁定 Truth 才能进入该状态", undefined, requestId);
+      return jsonError(409, "真相未锁定，无法进入该状态", undefined, requestId);
+    }
+  }
+
+  if (nextStatus === "DRAFT") {
+    const [truth] = await db
+      .select()
+      .from(schema.truths)
+      .where(eq(schema.truths.projectId, projectId))
+      .orderBy(desc(schema.truths.createdAt))
+      .limit(1);
+    if (truth?.status === "LOCKED") {
+      return jsonError(409, "真相仍为锁定状态，请先解锁", undefined, requestId);
     }
   }
 
   if (nextStatus === "PUBLISHED") {
-    if (current !== "TRUTH_LOCKED") {
-      return jsonError(409, "需先完成 Truth 锁定", undefined, requestId);
+    const [truth] = await db
+      .select()
+      .from(schema.truths)
+      .where(eq(schema.truths.projectId, projectId))
+      .orderBy(desc(schema.truths.createdAt))
+      .limit(1);
+    if (!truth || truth.status !== "LOCKED") {
+      return jsonError(409, "真相未锁定，无法发布", undefined, requestId);
     }
-  }
 
-  const now = new Date().toISOString();
-  await db
-    .update(schema.projects)
-    .set({ status: nextStatus, updatedAt: now })
-    .where(eq(schema.projects.id, projectId));
+    const gate = await runPublishGate(projectId);
+    if (!gate.truthSnapshotId) {
+      return jsonError(409, "未找到 Truth 快照，无法发布", undefined, requestId);
+    }
+    if (!gate.ok) {
+      return jsonError(
+        409,
+        "发布前校验未通过，请先修复结构或致命问题",
+        {
+          missingModules: gate.missingModules,
+          needsReviewModules: gate.needsReviewModules,
+          p0IssueCount: gate.p0IssueCount,
+          p0Issues: gate.p0Issues
+        },
+        requestId
+      );
+    }
+    const summary = await getCommunitySummary(projectId);
+    await db
+      .update(schema.projects)
+      .set({
+        isPublic: 1,
+        publishedAt: now,
+        communitySummary: summary ?? project.communitySummary,
+        status: nextStatus,
+        updatedAt: now
+      })
+      .where(eq(schema.projects.id, projectId));
+  } else if (nextStatus === "ARCHIVED") {
+    await db
+      .update(schema.projects)
+      .set({
+        isPublic: 0,
+        publishedAt: null,
+        status: nextStatus,
+        updatedAt: now
+      })
+      .where(eq(schema.projects.id, projectId));
+  } else {
+    await db
+      .update(schema.projects)
+      .set({ status: nextStatus, updatedAt: now })
+      .where(eq(schema.projects.id, projectId));
+  }
 
   console.log(routeLabel, {
     route: routeLabel,

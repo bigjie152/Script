@@ -3,4 +3,4 @@ export {
   canTransitionProjectStatus,
   getAllowedNextStatuses,
   normalizeProjectStatus
-} from "./policies/ProjectStatusPolicy";
+} from "../../../packages/domain";

@@ -48,6 +48,7 @@ create table if not exists issues (
   id text primary key,
   project_id text not null,
   truth_snapshot_id text not null,
+  source text,
   type text not null,
   severity text not null,
   title text not null,
@@ -186,3 +187,4 @@ alter table projects add column if not exists duration text;
 alter table projects add column if not exists difficulty text;
 alter table projects add column if not exists deleted_at text;
 alter table module_documents add column if not exists needs_review integer;
+alter table issues add column if not exists source text;
