@@ -76,7 +76,7 @@ async function getCandidatePanel(page) {
 
 async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
-  const acceptBtn = page.locator('[data-testid^="ai-accept-"]').first();
+  const acceptBtn = page.locator('[data-testid*="ai-accept"]').first();
   await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
 }
 
@@ -88,7 +88,7 @@ async function throwIfAiError(page) {
 }
 
 async function acceptFirstCandidate(page) {
-  const insertBtn = page.locator('[data-testid^="ai-accept-"]');
+  const insertBtn = page.locator('[data-testid*="ai-accept"]');
   if (await insertBtn.count()) {
     await insertBtn.first().click();
     return true;
