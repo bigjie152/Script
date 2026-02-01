@@ -90,7 +90,15 @@ async function throwIfAiError(page) {
 async function acceptFirstCandidate(page) {
   const insertBtn = page.locator('[data-testid*="ai-accept"]');
   if (await insertBtn.count()) {
+    const waitAccept = page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/ai/candidates/") &&
+        resp.url().includes("/accept") &&
+        resp.status() === 200,
+      { timeout: 60000 }
+    );
     await insertBtn.first().click();
+    await waitAccept;
     return true;
   }
   return false;
