@@ -57,7 +57,7 @@ async function selectAiAction(page, label) {
 async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
   const acceptBtn = page.getByRole("button", { name: /采纳/ }).first();
-  await acceptBtn.waitFor({ state: "visible", timeout: 120000 });
+  await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
 }
 
 async function acceptFirstCandidate(page) {

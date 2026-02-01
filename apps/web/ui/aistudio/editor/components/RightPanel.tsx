@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import { getStructureStatus, listImpactReports, ImpactReportItem, listIssues, IssueItem } from "@/services/projectApi";
-import { deriveCandidatesStream, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
+import { deriveCandidates, deriveCandidatesStream, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
 
 interface RightPanelProps {
   projectId?: string;
@@ -192,6 +192,12 @@ const RightPanel: React.FC<RightPanelProps> = ({
     setAiStreaming(true);
     onStreamUpdate?.({ active: true, target: aiAction, text: "" });
     let streamText = "";
+    let done = false;
+    let timeoutTriggered = false;
+    const timeoutId = window.setTimeout(() => {
+      timeoutTriggered = true;
+      controller.abort();
+    }, 180000);
     try {
       await deriveCandidatesStream(
         resolvedProjectId,
@@ -206,6 +212,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
             onStreamUpdate?.({ active: true, target: aiAction, text: streamText });
           },
           onDone: (result) => {
+            done = true;
             setCandidates((prev) => [...result.candidates, ...prev]);
             const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
             const targetLabel = moduleLabelMap[targetModule] || "对应模块";
@@ -219,20 +226,48 @@ const RightPanel: React.FC<RightPanelProps> = ({
             onStreamUpdate?.(null);
           },
           onError: (message) => {
-            setAiError(message || "AI 生成失败，请稍后重试");
+            if (!timeoutTriggered) {
+              setAiError(message || "AI 生成失败，请稍后重试");
+            }
             onStreamUpdate?.(null);
           }
         }
       );
     } catch (err) {
-      setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      if (!timeoutTriggered) {
+        setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      }
       onStreamUpdate?.(null);
     } finally {
+      window.clearTimeout(timeoutId);
       setAiProgress(100);
       window.setTimeout(() => setAiProgress(0), 800);
       setAiLoading(false);
       setAiStreaming(false);
       abortRef.current = null;
+    }
+
+    if (timeoutTriggered && !done) {
+      setAiNotice("流式生成超时，已自动切换为完整生成...");
+      try {
+        const result = await deriveCandidates(resolvedProjectId, {
+          actionType: aiAction,
+          intent: aiIntent || undefined
+        });
+        done = true;
+        setCandidates((prev) => [...result.candidates, ...prev]);
+        const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
+        const targetLabel = moduleLabelMap[targetModule] || "对应模块";
+        const crossModuleNotice =
+          targetModule && currentModule && targetModule !== currentModule
+            ? `请到 ${targetLabel} 模块查看。`
+            : "请在候选区采纳或拒绝。";
+        setAiNotice(`${noticeBase} ${crossModuleNotice}`);
+        setAiIntent("");
+        onCandidatesUpdated?.();
+      } catch (err) {
+        setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      }
     }
   };
 
