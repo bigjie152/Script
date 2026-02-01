@@ -45,8 +45,8 @@ async function clickFirstEnabled(page, selectors) {
   return false;
 }
 
-async function selectAiAction(page, value) {
-  const select = page.getByTestId("ai-action-select");
+async function selectAiAction(page, module, value) {
+  const select = page.getByTestId(`ai-action-select-${module}`);
   if (await select.count()) {
     await select.selectOption({ value });
     return true;
@@ -268,15 +268,18 @@ async function run() {
         waitUntil: "domcontentloaded"
       });
       await page.waitForTimeout(800);
-      const selected = await selectAiAction(page, step.actionValue);
+      const selected = await selectAiAction(page, step.route, step.actionValue);
       if (!selected) {
         throw new Error(`未找到 AI 动作选择框：${step.label}`);
       }
-      const textarea = page.getByTestId("ai-intent-input");
+      const textarea = page.getByTestId(`ai-intent-input-${step.route}`);
       if (await textarea.count()) {
         await textarea.fill(intentBase);
       }
-      await clickFirst(page, ['[data-testid="ai-generate-btn"]', 'button:has-text("生成候选")']);
+      await clickFirst(page, [
+        `[data-testid="ai-generate-btn-${step.route}"]`,
+        'button:has-text("生成候选")'
+      ]);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
       await throwIfAiError(page);
       await waitForCandidate(page);
