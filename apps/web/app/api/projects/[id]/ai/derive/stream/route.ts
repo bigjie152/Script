@@ -195,11 +195,13 @@ export async function POST(
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   let rawText = "";
+  const STREAM_TIMEOUT_MS = 180000;
 
   const stream = new ReadableStream({
     async start(controller) {
       const abortController = new AbortController();
       const abortHandler = () => abortController.abort();
+      const timeoutId = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
       request.signal.addEventListener("abort", abortHandler);
       try {
         const response = await fetch(
@@ -234,40 +236,73 @@ export async function POST(
 
         const reader = response.body.getReader();
         let buffer = "";
+        const processChunk = (chunk: string) => {
+          const lines = chunk.split("\n").map((line) => line.trim());
+          const dataLines = lines
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.replace(/^data:\s*/, ""));
+          if (!dataLines.length) return;
+          const data = dataLines.join("\n");
+          if (data === "[DONE]") return;
+          try {
+            const parsed = JSON.parse(data) as {
+              choices?: Array<{ delta?: { content?: string }; message?: { content?: string } }>;
+            };
+            const delta =
+              parsed.choices?.[0]?.delta?.content ||
+              parsed.choices?.[0]?.message?.content ||
+              "";
+            if (delta) {
+              rawText += delta;
+              controller.enqueue(
+                encoder.encode(
+                  `event: delta\ndata: ${JSON.stringify({ content: delta })}\n\n`
+                )
+              );
+            }
+          } catch {
+            // ignore non-json chunks
+          }
+        };
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
+          const normalized = buffer.replace(/\r\n/g, "\n");
+          const parts = normalized.split("\n\n");
           buffer = parts.pop() || "";
           for (const part of parts) {
-            const lines = part.split("\n").map((line) => line.trim());
-            const dataLines = lines
-              .filter((line) => line.startsWith("data:"))
-              .map((line) => line.replace(/^data:\\s*/, ""));
-            if (!dataLines.length) continue;
-            const data = dataLines.join("\n");
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data) as {
-                choices?: Array<{ delta?: { content?: string } }>;
-              };
-              const delta = parsed.choices?.[0]?.delta?.content || "";
-              if (delta) {
-                rawText += delta;
-                controller.enqueue(
-                  encoder.encode(
-                    `event: delta\ndata: ${JSON.stringify({ content: delta })}\n\n`
-                  )
-                );
-              }
-            } catch {
-              // ignore non-json chunks
-            }
+            processChunk(part);
           }
         }
 
-        const items = mapCandidates(rawText);
+        if (buffer.trim()) {
+          processChunk(buffer.replace(/\r\n/g, "\n"));
+        }
+
+        let items = mapCandidates(rawText);
+        if (!items.length && rawText.trim()) {
+          const fallbackTitle = "候选内容";
+          items = [
+            {
+              title: fallbackTitle,
+              summary: rawText.slice(0, 120),
+              content: normalizeDoc(rawText, fallbackTitle),
+              refs: null,
+              riskFlags: [],
+              meta: { raw: rawText }
+            }
+          ];
+        }
+        if (!items.length) {
+          controller.enqueue(
+            encoder.encode(
+              `event: error\ndata: ${JSON.stringify({ message: "AI 返回为空，请重试" })}\n\n`
+            )
+          );
+          controller.close();
+          return;
+        }
         const target = ACTION_TARGET[actionType];
         const now = new Date().toISOString();
         const candidates = items.map((item) => ({
@@ -328,6 +363,7 @@ export async function POST(
         );
         controller.close();
       } finally {
+        clearTimeout(timeoutId);
         request.signal.removeEventListener("abort", abortHandler);
         console.log(routeLabel, {
           route: routeLabel,

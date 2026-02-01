@@ -131,46 +131,55 @@ export async function deriveCandidatesStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
+  const processChunk = (chunk: string) => {
+    const lines = chunk.split("\n").map((line) => line.trim());
+    const eventLine = lines.find((line) => line.startsWith("event:"));
+    const event = eventLine ? eventLine.replace(/^event:\s*/, "") : "message";
+    const dataLines = lines
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.replace(/^data:\s*/, ""));
+    if (!dataLines.length) return;
+    const data = dataLines.join("\n");
+    if (event === "delta") {
+      try {
+        const parsed = JSON.parse(data) as { content?: string };
+        if (parsed?.content) handlers.onDelta(parsed.content);
+      } catch {
+        if (data) handlers.onDelta(data);
+      }
+    } else if (event === "done") {
+      try {
+        const parsed = JSON.parse(data) as DeriveCandidatesResponse;
+        handlers.onDone(parsed);
+      } catch (err) {
+        handlers.onError(
+          err instanceof Error ? err.message : "解析结果失败"
+        );
+      }
+    } else if (event === "error") {
+      try {
+        const parsed = JSON.parse(data) as { message?: string };
+        handlers.onError(parsed?.message || "AI 生成失败");
+      } catch {
+        handlers.onError("AI 生成失败");
+      }
+    }
+  };
+
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
+    const normalized = buffer.replace(/\r\n/g, "\n");
+    const parts = normalized.split("\n\n");
     buffer = parts.pop() || "";
     for (const part of parts) {
-      const lines = part.split("\n").map((line) => line.trim());
-      const eventLine = lines.find((line) => line.startsWith("event:"));
-      const event = eventLine ? eventLine.replace(/^event:\\s*/, "") : "message";
-      const dataLines = lines
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.replace(/^data:\\s*/, ""));
-      if (!dataLines.length) continue;
-      const data = dataLines.join("\n");
-      if (event === "delta") {
-        try {
-          const parsed = JSON.parse(data) as { content?: string };
-          if (parsed?.content) handlers.onDelta(parsed.content);
-        } catch {
-          if (data) handlers.onDelta(data);
-        }
-      } else if (event === "done") {
-        try {
-          const parsed = JSON.parse(data) as DeriveCandidatesResponse;
-          handlers.onDone(parsed);
-        } catch (err) {
-          handlers.onError(
-            err instanceof Error ? err.message : "解析结果失败"
-          );
-        }
-      } else if (event === "error") {
-        try {
-          const parsed = JSON.parse(data) as { message?: string };
-          handlers.onError(parsed?.message || "AI 生成失败");
-        } catch {
-          handlers.onError("AI 生成失败");
-        }
-      }
+      processChunk(part);
     }
+  }
+
+  if (buffer.trim()) {
+    processChunk(buffer.replace(/\r\n/g, "\n"));
   }
 }
 
