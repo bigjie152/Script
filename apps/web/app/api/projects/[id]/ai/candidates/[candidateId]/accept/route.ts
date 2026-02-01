@@ -9,7 +9,19 @@ const routeLabel = "POST /api/projects/:id/ai/candidates/:candidateId/accept";
 
 function normalizeDoc(content: unknown, fallback: string) {
   if (content && typeof content === "object") {
-    return content as Record<string, unknown>;
+    const raw = content as Record<string, unknown>;
+    if (raw.type === "doc" && Array.isArray((raw as any).content)) {
+      return raw;
+    }
+    const nested = (raw as any).content;
+    if (nested && typeof nested === "object") {
+      if (nested.type === "doc" && Array.isArray((nested as any).content)) {
+        return nested as Record<string, unknown>;
+      }
+      if (Array.isArray(nested)) {
+        return { type: "doc", content: nested } as Record<string, unknown>;
+      }
+    }
   }
   const text = typeof content === "string" ? content : fallback;
   return {

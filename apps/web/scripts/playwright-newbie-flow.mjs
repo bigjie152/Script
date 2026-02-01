@@ -45,6 +45,31 @@ async function clickFirstEnabled(page, selectors) {
   return false;
 }
 
+async function saveCurrentModule(page) {
+  const saveBtn = page.locator('header button:has-text("保存")').first();
+  if (await saveBtn.count()) {
+    await saveBtn.click();
+    await page.waitForTimeout(800);
+    return true;
+  }
+  return false;
+}
+
+async function getCookieHeader(page) {
+  const cookies = await page.context().cookies();
+  return cookies.length > 0
+    ? cookies.map((c) => `${c.name}=${c.value}`).join("; ")
+    : undefined;
+}
+
+async function fetchJsonWithAuth(page, base, path) {
+  const cookieHeader = await getCookieHeader(page);
+  const resp = await page.request.get(`${base}${path}`, {
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined
+  });
+  return resp.json();
+}
+
 async function selectAiAction(page, module, value) {
   const select = page.getByTestId(`ai-action-select-${module}`);
   if (await select.count()) {
@@ -66,20 +91,6 @@ async function selectAiAction(page, module, value) {
   return false;
 }
 
-async function getCandidatePanel(page) {
-  const header = page.getByText("AI 候选区（阅读与采纳）").first();
-  if (await header.count()) {
-    return header.locator("..").locator("..");
-  }
-  return page.locator("div", { hasText: "AI 候选区（阅读与采纳）" }).first();
-}
-
-async function waitForCandidate(page) {
-  await page.waitForTimeout(1000);
-  const acceptBtn = page.locator('[data-testid*="ai-accept"]').first();
-  await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
-}
-
 async function throwIfAiError(page) {
   const error = page.locator("text=AI 生成失败").first();
   if (await error.count()) {
@@ -87,39 +98,13 @@ async function throwIfAiError(page) {
   }
 }
 
-async function acceptFirstCandidate(page) {
-  const insertBtn = page.locator('[data-testid*="ai-accept"]');
-  if (await insertBtn.count()) {
-    await insertBtn.first().click();
-    await page.waitForTimeout(1500);
-    await page.click('button:has-text("刷新")').catch(() => {});
-    await page.waitForTimeout(800);
-    const remaining = await insertBtn.count();
-    if (remaining > 0) {
-      await insertBtn.first().click();
-      await page.waitForTimeout(1500);
-    }
-    return true;
-  }
-  return false;
-}
-
 async function assertProjectContent(page, base, projectId) {
-  const cookies = await page.context().cookies();
-  const cookieHeader =
-    cookies.length > 0 ? cookies.map((c) => `${c.name}=${c.value}`).join("; ") : undefined;
-  const fetchJson = async (path) => {
-    const resp = await page.request.get(`${base}${path}`, {
-      headers: cookieHeader ? { cookie: cookieHeader } : undefined
-    });
-    return resp.json();
-  };
-  const detail = await fetchJson(`/api/projects/${projectId}`);
-  const story = await fetchJson(`/api/projects/${projectId}/modules/story`);
-  const roles = await fetchJson(`/api/projects/${projectId}/modules/roles`);
-  const clues = await fetchJson(`/api/projects/${projectId}/modules/clues`);
-  const timeline = await fetchJson(`/api/projects/${projectId}/modules/timeline`);
-  const dm = await fetchJson(`/api/projects/${projectId}/modules/dm`);
+  const detail = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}`);
+  const story = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/story`);
+  const roles = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/roles`);
+  const clues = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/clues`);
+  const timeline = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/timeline`);
+  const dm = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/dm`);
 
   const countDoc = (doc) => (Array.isArray(doc?.content) ? doc.content.length : 0);
   const countEntries = (doc) => (Array.isArray(doc?.entries) ? doc.entries.length : 0);
@@ -155,6 +140,42 @@ async function waitForEnabled(locator, ms = 15000) {
       }
     } catch {}
     await new Promise((r) => setTimeout(r, 300));
+  }
+  return false;
+}
+
+async function waitForPendingCandidate(page, base, projectId, target, timeoutMs = 180000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const data = await fetchJsonWithAuth(
+      page,
+      base,
+      `/api/projects/${projectId}/ai/candidates?status=pending`
+    );
+    const candidate = (data?.candidates || []).find((item) => item.target === target);
+    if (candidate) return candidate;
+    await page.waitForTimeout(1000);
+  }
+  throw new Error(`等待候选超时：${target}`);
+}
+
+async function waitForModuleContent(page, base, projectId, moduleKey, timeoutMs = 60000) {
+  const start = Date.now();
+  const countDoc = (doc) => (Array.isArray(doc?.content) ? doc.content.length : 0);
+  const countEntries = (doc) => (Array.isArray(doc?.entries) ? doc.entries.length : 0);
+
+  while (Date.now() - start < timeoutMs) {
+    if (moduleKey === "truth") {
+      const detail = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}`);
+      if (countDoc(detail?.truth?.content) > 0) return true;
+    } else if (moduleKey === "story") {
+      const story = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/story`);
+      if (countDoc(story?.content) > 0) return true;
+    } else {
+      const doc = await fetchJsonWithAuth(page, base, `/api/projects/${projectId}/modules/${moduleKey}`);
+      if (countEntries(doc?.content) > 0) return true;
+    }
+    await page.waitForTimeout(1500);
   }
   return false;
 }
@@ -258,9 +279,12 @@ async function run() {
     const editor = page.locator(".tiptap");
     await editor.first().click();
     await page.keyboard.type(truthText, { delay: 10 });
+    await saveCurrentModule(page);
+    await page.waitForTimeout(1200);
 
     await clickFirst(page, ['button[title="点击锁定"]', 'button:has-text("锁定")']);
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1500);
+    await page.locator("text=内容已锁定").first().waitFor({ timeout: 20000 }).catch(() => {});
 
     const steps = [
       { label: "真相", route: "truth", actionValue: "outline" },
@@ -270,6 +294,14 @@ async function run() {
       { label: "时间线", route: "timeline", actionValue: "timeline" },
       { label: "DM 手册", route: "dm", actionValue: "dm" }
     ];
+    const targetMap = {
+      truth: "insight",
+      story: "story",
+      roles: "role",
+      clues: "clue",
+      timeline: "timeline",
+      dm: "dm"
+    };
 
     for (const step of steps) {
       await page.goto(`${base}/projects/${projectId}/editor/${step.route}`, {
@@ -296,13 +328,50 @@ async function run() {
         'button:has-text("生成候选")'
       ]);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
-      await waitForCandidate(page);
       await throwIfAiError(page);
-      const accepted = await acceptFirstCandidate(page);
-      if (!accepted) {
+      const target = targetMap[step.route] || step.route;
+      const candidate = await waitForPendingCandidate(page, base, projectId, target);
+      const panel = page.getByTestId(`ai-candidate-panel-${step.route}`);
+      if (await panel.count()) {
+        await panel.scrollIntoViewIfNeeded();
+      }
+      let acceptBtn = page.locator(`[data-testid="ai-accept-${candidate.id}"]`);
+      if (!(await acceptBtn.count())) {
+        await page.click('button:has-text("刷新")').catch(() => {});
+        await page.waitForTimeout(1200);
+        acceptBtn = page.locator(`[data-testid="ai-accept-${candidate.id}"]`);
+      }
+      if (!(await acceptBtn.count())) {
         throw new Error(`未找到可采纳的候选内容：${step.label}`);
       }
-      await page.waitForTimeout(2000);
+      await acceptBtn.first().scrollIntoViewIfNeeded();
+      await acceptBtn.first().click();
+      await page.waitForTimeout(1500);
+      const hasContent = await waitForModuleContent(
+        page,
+        base,
+        projectId,
+        step.route === "truth" ? "truth" : step.route,
+        45000
+      );
+      if (!hasContent) {
+        await page.click('button:has-text("刷新")').catch(() => {});
+        await page.waitForTimeout(1200);
+        if (await acceptBtn.count()) {
+          await acceptBtn.first().click().catch(() => {});
+        }
+        const retry = await waitForModuleContent(
+          page,
+          base,
+          projectId,
+          step.route === "truth" ? "truth" : step.route,
+          45000
+        );
+        if (!retry) {
+          throw new Error(`采纳后内容仍为空：${step.label}`);
+        }
+      }
+      await page.waitForTimeout(1200);
     }
 
     if (projectId) {

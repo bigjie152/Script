@@ -101,10 +101,14 @@ function mapCandidates(raw: string) {
     const riskFlags = Array.isArray(flagsSource)
       ? flagsSource.map((flag: unknown) => String(flag))
       : [];
+    const rawContent =
+      item && typeof item === "object" && "content" in (item as Record<string, unknown>)
+        ? (item as Record<string, unknown>).content
+        : item;
     return {
       title,
       summary,
-      content: normalizeDoc(item as Record<string, unknown>, summary || title),
+      content: normalizeDoc(rawContent as Record<string, unknown>, summary || title),
       refs: item?.refs ?? null,
       riskFlags,
       meta: item

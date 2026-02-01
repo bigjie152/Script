@@ -125,7 +125,10 @@ export default function AiCandidatePanel({
   }, [loading, visibleCandidates.length]);
 
   return (
-    <div className="mt-6 border border-gray-100 bg-white rounded-2xl shadow-sm">
+    <div
+      className="mt-6 border border-gray-100 bg-white rounded-2xl shadow-sm"
+      data-testid={`ai-candidate-panel-${currentModule || "unknown"}`}
+    >
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <div>
           <div className="text-sm font-semibold text-gray-800">AI 候选区（阅读与采纳）</div>
@@ -177,7 +180,11 @@ export default function AiCandidatePanel({
             : contentText;
 
           return (
-            <div key={candidate.id} className="rounded-xl border border-gray-100 bg-slate-50 px-4 py-3">
+            <div
+              key={candidate.id}
+              data-testid={`ai-candidate-card-${candidate.id}`}
+              className="rounded-xl border border-gray-100 bg-slate-50 px-4 py-3"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-medium text-gray-800">
