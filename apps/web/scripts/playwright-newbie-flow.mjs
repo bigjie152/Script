@@ -92,6 +92,13 @@ async function acceptFirstCandidate(page) {
   if (await insertBtn.count()) {
     await insertBtn.first().click();
     await page.waitForTimeout(1500);
+    await page.click('button:has-text("刷新")').catch(() => {});
+    await page.waitForTimeout(800);
+    const remaining = await insertBtn.count();
+    if (remaining > 0) {
+      await insertBtn.first().click();
+      await page.waitForTimeout(1500);
+    }
     return true;
   }
   return false;
