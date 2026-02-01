@@ -273,6 +273,13 @@ async function run() {
         waitUntil: "domcontentloaded"
       });
       await page.waitForTimeout(800);
+      if (["roles", "clues", "timeline", "dm"].includes(step.route)) {
+        const createBtn = page.getByRole("button", { name: /创建新|新建/ }).first();
+        if (await createBtn.count()) {
+          await createBtn.click();
+          await page.waitForTimeout(800);
+        }
+      }
       const selected = await selectAiAction(page, step.route, step.actionValue);
       if (!selected) {
         throw new Error(`未找到 AI 动作选择框：${step.label}`);
