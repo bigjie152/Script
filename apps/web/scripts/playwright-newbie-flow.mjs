@@ -71,13 +71,12 @@ async function getCandidatePanel(page) {
   if (await header.count()) {
     return header.locator("..").locator("..");
   }
-  return page.locator("div", { hasText: "AI 候选区" }).first();
+  return page.locator("div", { hasText: "AI 候选区（阅读与采纳）" }).first();
 }
 
 async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
-  const panel = await getCandidatePanel(page);
-  const acceptBtn = panel.getByRole("button", { name: /采纳/ }).first();
+  const acceptBtn = page.getByRole("button", { name: /采纳/ }).first();
   await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
 }
 
@@ -89,13 +88,12 @@ async function throwIfAiError(page) {
 }
 
 async function acceptFirstCandidate(page) {
-  const panel = await getCandidatePanel(page);
-  const insertBtn = panel.getByRole("button", { name: /采纳并插入/ });
+  const insertBtn = page.getByRole("button", { name: /采纳并插入/ });
   if (await insertBtn.count()) {
     await insertBtn.first().click();
     return true;
   }
-  const buttons = panel.getByRole("button", { name: /采纳/ });
+  const buttons = page.getByRole("button", { name: /采纳/ });
   if (await buttons.count()) {
     await buttons.first().click();
     return true;
