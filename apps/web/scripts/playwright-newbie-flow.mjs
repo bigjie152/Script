@@ -76,7 +76,7 @@ async function getCandidatePanel(page) {
 
 async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
-  const acceptBtn = page.getByRole("button", { name: /采纳/ }).first();
+  const acceptBtn = page.locator('[data-testid^="ai-accept-"]').first();
   await acceptBtn.waitFor({ state: "visible", timeout: 180000 });
 }
 
@@ -88,14 +88,9 @@ async function throwIfAiError(page) {
 }
 
 async function acceptFirstCandidate(page) {
-  const insertBtn = page.getByRole("button", { name: /采纳并插入/ });
+  const insertBtn = page.locator('[data-testid^="ai-accept-"]');
   if (await insertBtn.count()) {
     await insertBtn.first().click();
-    return true;
-  }
-  const buttons = page.getByRole("button", { name: /采纳/ });
-  if (await buttons.count()) {
-    await buttons.first().click();
     return true;
   }
   return false;

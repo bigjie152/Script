@@ -187,6 +187,7 @@ export default function AiCandidatePanel({
                   <button
                     type="button"
                     onClick={() => handleAccept(candidate)}
+                    data-testid={`ai-accept-${candidate.id}`}
                     className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700"
                   >
                     <Check size={12} />
@@ -195,6 +196,7 @@ export default function AiCandidatePanel({
                   <button
                     type="button"
                     onClick={() => handleReject(candidate.id)}
+                    data-testid={`ai-reject-${candidate.id}`}
                     className="inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600"
                   >
                     <X size={12} />
