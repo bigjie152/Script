@@ -18,6 +18,10 @@ const cloudflareContextSymbol = Symbol.for("__cloudflare-request-context__");
 function readEnv(key: string): string | undefined {
   const direct = process.env[key];
   if (direct) return direct;
+  const globalValue = (globalThis as Record<string, unknown>)[key];
+  if (typeof globalValue === "string" && globalValue.trim()) {
+    return globalValue;
+  }
   const ctx = (globalThis as Record<symbol, unknown>)[
     cloudflareContextSymbol
   ] as { env?: Record<string, unknown> } | undefined;
@@ -57,6 +61,10 @@ function readEnv(key: string): string | undefined {
         const resolved = pickFromEnv((candidate as { env?: Record<string, unknown> }).env);
         if (resolved) return resolved;
       }
+      if (name === "env" && candidate && typeof candidate === "object") {
+        const resolved = pickFromEnv(candidate as Record<string, unknown>);
+        if (resolved) return resolved;
+      }
     }
   } catch {
     // ignore name probing failures
@@ -66,9 +74,14 @@ function readEnv(key: string): string | undefined {
 }
 
 function resolveProvider(purpose?: AIPurpose) {
-  const fallback = (readEnv("AI_PROVIDER") || "mock").toLowerCase();
+  const fallbackRaw = (readEnv("AI_PROVIDER") || "").toLowerCase();
   const deriveProvider = (readEnv("AI_PROVIDER_DERIVE") || "").toLowerCase();
   const checkProvider = (readEnv("AI_PROVIDER_CHECK") || "").toLowerCase();
+  const fallback =
+    fallbackRaw ||
+    (readEnv("AI_QWEN_API_KEY") ? "qwen" : "") ||
+    (readEnv("AI_DEEPSEEK_API_KEY") ? "deepseek" : "") ||
+    "mock";
   if (purpose === "check") {
     return checkProvider || fallback;
   }

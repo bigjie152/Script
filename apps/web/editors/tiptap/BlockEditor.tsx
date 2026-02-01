@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { BubbleMenu, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import Underline from "@tiptap/extension-underline";
@@ -20,6 +20,7 @@ import { DatabaseLikeBlock } from "./databaseLikeBlock";
 import { SlashCommand } from "./slashCommand";
 import { MentionItem, createMentionSuggestion } from "./mentionSuggestion";
 import { BlockNodeClass } from "./blockNodeClass";
+import { BubbleMenuBar } from "./menus/BubbleMenuBar";
 import { FontSize } from "./fontSize";
 
 type BlockEditorProps = {
@@ -362,6 +363,20 @@ export function BlockEditor({
       ref={containerRef}
       className="relative flex h-full w-full flex-col bg-white"
     >
+      {editor && !readonly ? (
+        <BubbleMenu
+          editor={editor}
+          tippyOptions={{
+            duration: 120,
+            appendTo: () => containerRef.current || document.body
+          }}
+          shouldShow={({ editor }) =>
+            editor.isFocused && !editor.state.selection.empty
+          }
+        >
+          <BubbleMenuBar editor={editor} />
+        </BubbleMenu>
+      ) : null}
       <div className="editor-scroll flex-1 overflow-y-auto px-6 py-5">
         <EditorContent editor={editor} />
       </div>

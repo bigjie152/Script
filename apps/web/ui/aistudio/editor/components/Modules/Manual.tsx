@@ -42,7 +42,7 @@ const Manual: React.FC<ManualProps> = ({
   if (!selectedEntry) {
     return (
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">DM ????</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">DM 手册</h2>
         <div className="space-y-4">
           {entries.map((item) => (
             <button
@@ -53,17 +53,17 @@ const Manual: React.FC<ManualProps> = ({
             >
               <div className="flex items-center gap-4">
                 <div className="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold">
-                  ??
+                  阶段
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{item.name}</h3>
                   <p className="text-xs text-gray-500">
-                    {(item.meta?.phase as string) || "?????"}
+                    {(item.meta?.phase as string) || "未填写阶段"}
                   </p>
                 </div>
               </div>
               <div className="text-xs text-gray-400">
-                {(item.meta?.risks as string) || "??????"}
+                {(item.meta?.risks as string) || "未填写风险点"}
               </div>
             </button>
           ))}
@@ -74,7 +74,7 @@ const Manual: React.FC<ManualProps> = ({
             onClick={onCreateEntry}
             disabled={readOnly}
           >
-            + ?? DM ??
+            + 新增 DM 手册
           </button>
         </div>
       </div>
@@ -95,11 +95,11 @@ const Manual: React.FC<ManualProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ????
+              主持阶段
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="????? / ?? / ??"
+              placeholder="开场 / 搜证 / 结案"
               value={phase}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {
@@ -117,11 +117,11 @@ const Manual: React.FC<ManualProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ????
+              关键提示
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="??????? / ??????"
+              placeholder="引导语 / 玩家提示"
               value={tips}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {
@@ -139,11 +139,11 @@ const Manual: React.FC<ManualProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ???
+              风险点
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="?????????"
+              placeholder="容易翻车的环节"
               value={risks}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {
@@ -167,11 +167,11 @@ const Manual: React.FC<ManualProps> = ({
           </div>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm text-gray-600">
-          <div className="font-semibold text-gray-800 mb-2">????</div>
+          <div className="font-semibold text-gray-800 mb-2">快捷目录</div>
           <div className="space-y-2">
-            <div className="px-2 py-1 rounded bg-indigo-50 text-indigo-700">1. ????</div>
-            <div className="px-2 py-1 rounded hover:bg-gray-50">2. ????</div>
-            <div className="px-2 py-1 rounded hover:bg-gray-50">3. ????</div>
+            <div className="px-2 py-1 rounded bg-indigo-50 text-indigo-700">1. 关键节点</div>
+            <div className="px-2 py-1 rounded hover:bg-gray-50">2. 风险提示</div>
+            <div className="px-2 py-1 rounded hover:bg-gray-50">3. 应急建议</div>
           </div>
         </div>
       </div>

@@ -42,7 +42,7 @@ const Timeline: React.FC<TimelineProps> = ({
   if (!selectedEntry) {
     return (
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">?????</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">时间线</h2>
         <div className="space-y-4">
           {entries.map((item) => (
             <button
@@ -53,17 +53,17 @@ const Timeline: React.FC<TimelineProps> = ({
             >
               <div className="flex items-center gap-4">
                 <div className="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold">
-                  ???
+                  时间点
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{item.name}</h3>
                   <p className="text-xs text-gray-500">
-                    {(item.meta?.timePoint as string) || "?????"}
+                    {(item.meta?.timePoint as string) || "未填写时间点"}
                   </p>
                 </div>
               </div>
               <div className="text-xs text-gray-400">
-                {(item.meta?.participants as string) || "???????"}
+                {(item.meta?.participants as string) || "未填写参与角色"}
               </div>
             </button>
           ))}
@@ -74,7 +74,7 @@ const Timeline: React.FC<TimelineProps> = ({
             onClick={onCreateEntry}
             disabled={readOnly}
           >
-            + ???????
+            + 新增时间线
           </button>
         </div>
       </div>
@@ -95,11 +95,11 @@ const Timeline: React.FC<TimelineProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ???
+              时间点
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="???18:30 / ???"
+              placeholder="时间点 18:30 / 夜间"
               value={timePoint}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {
@@ -117,11 +117,11 @@ const Timeline: React.FC<TimelineProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ????
+              参与角色
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="???A / B / C"
+              placeholder="角色A / 角色B / 角色C"
               value={participants}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {
@@ -139,11 +139,11 @@ const Timeline: React.FC<TimelineProps> = ({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
-              ???
+              冲突提示
             </div>
             <input
               className="text-sm font-semibold text-gray-800 bg-transparent focus:outline-none w-full"
-              placeholder="???????????"
+              placeholder="与其他事件冲突说明"
               value={conflicts}
               onChange={(event) =>
                 updateMeta(selectedEntry.id, {

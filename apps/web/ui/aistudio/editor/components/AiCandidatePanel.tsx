@@ -36,6 +36,21 @@ export default function AiCandidatePanel({
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
 
+  const visibleCandidates = useMemo(() => {
+    if (!currentModule) return candidates;
+    const map: Record<string, string> = {
+      truth: "insight",
+      story: "story",
+      roles: "role",
+      clues: "clue",
+      timeline: "timeline",
+      dm: "dm"
+    };
+    const target = map[currentModule];
+    if (!target) return candidates;
+    return candidates.filter((candidate) => candidate.target === target);
+  }, [candidates, currentModule]);
+
   const loadCandidates = async () => {
     if (!projectId) return;
     setLoading(true);
@@ -99,9 +114,9 @@ export default function AiCandidatePanel({
 
   const summary = useMemo(() => {
     if (loading) return "加载候选内容...";
-    if (!candidates.length) return "暂无候选内容";
-    return `待处理候选：${candidates.length}`;
-  }, [loading, candidates.length]);
+    if (!visibleCandidates.length) return "暂无候选内容";
+    return `待处理候选：${visibleCandidates.length}`;
+  }, [loading, visibleCandidates.length]);
 
   return (
     <div className="mt-6 border border-gray-100 bg-white rounded-2xl shadow-sm">
@@ -132,11 +147,11 @@ export default function AiCandidatePanel({
       {collapsed ? null : (
         <div className="px-5 py-4 space-y-4">
         {error ? <div className="text-xs text-rose-500">{error}</div> : null}
-        {!loading && candidates.length === 0 ? (
+        {!loading && visibleCandidates.length === 0 ? (
           <div className="text-xs text-gray-400">暂无候选内容</div>
         ) : null}
 
-        {candidates.map((candidate) => {
+        {visibleCandidates.map((candidate) => {
           const contentText = candidate.content
             ? extractTextFromContent(candidate.content)
             : "";

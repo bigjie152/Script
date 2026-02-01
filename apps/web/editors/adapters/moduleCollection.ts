@@ -38,6 +38,8 @@ const MOJIBAKE_NAME_MAP = new Map<string, string>([
 function normalizeEntryName(name: string | undefined, fallback: string) {
   const trimmed = (name || "").trim();
   if (!trimmed) return fallback;
+  if (/^\?+$/.test(trimmed)) return fallback;
+  if (trimmed.includes("�")) return fallback;
   if (MOJIBAKE_NAME_MAP.has(trimmed)) {
     return MOJIBAKE_NAME_MAP.get(trimmed) || fallback;
   }
