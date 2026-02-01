@@ -1,4 +1,4 @@
-import { getAIClient } from "../adapters/base.adapter";
+﻿import { getAIClient } from "../adapters/base.adapter";
 import { extractJson } from "../utils/json";
 
 export type DerivedCandidate = {
@@ -70,13 +70,18 @@ export async function deriveCandidates(input: DeriveCandidatesInput) {
     items?: Array<Record<string, unknown>>;
     candidates?: Array<Record<string, unknown>>;
     suggestions?: Array<Record<string, unknown>>;
+    roles?: Array<Record<string, unknown>>;
   }>(raw);
   const rawItems =
-    parsed?.items || parsed?.candidates || parsed?.suggestions || [];
+    parsed?.items ||
+    parsed?.candidates ||
+    parsed?.suggestions ||
+    parsed?.roles ||
+    [];
 
   const items = rawItems.map((item, index) => {
     const title = String(
-      item?.title || item?.name || `候选 ${index + 1}`
+      item?.title || item?.name || `候选${index + 1}`
     );
     const summary = item?.summary
       ? String(item.summary)
