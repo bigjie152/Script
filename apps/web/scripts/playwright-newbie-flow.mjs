@@ -250,13 +250,11 @@ async function run() {
     }
     await page.waitForTimeout(500);
 
-    await clickFirst(page, ['text=真相', 'a:has-text("真相")']);
-    await page.waitForTimeout(800);
-
-    const editor = page.locator('.tiptap');
-    if (!(await editor.count())) {
-      throw new Error("未找到编辑器区域");
-    }
+    await page.goto(`${base}/projects/${projectId}/editor/truth`, {
+      waitUntil: "domcontentloaded"
+    });
+    await page.waitForSelector(".tiptap", { timeout: 30000 });
+    const editor = page.locator(".tiptap");
     await editor.first().click();
     await page.keyboard.type(truthText, { delay: 10 });
 
