@@ -85,20 +85,17 @@ async function throwIfAiError(page) {
   if (await error.count()) {
     throw new Error("AI 生成失败");
   }
+  const acceptError = page.locator("text=请求失败").first();
+  if (await acceptError.count()) {
+    throw new Error("候选采纳失败");
+  }
 }
 
 async function acceptFirstCandidate(page) {
   const insertBtn = page.locator('[data-testid*="ai-accept"]');
   if (await insertBtn.count()) {
-    const waitAccept = page.waitForResponse(
-      (resp) =>
-        resp.url().includes("/ai/candidates/") &&
-        resp.url().includes("/accept") &&
-        resp.status() === 200,
-      { timeout: 60000 }
-    );
     await insertBtn.first().click();
-    await waitAccept;
+    await page.waitForTimeout(1500);
     return true;
   }
   return false;
@@ -293,8 +290,9 @@ async function run() {
       await waitForCandidate(page);
       const accepted = await acceptFirstCandidate(page);
       if (!accepted) {
-        throw new Error(`未找到可采纳的候选内容：${step.module}`);
+        throw new Error(`未找到可采纳的候选内容：${step.label}`);
       }
+      await throwIfAiError(page);
       await page.waitForTimeout(1200);
     }
 

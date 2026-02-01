@@ -95,6 +95,10 @@ export default function AiCandidatePanel({
         ["role", "clue", "timeline", "dm"].includes(candidate.target) && currentEntryId
           ? currentEntryId
           : undefined;
+      if (["role", "clue", "timeline", "dm"].includes(candidate.target) && !currentEntryId) {
+        setError("请先选择或创建一个条目后再采纳该候选");
+        return;
+      }
       await acceptAiCandidate(projectId, candidate.id, entryId);
       if (canInsert(candidate)) {
         onInsertCandidate?.(candidate);
