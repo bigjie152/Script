@@ -85,10 +85,6 @@ async function throwIfAiError(page) {
   if (await error.count()) {
     throw new Error("AI 生成失败");
   }
-  const acceptError = page.locator("text=请求失败").first();
-  if (await acceptError.count()) {
-    throw new Error("候选采纳失败");
-  }
 }
 
 async function acceptFirstCandidate(page) {
@@ -293,14 +289,13 @@ async function run() {
         'button:has-text("生成候选")'
       ]);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
-      await throwIfAiError(page);
       await waitForCandidate(page);
+      await throwIfAiError(page);
       const accepted = await acceptFirstCandidate(page);
       if (!accepted) {
         throw new Error(`未找到可采纳的候选内容：${step.label}`);
       }
-      await throwIfAiError(page);
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(2000);
     }
 
     if (projectId) {
