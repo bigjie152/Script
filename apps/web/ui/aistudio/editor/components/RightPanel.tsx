@@ -377,6 +377,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
               </div>
               <div className="space-y-2">
                 <select
+                  data-testid="ai-action-select"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 bg-white"
                   value={aiAction}
                   onChange={(event) => setAiAction(event.target.value)}
@@ -390,6 +391,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
                   <option value="dm">DM 手册生成</option>
                 </select>
                 <textarea
+                  data-testid="ai-intent-input"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 min-h-[70px] resize-none"
                   placeholder="补充意图（可选）"
                   value={aiIntent}
@@ -399,6 +401,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
                   type="button"
                   onClick={runDerive}
                   disabled={aiLoading || aiStreaming}
+                  data-testid="ai-generate-btn"
                   className="w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
                 >
                   {aiLoading || aiStreaming

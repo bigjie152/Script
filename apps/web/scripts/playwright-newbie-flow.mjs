@@ -45,10 +45,10 @@ async function clickFirstEnabled(page, selectors) {
   return false;
 }
 
-async function selectAiAction(page, label) {
-  const selects = page.locator("select");
-  if (await selects.count()) {
-    await selects.first().selectOption({ label });
+async function selectAiAction(page, value) {
+  const select = page.getByTestId("ai-action-select");
+  if (await select.count()) {
+    await select.selectOption({ value });
     return true;
   }
   return false;
@@ -235,23 +235,26 @@ async function run() {
     await page.waitForTimeout(1200);
 
     const steps = [
-      { module: "真相", action: "真相（Truth）生成" },
-      { module: "故事", action: "故事剧情生成" },
-      { module: "角色", action: "角色剧本生成" },
-      { module: "线索", action: "线索结构生成" },
-      { module: "时间线", action: "时间线生成" },
-      { module: "DM 手册", action: "DM 手册生成" }
+      { module: "真相", actionValue: "outline" },
+      { module: "故事", actionValue: "story" },
+      { module: "角色", actionValue: "role" },
+      { module: "线索", actionValue: "clue" },
+      { module: "时间线", actionValue: "timeline" },
+      { module: "DM 手册", actionValue: "dm" }
     ];
 
     for (const step of steps) {
       await clickFirst(page, [`text=${step.module}`, `a:has-text("${step.module}")`]);
       await page.waitForTimeout(800);
-      await selectAiAction(page, step.action);
-      const textarea = page.locator("textarea").first();
+      const selected = await selectAiAction(page, step.actionValue);
+      if (!selected) {
+        throw new Error("未找到 AI 动作选择框");
+      }
+      const textarea = page.getByTestId("ai-intent-input");
       if (await textarea.count()) {
         await textarea.fill(intentBase);
       }
-      await clickFirst(page, ['button:has-text("生成候选")']);
+      await clickFirst(page, ['[data-testid="ai-generate-btn"]', 'button:has-text("生成候选")']);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
       await waitForCandidate(page);
       const accepted = await acceptFirstCandidate(page);
