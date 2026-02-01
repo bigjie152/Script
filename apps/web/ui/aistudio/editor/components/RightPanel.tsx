@@ -1,14 +1,15 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import { getStructureStatus, listImpactReports, ImpactReportItem, listIssues, IssueItem } from "@/services/projectApi";
-import { deriveCandidates, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
+import { deriveCandidatesStream, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
 
 interface RightPanelProps {
   projectId?: string;
   onCandidatesUpdated?: () => void;
+  onStreamUpdate?: (draft: { active: boolean; target?: string; text: string } | null) => void;
 }
 
 type StructureStatus = {
@@ -19,7 +20,11 @@ type StructureStatus = {
   p0IssueCount: number;
 };
 
-const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated }) => {
+const RightPanel: React.FC<RightPanelProps> = ({
+  projectId,
+  onCandidatesUpdated,
+  onStreamUpdate
+}) => {
   const params = useParams();
   const resolvedProjectId =
     projectId || (typeof params?.projectId === "string" ? params.projectId : "");
@@ -37,6 +42,8 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateItem[]>([]);
+  const [aiStreaming, setAiStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const [issues, setIssues] = useState<IssueItem[]>([]);
   const [issuesError, setIssuesError] = useState<string | null>(null);
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -158,7 +165,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
   };
 
   const runDerive = async () => {
-    if (!resolvedProjectId || aiLoading) return;
+    if (!resolvedProjectId || aiLoading || aiStreaming) return;
     setAiLoading(true);
     setAiError(null);
     setAiNotice(null);
@@ -180,28 +187,61 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
       dm: "DM 手册"
     };
     const targetModule = targetMap[aiAction] || "";
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setAiStreaming(true);
+    onStreamUpdate?.({ active: true, target: aiAction, text: "" });
+    let streamText = "";
     try {
-      const result = await deriveCandidates(resolvedProjectId, {
-        actionType: aiAction,
-        intent: aiIntent || undefined
-      });
-      setCandidates((prev) => [...result.candidates, ...prev]);
-      const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
-      const targetLabel = moduleLabelMap[targetModule] || "对应模块";
-      const crossModuleNotice =
-        targetModule && currentModule && targetModule !== currentModule
-          ? `请到 ${targetLabel} 模块查看。`
-          : "请在候选区采纳或拒绝。";
-      setAiNotice(`${noticeBase} ${crossModuleNotice}`);
-      setAiIntent("");
-      onCandidatesUpdated?.();
+      await deriveCandidatesStream(
+        resolvedProjectId,
+        {
+          actionType: aiAction,
+          intent: aiIntent || undefined
+        },
+        {
+          signal: controller.signal,
+          onDelta: (delta) => {
+            streamText += delta;
+            onStreamUpdate?.({ active: true, target: aiAction, text: streamText });
+          },
+          onDone: (result) => {
+            setCandidates((prev) => [...result.candidates, ...prev]);
+            const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
+            const targetLabel = moduleLabelMap[targetModule] || "对应模块";
+            const crossModuleNotice =
+              targetModule && currentModule && targetModule !== currentModule
+                ? `请到 ${targetLabel} 模块查看。`
+                : "请在候选区采纳或拒绝。";
+            setAiNotice(`${noticeBase} ${crossModuleNotice}`);
+            setAiIntent("");
+            onCandidatesUpdated?.();
+            onStreamUpdate?.(null);
+          },
+          onError: (message) => {
+            setAiError(message || "AI 生成失败，请稍后重试");
+            onStreamUpdate?.(null);
+          }
+        }
+      );
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      onStreamUpdate?.(null);
     } finally {
       setAiProgress(100);
       window.setTimeout(() => setAiProgress(0), 800);
       setAiLoading(false);
+      setAiStreaming(false);
+      abortRef.current = null;
     }
+  };
+
+  const stopDerive = () => {
+    if (!abortRef.current) return;
+    abortRef.current.abort();
+    setAiStreaming(false);
+    setAiNotice("已中断生成");
+    onStreamUpdate?.(null);
   };
 
   const handleLogicCheck = async () => {
@@ -323,11 +363,22 @@ const RightPanel: React.FC<RightPanelProps> = ({ projectId, onCandidatesUpdated 
                 <button
                   type="button"
                   onClick={runDerive}
-                  disabled={aiLoading}
+                  disabled={aiLoading || aiStreaming}
                   className="w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  {aiLoading ? `生成中... ${Math.min(99, aiProgress || 0)}%` : "生成候选"}
+                  {aiLoading || aiStreaming
+                    ? `生成中... ${Math.min(99, aiProgress || 0)}%`
+                    : "生成候选"}
                 </button>
+                {aiStreaming ? (
+                  <button
+                    type="button"
+                    onClick={stopDerive}
+                    className="w-full py-2 rounded-lg border border-rose-200 text-rose-600 text-xs font-medium hover:bg-rose-50"
+                  >
+                    停止生成
+                  </button>
+                ) : null}
                 {aiLoading || aiProgress > 0 ? (
                   <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                     <div

@@ -63,6 +63,11 @@ const EditorApp: React.FC = () => {
   const [structureError, setStructureError] = useState<string | null>(null);
   const [structureVersion, setStructureVersion] = useState(0);
   const [candidatesVersion, setCandidatesVersion] = useState(0);
+  const [streamDraft, setStreamDraft] = useState<{
+    active: boolean;
+    target?: string;
+    text: string;
+  } | null>(null);
 
   const mentionItems = useMemo<MentionItem[]>(
     () => [
@@ -288,6 +293,13 @@ const EditorApp: React.FC = () => {
   const handleCandidatesUpdated = useCallback(() => {
     setCandidatesVersion((value) => value + 1);
   }, []);
+
+  const handleStreamUpdate = useCallback(
+    (draft: { active: boolean; target?: string; text: string } | null) => {
+      setStreamDraft(draft);
+    },
+    []
+  );
 
   const insertCandidateIntoEditor = useCallback(
     (candidate: { target: string; content?: Record<string, unknown> | null }) => {
@@ -528,12 +540,17 @@ const EditorApp: React.FC = () => {
               currentModule={moduleKey}
               currentEntryId={currentEntryId}
               onInsertCandidate={insertCandidateIntoEditor}
+              streamDraft={streamDraft}
             />
           ) : null}
         </main>
       </div>
 
-      <RightPanel projectId={projectId} onCandidatesUpdated={handleCandidatesUpdated} />
+      <RightPanel
+        projectId={projectId}
+        onCandidatesUpdated={handleCandidatesUpdated}
+        onStreamUpdate={handleStreamUpdate}
+      />
     </div>
   );
 };

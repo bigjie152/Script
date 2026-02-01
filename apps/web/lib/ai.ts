@@ -2,5 +2,6 @@ export {
   deriveRoles,
   consistencyCheck,
   deriveCandidates,
-  logicCheck
+  logicCheck,
+  resolveAIConfig
 } from "../../../packages/ai-orchestrator";

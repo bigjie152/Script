@@ -11,6 +11,7 @@ interface AiCandidatePanelProps {
   currentModule?: string;
   currentEntryId?: string | null;
   onInsertCandidate?: (candidate: CandidateItem) => void;
+  streamDraft?: { active: boolean; target?: string; text: string } | null;
 }
 
 const targetLabel = (target: string) => {
@@ -28,7 +29,8 @@ export default function AiCandidatePanel({
   refreshKey = 0,
   currentModule,
   currentEntryId,
-  onInsertCandidate
+  onInsertCandidate,
+  streamDraft
 }: AiCandidatePanelProps) {
   const [candidates, setCandidates] = useState<CandidateItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -146,6 +148,16 @@ export default function AiCandidatePanel({
 
       {collapsed ? null : (
         <div className="px-5 py-4 space-y-4">
+        {streamDraft?.active ? (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
+            <div className="text-xs text-indigo-600 font-semibold mb-2">
+              AI 正在生成中…
+            </div>
+            <div className="text-sm text-gray-700 whitespace-pre-line leading-6">
+              {streamDraft.text || "生成中，请稍候…"}
+            </div>
+          </div>
+        ) : null}
         {error ? <div className="text-xs text-rose-500">{error}</div> : null}
         {!loading && visibleCandidates.length === 0 ? (
           <div className="text-xs text-gray-400">暂无候选内容</div>

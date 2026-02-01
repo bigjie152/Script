@@ -158,6 +158,16 @@ export function getAIClient(purpose?: AIPurpose): AIClient {
   return createMockClient();
 }
 
+export function resolveAIConfig(purpose?: AIPurpose) {
+  const provider = resolveProvider(purpose);
+  return {
+    provider,
+    model: resolveModel(provider, purpose),
+    apiKey: resolveApiKey(provider),
+    baseUrl: resolveBaseUrl(provider)
+  };
+}
+
 function createMockClient(): AIClient {
   return {
     provider: "mock",
