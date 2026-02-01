@@ -56,7 +56,8 @@ async function selectAiAction(page, label) {
 
 async function waitForCandidate(page) {
   await page.waitForTimeout(1000);
-  await page.waitForSelector("text=采纳", { timeout: 120000 });
+  const acceptBtn = page.getByRole("button", { name: /采纳/ }).first();
+  await acceptBtn.waitFor({ state: "visible", timeout: 120000 });
 }
 
 async function acceptFirstCandidate(page) {
@@ -71,6 +72,47 @@ async function acceptFirstCandidate(page) {
     return true;
   }
   return false;
+}
+
+async function assertProjectContent(page, base, projectId) {
+  const cookies = await page.context().cookies();
+  const cookieHeader =
+    cookies.length > 0 ? cookies.map((c) => `${c.name}=${c.value}`).join("; ") : undefined;
+  const fetchJson = async (path) => {
+    const resp = await page.request.get(`${base}${path}`, {
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined
+    });
+    return resp.json();
+  };
+  const detail = await fetchJson(`/api/projects/${projectId}`);
+  const story = await fetchJson(`/api/projects/${projectId}/modules/story`);
+  const roles = await fetchJson(`/api/projects/${projectId}/modules/roles`);
+  const clues = await fetchJson(`/api/projects/${projectId}/modules/clues`);
+  const timeline = await fetchJson(`/api/projects/${projectId}/modules/timeline`);
+  const dm = await fetchJson(`/api/projects/${projectId}/modules/dm`);
+
+  const countDoc = (doc) => (Array.isArray(doc?.content) ? doc.content.length : 0);
+  const countEntries = (doc) => (Array.isArray(doc?.entries) ? doc.entries.length : 0);
+
+  const truthBlocks = countDoc(detail.truth?.content);
+  const storyBlocks = countDoc(story.content);
+  const rolesEntries = countEntries(roles.content);
+  const cluesEntries = countEntries(clues.content);
+  const timelineEntries = countEntries(timeline.content);
+  const dmEntries = countEntries(dm.content);
+
+  if (
+    truthBlocks === 0 ||
+    storyBlocks === 0 ||
+    rolesEntries === 0 ||
+    cluesEntries === 0 ||
+    timelineEntries === 0 ||
+    dmEntries === 0
+  ) {
+    throw new Error(
+      `生成内容为空：truth=${truthBlocks}, story=${storyBlocks}, roles=${rolesEntries}, clues=${cluesEntries}, timeline=${timelineEntries}, dm=${dmEntries}`
+    );
+  }
 }
 
 async function waitForEnabled(locator, ms = 15000) {
@@ -164,6 +206,9 @@ async function run() {
     await createBtn.click();
 
     await page.waitForURL(/projects\/.*\/editor/, { timeout });
+    const projectUrl = page.url();
+    const projectIdMatch = projectUrl.match(/projects\/([^/]+)/);
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
 
     await clickFirst(page, ['text=概览', 'a:has-text("概览")']);
     await page.waitForTimeout(800);
@@ -209,8 +254,17 @@ async function run() {
       await clickFirst(page, ['button:has-text("生成候选")']);
       await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
       await waitForCandidate(page);
-      await acceptFirstCandidate(page);
+      const accepted = await acceptFirstCandidate(page);
+      if (!accepted) {
+        throw new Error(`未找到可采纳的候选内容：${step.module}`);
+      }
       await page.waitForTimeout(1200);
+    }
+
+    if (projectId) {
+      await assertProjectContent(page, base, projectId);
+    } else {
+      throw new Error("无法解析项目 ID，无法校验内容");
     }
 
     console.log("Playwright flow completed:", projectName);
