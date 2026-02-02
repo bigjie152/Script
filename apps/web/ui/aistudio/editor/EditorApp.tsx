@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +12,6 @@ import Roles from "./components/Modules/Roles";
 import Clues from "./components/Modules/Clues";
 import Timeline from "./components/Modules/Timeline";
 import Manual from "./components/Modules/Manual";
-import AiCandidatePanel from "./components/AiCandidatePanel";
 import { resolveModuleKey, MODULE_CONFIG_MAP } from "@/modules/modules.config";
 import { EditorModuleKey } from "@/types/editorDocument";
 import { useTruthDocument } from "@/hooks/useTruthDocument";
@@ -20,7 +19,7 @@ import { useModuleDocument } from "@/hooks/useModuleDocument";
 import { useModuleCollection } from "@/hooks/useModuleCollection";
 import { useProjectMeta } from "@/hooks/useProjectMeta";
 import { MentionItem } from "@/editors/tiptap/mentionSuggestion";
-import { updateDocumentContent } from "@/editors/adapters/plainTextAdapter";
+import { normalizeContent, updateDocumentContent } from "@/editors/adapters/plainTextAdapter";
 import { getStructureStatus, StructureStatusResponse } from "@/services/projectApi";
 
 type SaveState = "idle" | "saving" | "success" | "error";
@@ -45,29 +44,20 @@ const EditorApp: React.FC = () => {
     projectId,
     moduleKey === "overview" ? "overview" : null
   );
-  const storyDoc = useModuleDocument(
-    projectId,
-    moduleKey === "story" ? "story" : null
-  );
+  const storyDoc = useModuleDocument(projectId, "story");
   const projectMeta = useProjectMeta(
     projectId,
     truthState.project,
     truthState.refresh
   );
 
-  const roles = useModuleCollection(projectId, "roles", "角色");
-  const clues = useModuleCollection(projectId, "clues", "线索");
-  const timeline = useModuleCollection(projectId, "timeline", "时间线");
-  const manual = useModuleCollection(projectId, "dm", "DM 手册");
+  const roles = useModuleCollection(projectId, "roles", "ɫ");
+  const clues = useModuleCollection(projectId, "clues", "");
+  const timeline = useModuleCollection(projectId, "timeline", "ʱ");
+  const manual = useModuleCollection(projectId, "dm", "DM ֲ");
   const [structureStatus, setStructureStatus] = useState<StructureStatusResponse | null>(null);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [structureVersion, setStructureVersion] = useState(0);
-  const [candidatesVersion, setCandidatesVersion] = useState(0);
-  const [streamDraft, setStreamDraft] = useState<{
-    active: boolean;
-    target?: string;
-    text: string;
-  } | null>(null);
 
   const mentionItems = useMemo<MentionItem[]>(
     () => [
@@ -124,15 +114,15 @@ const EditorApp: React.FC = () => {
     const raw = truthState.project?.status;
     if (raw) {
       const normalized = raw.toUpperCase();
-      if (normalized === "TRUTH_LOCKED") return "真相已锁定";
-      if (normalized === "PUBLISHED") return "已发布";
-      if (normalized === "ARCHIVED") return "已归档";
-      return "草稿";
+      if (normalized === "TRUTH_LOCKED") return "";
+      if (normalized === "PUBLISHED") return "ѷ";
+      if (normalized === "ARCHIVED") return "ѹ鵵";
+      return "ݸ";
     }
     const status = projectMeta.form.status;
-    if (status === "In Progress") return "进行中";
-    if (status === "Completed") return "已完成";
-    return "草稿";
+    if (status === "In Progress") return "";
+    if (status === "Completed") return "";
+    return "ݸ";
   }, [projectMeta.form.status, truthState.project?.status]);
 
   const isReadOnly =
@@ -140,15 +130,15 @@ const EditorApp: React.FC = () => {
     truthState.project?.status === "ARCHIVED";
   const readOnlyReason =
     truthState.project?.status === "PUBLISHED"
-      ? "项目已发布，当前为只读"
+      ? "ĿѷǰΪֻ"
       : truthState.project?.status === "ARCHIVED"
-        ? "项目已归档，当前为只读"
+        ? "Ŀѹ鵵ǰΪֻ"
         : "";
 
   const truthLocked = truthState.truth?.status === "LOCKED";
-  const truthStatusLabel = truthLocked ? "已锁定" : "草稿";
+  const truthStatusLabel = truthLocked ? "" : "ݸ";
 
-  const headerModuleLabel = MODULE_CONFIG_MAP[moduleKey]?.label ?? "概览";
+  const headerModuleLabel = MODULE_CONFIG_MAP[moduleKey]?.label ?? "";
 
   const combinedSaveState = useMemo<SaveState>(() => {
     if (moduleKey === "overview") {
@@ -194,7 +184,7 @@ const EditorApp: React.FC = () => {
         setStructureError(null);
       } catch (err) {
         if (!alive) return;
-        setStructureError(err instanceof Error ? err.message : "加载结构状态失败");
+        setStructureError(err instanceof Error ? err.message : "ؽṹ״̬ʧ");
       }
     }
     run();
@@ -253,27 +243,13 @@ const EditorApp: React.FC = () => {
     manual.hasUnsaved
   ]);
 
-  const currentEntryId = useMemo(() => {
-    if (moduleKey === "roles") return roles.activeEntryId;
-    if (moduleKey === "clues") return clues.activeEntryId;
-    if (moduleKey === "timeline") return timeline.activeEntryId;
-    if (moduleKey === "dm") return manual.activeEntryId;
-    return null;
-  }, [
-    moduleKey,
-    roles.activeEntryId,
-    clues.activeEntryId,
-    timeline.activeEntryId,
-    manual.activeEntryId
-  ]);
-
   const navigate = useCallback(
     async (module: EditorModuleKey, entry?: string) => {
       if (!projectId) return;
       if (hasUnsaved && !isReadOnly) {
         const ok = await handleSave();
         if (!ok) {
-          const force = window.confirm("保存失败，是否仍然切换？");
+          const force = window.confirm("????????????");
           if (!force) return;
         }
       }
@@ -283,6 +259,8 @@ const EditorApp: React.FC = () => {
     [projectId, hasUnsaved, isReadOnly, handleSave, router]
   );
 
+
+
   const handleFixStructure = useCallback(() => {
     if (!structureStatus) return;
     const target = structureStatus.needsReviewModules[0] || structureStatus.missingModules[0];
@@ -290,62 +268,98 @@ const EditorApp: React.FC = () => {
     navigate(resolveModuleKey(target));
   }, [structureStatus, navigate]);
 
-  const handleCandidatesUpdated = useCallback(() => {
-    setCandidatesVersion((value) => value + 1);
-  }, []);
+  const applyAiContent = useCallback(
+    async (payload: {
+      target: string;
+      items: Array<{ title: string; content?: Record<string, unknown> | null }>;
+      mode: "append" | "replace";
+    }) => {
+      if (isReadOnly) {
+        return { ok: false, message: readOnlyReason || "?????" };
+      }
 
-  const handleStreamUpdate = useCallback(
-    (draft: { active: boolean; target?: string; text: string } | null) => {
-      setStreamDraft(draft);
-    },
-    []
-  );
+      if (!payload.items.length) {
+        return { ok: false, message: "AI ????" };
+      }
 
-  const insertCandidateIntoEditor = useCallback(
-    (candidate: { target: string; content?: Record<string, unknown> | null }) => {
-      const incoming = candidate.content ?? { type: "doc", content: [] };
-      const mergeDoc = (base: Record<string, unknown>) => {
-        const baseContent = (base as any).content;
-        const incomingContent = (incoming as any).content;
+      const incomingFirst = normalizeContent(payload.items[0]?.content ?? {});
+      const mergeDoc = (base: Record<string, unknown>, incoming: Record<string, unknown>) => {
+        const baseDoc = normalizeContent(base);
+        const incomingDoc = normalizeContent(incoming);
+        const baseNodes = Array.isArray((baseDoc as any).content) ? (baseDoc as any).content : [];
+        const incomingNodes = Array.isArray((incomingDoc as any).content) ? (incomingDoc as any).content : [];
         return {
           type: "doc",
-          content: [
-            ...(Array.isArray(baseContent) ? baseContent : []),
-            ...(Array.isArray(incomingContent) ? incomingContent : [])
-          ]
+          content: [...baseNodes, ...incomingNodes]
         } as Record<string, unknown>;
       };
+      const nextContent = (base: Record<string, unknown>) =>
+        payload.mode === "replace" ? incomingFirst : mergeDoc(base, incomingFirst);
 
-      if (candidate.target === "insight" && moduleKey === "truth") {
-        truthState.setDocument(updateDocumentContent(truthState.document, mergeDoc(truthState.document.content)));
-        return;
+      if (payload.target === "insight") {
+        if (truthLocked) {
+          return { ok: false, message: "Truth ????????" };
+        }
+        truthState.setDocument(
+          updateDocumentContent(truthState.document, nextContent(truthState.document.content))
+        );
+        const ok = await truthState.save();
+        return ok ? { ok: true } : { ok: false, message: truthState.saveError || "????" };
       }
 
-      if (candidate.target === "story" && moduleKey === "story") {
-        storyDoc.setDocument(updateDocumentContent(storyDoc.document, mergeDoc(storyDoc.document.content)));
-        return;
+      if (payload.target === "story") {
+        storyDoc.setDocument(
+          updateDocumentContent(storyDoc.document, nextContent(storyDoc.document.content))
+        );
+        const ok = await storyDoc.save();
+        return ok ? { ok: true } : { ok: false, message: storyDoc.saveError || "????" };
       }
 
-      if (candidate.target === "role" && moduleKey === "roles") {
-        roles.setDocument(updateDocumentContent(roles.document, mergeDoc(roles.document.content)));
-        return;
+      const items = payload.items
+        .map((item) => ({ title: item.title, content: item.content ?? {} }))
+        .filter((item) => item.title && item.title.trim().length > 0);
+
+      if (!items.length) {
+        return { ok: false, message: "AI ????" };
       }
 
-      if (candidate.target === "clue" && moduleKey === "clues") {
-        clues.setDocument(updateDocumentContent(clues.document, mergeDoc(clues.document.content)));
-        return;
+      if (payload.target === "role") {
+        roles.applyEntries(items, payload.mode);
+        const ok = await roles.save();
+        return ok ? { ok: true } : { ok: false, message: roles.saveError || "????" };
       }
 
-      if (candidate.target === "timeline" && moduleKey === "timeline") {
-        timeline.setDocument(updateDocumentContent(timeline.document, mergeDoc(timeline.document.content)));
-        return;
+      if (payload.target === "clue") {
+        clues.applyEntries(items, payload.mode);
+        const ok = await clues.save();
+        return ok ? { ok: true } : { ok: false, message: clues.saveError || "????" };
       }
 
-      if (candidate.target === "dm" && moduleKey === "dm") {
-        manual.setDocument(updateDocumentContent(manual.document, mergeDoc(manual.document.content)));
+      if (payload.target === "timeline") {
+        timeline.applyEntries(items, payload.mode);
+        const ok = await timeline.save();
+        return ok ? { ok: true } : { ok: false, message: timeline.saveError || "????" };
       }
+
+      if (payload.target === "dm") {
+        manual.applyEntries(items, payload.mode);
+        const ok = await manual.save();
+        return ok ? { ok: true } : { ok: false, message: manual.saveError || "????" };
+      }
+
+      return { ok: false, message: "????????" };
     },
-    [moduleKey, truthState, storyDoc, roles, clues, timeline, manual]
+    [
+      isReadOnly,
+      readOnlyReason,
+      truthLocked,
+      truthState,
+      storyDoc,
+      roles,
+      clues,
+      timeline,
+      manual
+    ]
   );
 
   const createEntry = useCallback(
@@ -432,7 +446,7 @@ const EditorApp: React.FC = () => {
   );
 
   if (!projectId) {
-    return <div className="p-6 text-sm text-gray-500">项目不存在或链接无效。</div>;
+    return <div className="p-6 text-sm text-gray-500">ĿڻЧ</div>;
   }
 
   return (
@@ -451,7 +465,7 @@ const EditorApp: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           moduleLabel={headerModuleLabel}
-          projectTitle={truthState.project?.name || "未命名剧本"}
+          projectTitle={truthState.project?.name || "δ籾"}
           projectStatusLabel={projectStatusLabel}
           truthStatusLabel={truthStatusLabel}
           truthLocked={truthLocked}
@@ -532,24 +546,14 @@ const EditorApp: React.FC = () => {
               readOnly={isReadOnly}
             />
           )}
-
-          {moduleKey !== "overview" && projectId ? (
-            <AiCandidatePanel
-              projectId={projectId}
-              refreshKey={candidatesVersion}
-              currentModule={moduleKey}
-              currentEntryId={currentEntryId}
-              onInsertCandidate={insertCandidateIntoEditor}
-              streamDraft={streamDraft}
-            />
-          ) : null}
         </main>
       </div>
 
       <RightPanel
         projectId={projectId}
-        onCandidatesUpdated={handleCandidatesUpdated}
-        onStreamUpdate={handleStreamUpdate}
+        readOnly={isReadOnly}
+        truthLocked={truthLocked}
+        onApplyAiContent={applyAiContent}
       />
     </div>
   );

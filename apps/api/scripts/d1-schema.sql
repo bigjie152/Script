@@ -103,20 +103,6 @@ create table if not exists ai_request_logs (
   meta text,
   created_at text not null default CURRENT_TIMESTAMP
 );
-create table if not exists ai_candidates (
-  id text primary key,
-  project_id text not null,
-  target text not null,
-  title text,
-  summary text,
-  content text,
-  meta text,
-  refs text,
-  risk_flags text,
-  status text not null default 'pending',
-  created_at text not null default CURRENT_TIMESTAMP,
-  updated_at text not null default CURRENT_TIMESTAMP
-);
 create table if not exists feedback (
   id text primary key,
   project_id text not null,

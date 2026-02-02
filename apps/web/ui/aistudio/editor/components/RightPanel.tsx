@@ -1,15 +1,20 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import { getStructureStatus, listImpactReports, ImpactReportItem, listIssues, IssueItem } from "@/services/projectApi";
-import { deriveCandidates, deriveCandidatesStream, listAiCandidates, CandidateItem, runLogicCheck } from "@/services/aiApi";
+import { deriveDirectContent, runLogicCheck } from "@/services/aiApi";
 
 interface RightPanelProps {
   projectId?: string;
-  onCandidatesUpdated?: () => void;
-  onStreamUpdate?: (draft: { active: boolean; target?: string; text: string } | null) => void;
+  readOnly?: boolean;
+  truthLocked?: boolean;
+  onApplyAiContent?: (payload: {
+    target: string;
+    items: Array<{ title: string; content?: Record<string, unknown> | null }>;
+    mode: "append" | "replace";
+  }) => Promise<{ ok: boolean; message?: string }>;
 }
 
 type StructureStatus = {
@@ -22,8 +27,9 @@ type StructureStatus = {
 
 const RightPanel: React.FC<RightPanelProps> = ({
   projectId,
-  onCandidatesUpdated,
-  onStreamUpdate
+  readOnly,
+  truthLocked,
+  onApplyAiContent
 }) => {
   const params = useParams();
   const resolvedProjectId =
@@ -41,9 +47,6 @@ const RightPanel: React.FC<RightPanelProps> = ({
   const [aiProgress, setAiProgress] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const [candidates, setCandidates] = useState<CandidateItem[]>([]);
-  const [aiStreaming, setAiStreaming] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
   const [issues, setIssues] = useState<IssueItem[]>([]);
   const [issuesError, setIssuesError] = useState<string | null>(null);
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -106,26 +109,6 @@ const RightPanel: React.FC<RightPanelProps> = ({
     if (!resolvedProjectId) return;
     let alive = true;
     async function run() {
-      try {
-        const result = await listAiCandidates(resolvedProjectId, "pending");
-        if (!alive) return;
-        setCandidates(result.candidates || []);
-        setAiError(null);
-      } catch (err) {
-        if (!alive) return;
-        setAiError(err instanceof Error ? err.message : "加载候选区失败");
-      }
-    }
-    run();
-    return () => {
-      alive = false;
-    };
-  }, [resolvedProjectId]);
-
-  useEffect(() => {
-    if (!resolvedProjectId) return;
-    let alive = true;
-    async function run() {
       setIssuesLoading(true);
       try {
         const result = await listIssues(resolvedProjectId);
@@ -155,6 +138,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
   const structureAlert = Boolean(structure && !structure.healthy);
 
   const targetLabel = (target: string) => {
+    if (target === "outline") return "Truth 生成";
+    if (target === "worldcheck") return "设定漏洞检查";
     if (target === "role") return "角色剧本生成";
     if (target === "clue") return "线索结构生成";
     if (target === "timeline") return "时间线生成";
@@ -164,119 +149,88 @@ const RightPanel: React.FC<RightPanelProps> = ({
     return "真相生成";
   };
 
-  const runDerive = async () => {
-    if (!resolvedProjectId || aiLoading || aiStreaming) return;
+  const runDerive = async (mode: "append" | "replace") => {
+    if (!resolvedProjectId || aiLoading) return;
+    if (readOnly) {
+      setAiError("项目已发布或归档，当前为只读");
+      return;
+    }
+    const requiresTruthLocked = ["story", "role", "clue", "timeline", "dm"].includes(aiAction);
+    if (requiresTruthLocked && !truthLocked) {
+      setAiError("请先锁定 Truth 后再生成派生内容");
+      return;
+    }
+    const writingTruth = ["outline", "worldcheck"].includes(aiAction);
+    if (writingTruth && truthLocked) {
+      setAiError("Truth 已锁定，无法写入，请先解锁");
+      return;
+    }
+    if (mode === "replace") {
+      const ok = window.confirm("将用 AI 生成内容覆盖当前编辑区，建议先保存现有内容。是否继续？");
+      if (!ok) return;
+    }
+
     setAiLoading(true);
     setAiError(null);
     setAiNotice(null);
-    const targetMap: Record<string, string> = {
-      outline: "truth",
-      worldcheck: "truth",
-      story: "story",
-      role: "roles",
-      clue: "clues",
-      timeline: "timeline",
-      dm: "dm"
-    };
-    const moduleLabelMap: Record<string, string> = {
-      truth: "Truth",
-      story: "故事",
-      roles: "角色",
-      clues: "线索",
-      timeline: "时间线",
-      dm: "DM 手册"
-    };
-    const targetModule = targetMap[aiAction] || "";
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setAiStreaming(true);
-    onStreamUpdate?.({ active: true, target: aiAction, text: "" });
-    let streamText = "";
-    let done = false;
-    let timeoutTriggered = false;
-    const timeoutId = window.setTimeout(() => {
-      timeoutTriggered = true;
-      controller.abort();
-    }, 180000);
     try {
-      await deriveCandidatesStream(
-        resolvedProjectId,
-        {
-          actionType: aiAction,
-          intent: aiIntent || undefined
-        },
-        {
-          signal: controller.signal,
-          onDelta: (delta) => {
-            streamText += delta;
-            onStreamUpdate?.({ active: true, target: aiAction, text: streamText });
-          },
-          onDone: (result) => {
-            done = true;
-            setCandidates((prev) => [...result.candidates, ...prev]);
-            const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
-            const targetLabel = moduleLabelMap[targetModule] || "对应模块";
-            const crossModuleNotice =
-              targetModule && currentModule && targetModule !== currentModule
-                ? `请到 ${targetLabel} 模块查看。`
-                : "请在候选区采纳或拒绝。";
-            setAiNotice(`${noticeBase} ${crossModuleNotice}`);
-            setAiIntent("");
-            onCandidatesUpdated?.();
-            onStreamUpdate?.(null);
-          },
-          onError: (message) => {
-            if (!timeoutTriggered) {
-              setAiError(message || "AI 生成失败，请稍后重试");
-            }
-            onStreamUpdate?.(null);
-          }
-        }
-      );
-    } catch (err) {
-      if (!timeoutTriggered) {
-        setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      const result = await deriveDirectContent(resolvedProjectId, {
+        actionType: aiAction,
+        intent: aiIntent || undefined
+      });
+      if (!onApplyAiContent) {
+        setAiError("未配置写入处理器");
+        return;
       }
-      onStreamUpdate?.(null);
+      if (!result.items?.length) {
+        setAiError("AI 返回为空，请稍后重试");
+        return;
+      }
+      const applyResult = await onApplyAiContent({
+        target: result.items[0].target,
+        items: result.items.map((item) => ({
+          title: item.title,
+          content: item.content
+        })),
+        mode
+      });
+      if (!applyResult.ok) {
+        setAiError(applyResult.message || "写入失败，请稍后重试");
+        return;
+      }
+      const targetModuleMap: Record<string, string> = {
+        insight: "truth",
+        story: "story",
+        role: "roles",
+        clue: "clues",
+        timeline: "timeline",
+        dm: "dm"
+      };
+      const moduleLabelMap: Record<string, string> = {
+        truth: "Truth",
+        story: "故事",
+        roles: "角色",
+        clues: "线索",
+        timeline: "时间线",
+        dm: "DM 手册"
+      };
+      const targetModule = targetModuleMap[result.items[0].target] || "";
+      const noticeBase = `已生成并写入（${result.provider}/${result.model}）。`;
+      const targetLabelName = moduleLabelMap[targetModule] || "对应模块";
+      const crossModuleNotice =
+        targetModule && currentModule && targetModule !== currentModule
+          ? `已写入 ${targetLabelName} 模块，请切换查看。`
+          : "已写入当前编辑区。";
+      const itemHint = result.items.length > 1 ? `共写入 ${result.items.length} 条目。` : "";
+      setAiNotice(`${noticeBase} ${crossModuleNotice} ${itemHint}`.trim());
+      setAiIntent("");
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
     } finally {
-      window.clearTimeout(timeoutId);
       setAiProgress(100);
       window.setTimeout(() => setAiProgress(0), 800);
       setAiLoading(false);
-      setAiStreaming(false);
-      abortRef.current = null;
     }
-
-    if (timeoutTriggered && !done) {
-      setAiNotice("流式生成超时，已自动切换为完整生成...");
-      try {
-        const result = await deriveCandidates(resolvedProjectId, {
-          actionType: aiAction,
-          intent: aiIntent || undefined
-        });
-        done = true;
-        setCandidates((prev) => [...result.candidates, ...prev]);
-        const noticeBase = `已生成候选内容（${result.provider}/${result.model}）。`;
-        const targetLabel = moduleLabelMap[targetModule] || "对应模块";
-        const crossModuleNotice =
-          targetModule && currentModule && targetModule !== currentModule
-            ? `请到 ${targetLabel} 模块查看。`
-            : "请在候选区采纳或拒绝。";
-        setAiNotice(`${noticeBase} ${crossModuleNotice}`);
-        setAiIntent("");
-        onCandidatesUpdated?.();
-      } catch (err) {
-        setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
-      }
-    }
-  };
-
-  const stopDerive = () => {
-    if (!abortRef.current) return;
-    abortRef.current.abort();
-    setAiStreaming(false);
-    setAiNotice("已中断生成");
-    onStreamUpdate?.(null);
   };
 
   const handleLogicCheck = async () => {
@@ -285,7 +239,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
     setIssuesError(null);
     try {
       await runLogicCheck(resolvedProjectId);
-      setAiNotice("AI 逻辑审查已完成。");
+      setAiNotice("AI 逻辑审查已完成。请在问题列表查看。");
       setIssuesVersion((v) => v + 1);
     } catch (err) {
       setIssuesError(err instanceof Error ? err.message : "AI 逻辑审查失败");
@@ -313,6 +267,11 @@ const RightPanel: React.FC<RightPanelProps> = ({
       date.getMinutes()
     ).padStart(2, "0")}`;
   };
+
+  const truthStatusLabel = truthLocked ? "已锁定" : "草稿";
+  const truthHint = truthLocked
+    ? "当前真相已锁定，派生内容将基于此版本。"
+    : "Truth 仍可编辑，锁定后才能生成派生内容。";
 
   return (
     <div className="w-72 bg-white border-l border-gray-100 h-screen flex flex-col shadow-sm z-10">
@@ -353,9 +312,9 @@ const RightPanel: React.FC<RightPanelProps> = ({
                 <Lock size={14} className="text-amber-500" />
               </div>
               <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                当前状态：<span className="font-medium text-gray-900">已锁定（Locked）</span>
+                当前状态：<span className="font-medium text-gray-900">{truthStatusLabel}</span>
                 <br />
-                当前真相已锁定，派生内容将基于此版本。
+                {truthHint}
               </p>
               <button
                 className="w-full py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
@@ -373,7 +332,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
                   <Sparkles size={14} className="text-indigo-500" />
                   AI 写作助手
                 </h3>
-                <span className="text-[10px] text-gray-400">候选区（主编辑区查看）</span>
+                <span className="text-[10px] text-gray-400">直接写入编辑区</span>
               </div>
               <div className="space-y-2">
                 <select
@@ -397,26 +356,26 @@ const RightPanel: React.FC<RightPanelProps> = ({
                   value={aiIntent}
                   onChange={(event) => setAiIntent(event.target.value)}
                 />
-                <button
-                  type="button"
-                  onClick={runDerive}
-                  disabled={aiLoading || aiStreaming}
-                  data-testid={`ai-generate-btn-${currentModule || "global"}`}
-                  className="w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  {aiLoading || aiStreaming
-                    ? `生成中... ${Math.min(99, aiProgress || 0)}%`
-                    : "生成候选"}
-                </button>
-                {aiStreaming ? (
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={stopDerive}
-                    className="w-full py-2 rounded-lg border border-rose-200 text-rose-600 text-xs font-medium hover:bg-rose-50"
+                    onClick={() => runDerive("replace")}
+                    disabled={aiLoading}
+                    data-testid={`ai-generate-replace-btn-${currentModule || "global"}`}
+                    className="w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
                   >
-                    停止生成
+                    {aiLoading ? "生成中..." : "生成并覆盖"}
                   </button>
-                ) : null}
+                  <button
+                    type="button"
+                    onClick={() => runDerive("append")}
+                    disabled={aiLoading}
+                    data-testid={`ai-generate-append-btn-${currentModule || "global"}`}
+                    className="w-full py-2 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-medium hover:bg-indigo-50 disabled:opacity-60"
+                  >
+                    {aiLoading ? "生成中..." : "生成并追加"}
+                  </button>
+                </div>
                 {aiLoading || aiProgress > 0 ? (
                   <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                     <div
@@ -428,14 +387,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
                 {aiError ? <div className="text-xs text-rose-500">{aiError}</div> : null}
                 {aiNotice ? <div className="text-xs text-emerald-600">{aiNotice}</div> : null}
               </div>
-              <div className="space-y-2">
-                {candidates.length === 0 ? (
-                  <div className="text-xs text-gray-400">暂无候选内容，请在主编辑区查看与处理。</div>
-                ) : (
-                  <div className="text-xs text-gray-500">
-                    当前待处理候选：{candidates.length} 条（请在主编辑区阅读与采纳）
-                  </div>
-                )}
+              <div className="text-[10px] text-gray-400">
+                当前动作：{targetLabel(aiAction)}。生成结果会直接写入对应模块。
               </div>
             </div>
           </div>
@@ -525,4 +478,4 @@ const RightPanel: React.FC<RightPanelProps> = ({
   );
 };
 
-export default RightPanel;
+export default RightPanel;

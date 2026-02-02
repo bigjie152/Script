@@ -127,20 +127,6 @@ export const aiRequestLogs = sqliteTable("ai_request_logs", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`)
 });
 
-export const aiCandidates = sqliteTable("ai_candidates", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id").notNull(),
-  target: text("target").notNull(),
-  title: text("title"),
-  summary: text("summary"),
-  content: text("content", { mode: "json" }),
-  meta: text("meta", { mode: "json" }),
-  refs: text("refs", { mode: "json" }),
-  riskFlags: text("risk_flags", { mode: "json" }),
-  status: text("status").notNull().default("pending"),
-  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`)
-});
 
 export const ratings = sqliteTable("ratings", {
   id: text("id").primaryKey(),

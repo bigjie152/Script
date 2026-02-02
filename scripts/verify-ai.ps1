@@ -92,7 +92,7 @@ $deriveResp = Invoke-Request -Title "ai derive story" -Method "POST" -Url "$Base
   -Body $deriveBody -ExpectedStatus @("200")
 
 $deriveJson = $deriveResp | ConvertFrom-Json
-Write-Host ("derive provider={0} model={1} candidates={2}" -f $deriveJson.provider, $deriveJson.model, ($deriveJson.candidates | Measure-Object).Count)
+Write-Host ("derive provider={0} model={1} items={2}" -f $deriveJson.provider, $deriveJson.model, ($deriveJson.items | Measure-Object).Count)
 Write-Host ""
 
 $checkBody = '{}'

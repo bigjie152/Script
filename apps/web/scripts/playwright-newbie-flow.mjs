@@ -144,21 +144,6 @@ async function waitForEnabled(locator, ms = 15000) {
   return false;
 }
 
-async function waitForPendingCandidate(page, base, projectId, target, timeoutMs = 180000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const data = await fetchJsonWithAuth(
-      page,
-      base,
-      `/api/projects/${projectId}/ai/candidates?status=pending`
-    );
-    const candidate = (data?.candidates || []).find((item) => item.target === target);
-    if (candidate) return candidate;
-    await page.waitForTimeout(1000);
-  }
-  throw new Error(`等待候选超时：${target}`);
-}
-
 async function waitForModuleContent(page, base, projectId, moduleKey, timeoutMs = 60000) {
   const start = Date.now();
   const countDoc = (doc) => (Array.isArray(doc?.content) ? doc.content.length : 0);
@@ -287,34 +272,18 @@ async function run() {
     await page.locator("text=内容已锁定").first().waitFor({ timeout: 20000 }).catch(() => {});
 
     const steps = [
-      { label: "真相", route: "truth", actionValue: "outline" },
       { label: "故事", route: "story", actionValue: "story" },
       { label: "角色", route: "roles", actionValue: "role" },
       { label: "线索", route: "clues", actionValue: "clue" },
       { label: "时间线", route: "timeline", actionValue: "timeline" },
       { label: "DM 手册", route: "dm", actionValue: "dm" }
     ];
-    const targetMap = {
-      truth: "insight",
-      story: "story",
-      roles: "role",
-      clues: "clue",
-      timeline: "timeline",
-      dm: "dm"
-    };
 
     for (const step of steps) {
       await page.goto(`${base}/projects/${projectId}/editor/${step.route}`, {
         waitUntil: "domcontentloaded"
       });
       await page.waitForTimeout(800);
-      if (["roles", "clues", "timeline", "dm"].includes(step.route)) {
-        const createBtn = page.getByRole("button", { name: /创建新|新建/ }).first();
-        if (await createBtn.count()) {
-          await createBtn.click();
-          await page.waitForTimeout(800);
-        }
-      }
       const selected = await selectAiAction(page, step.route, step.actionValue);
       if (!selected) {
         throw new Error(`未找到 AI 动作选择框：${step.label}`);
@@ -324,52 +293,19 @@ async function run() {
         await textarea.fill(intentBase);
       }
       await clickFirst(page, [
-        `[data-testid="ai-generate-btn-${step.route}"]`,
-        'button:has-text("生成候选")'
+        `[data-testid="ai-generate-replace-btn-${step.route}"]`,
+        'button:has-text("生成并覆盖")'
       ]);
-      await page.locator("text=AI 候选区").scrollIntoViewIfNeeded();
       await throwIfAiError(page);
-      const target = targetMap[step.route] || step.route;
-      const candidate = await waitForPendingCandidate(page, base, projectId, target);
-      const panel = page.getByTestId(`ai-candidate-panel-${step.route}`);
-      if (await panel.count()) {
-        await panel.scrollIntoViewIfNeeded();
-      }
-      let acceptBtn = page.locator(`[data-testid="ai-accept-${candidate.id}"]`);
-      if (!(await acceptBtn.count())) {
-        await page.click('button:has-text("刷新")').catch(() => {});
-        await page.waitForTimeout(1200);
-        acceptBtn = page.locator(`[data-testid="ai-accept-${candidate.id}"]`);
-      }
-      if (!(await acceptBtn.count())) {
-        throw new Error(`未找到可采纳的候选内容：${step.label}`);
-      }
-      await acceptBtn.first().scrollIntoViewIfNeeded();
-      await acceptBtn.first().click();
-      await page.waitForTimeout(1500);
       const hasContent = await waitForModuleContent(
         page,
         base,
         projectId,
-        step.route === "truth" ? "truth" : step.route,
+        step.route,
         45000
       );
       if (!hasContent) {
-        await page.click('button:has-text("刷新")').catch(() => {});
-        await page.waitForTimeout(1200);
-        if (await acceptBtn.count()) {
-          await acceptBtn.first().click().catch(() => {});
-        }
-        const retry = await waitForModuleContent(
-          page,
-          base,
-          projectId,
-          step.route === "truth" ? "truth" : step.route,
-          45000
-        );
-        if (!retry) {
-          throw new Error(`采纳后内容仍为空：${step.label}`);
-        }
+        throw new Error(`生成后内容仍为空：${step.label}`);
       }
       await page.waitForTimeout(1200);
     }

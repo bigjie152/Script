@@ -16,7 +16,7 @@ import {
   ensureEntry,
   toEditorDocument
 } from "../editors/adapters/moduleCollection";
-import { updateDocumentText } from "../editors/adapters/plainTextAdapter";
+import { normalizeContent, updateDocumentText } from "../editors/adapters/plainTextAdapter";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
@@ -251,6 +251,73 @@ export function useModuleCollection(
     []
   );
 
+  const applyEntries = useCallback(
+    (items: Array<{ title: string; content: Record<string, unknown> }>, mode: "append" | "replace") => {
+      if (!items.length) return;
+      const now = new Date().toISOString();
+      const normalizeName = (value: string) => value.trim().toLowerCase();
+      const mergeDoc = (base: Record<string, unknown>, incoming: Record<string, unknown>) => {
+        const baseDoc = normalizeContent(base);
+        const incomingDoc = normalizeContent(incoming);
+        const baseNodes = Array.isArray((baseDoc as any).content) ? (baseDoc as any).content : [];
+        const incomingNodes = Array.isArray((incomingDoc as any).content) ? (incomingDoc as any).content : [];
+        return {
+          type: "doc",
+          content: [...baseNodes, ...incomingNodes]
+        } as Record<string, unknown>;
+      };
+
+      const prev = collectionRef.current;
+      const nextEntries = [...prev.entries];
+      const indexByName = new Map(
+        nextEntries.map((entry, index) => [normalizeName(entry.name), index])
+      );
+      for (const item of items) {
+        const title = item.title?.trim();
+        if (!title) continue;
+        const key = normalizeName(title);
+        const matchIndex = indexByName.get(key);
+        const incoming = normalizeContent(item.content);
+        if (matchIndex !== undefined) {
+          const existing = nextEntries[matchIndex];
+          const nextContent = mode === "append" ? mergeDoc(existing.content, incoming) : incoming;
+          nextEntries[matchIndex] = {
+            ...existing,
+            content: nextContent,
+            updatedAt: now
+          };
+        } else {
+          const id = crypto.randomUUID();
+          nextEntries.push({
+            id,
+            name: title,
+            content: incoming,
+            meta: {},
+            data: {},
+            placeholderId: id,
+            updatedAt: now
+          });
+          indexByName.set(key, nextEntries.length - 1);
+        }
+      }
+      const next = {
+        ...prev,
+        entries: nextEntries
+      };
+      collectionRef.current = next;
+      setCollection(next);
+      const active = getActiveEntry(next);
+      if (active) {
+        setDocument(toEditorDocument(active, { projectId, module: moduleKey }));
+      }
+      if (saveState === "error") {
+        setSaveState("idle");
+        setSaveError(null);
+      }
+    },
+    [projectId, moduleKey, saveState]
+  );
+
   const hasUnsaved = useMemo(() => {
     const snapshot = JSON.stringify(collection);
     return snapshot !== baselineSnapshot;
@@ -307,6 +374,7 @@ export function useModuleCollection(
     setActiveEntry,
     updateMeta,
     updateData,
+    applyEntries,
     refresh
   };
 }

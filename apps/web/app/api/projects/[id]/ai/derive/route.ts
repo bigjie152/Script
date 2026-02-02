@@ -1,4 +1,4 @@
-﻿import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
 import { deriveCandidates } from "@/lib/ai";
@@ -50,6 +50,17 @@ function normalizeDoc(input: unknown, fallback: string) {
   };
 }
 
+function fallbackItem(raw: string, actionType: ActionType) {
+  const summary = raw.slice(0, 200);
+  return {
+    title: `${actionType}-ai-output`,
+    summary,
+    content: raw,
+    refs: null,
+    riskFlags: []
+  };
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -93,7 +104,7 @@ export async function POST(
       .where(eq(schema.projects.id, projectId));
   }
 
-  const [snapshot] = await db
+  const snapshotRows = await db
     .select()
     .from(schema.truthSnapshots)
     .where(
@@ -106,6 +117,28 @@ export async function POST(
     )
     .orderBy(desc(schema.truthSnapshots.createdAt))
     .limit(1);
+
+  let snapshot = snapshotRows[0];
+  let snapshotLogId: string | null = snapshot?.id ?? null;
+
+  if (!snapshot && (actionType === "outline" || actionType === "worldcheck")) {
+    const [truth] = await db
+      .select()
+      .from(schema.truths)
+      .where(eq(schema.truths.projectId, projectId))
+      .orderBy(desc(schema.truths.createdAt))
+      .limit(1);
+    if (truth) {
+      snapshot = { id: truth.id, version: null, content: truth.content } as typeof snapshot;
+    } else {
+      snapshot = {
+        id: crypto.randomUUID(),
+        version: null,
+        content: { type: "doc", content: [] }
+      } as typeof snapshot;
+    }
+    snapshotLogId = null;
+  }
 
   if (!snapshot) {
     return jsonError(409, "未找到 Truth 快照，请先锁定 Truth", undefined, requestId);
@@ -122,35 +155,34 @@ export async function POST(
   });
 
   const target = ACTION_TARGET[actionType];
-  const now = new Date().toISOString();
-  const candidates = result.items.map((item) => ({
-    id: crypto.randomUUID(),
-    projectId,
-    target,
-    title: item.title,
-    summary: item.summary ?? null,
-    content: normalizeDoc(item.content, item.summary || item.title),
-    meta: item.meta ?? { actionType },
-    refs: item.refs ?? null,
-    riskFlags: item.riskFlags ?? [],
-    status: "pending",
-    createdAt: now,
-    updatedAt: now
-  }));
+  const items = result.items.length
+    ? result.items
+    : result.raw && result.raw.trim()
+      ? [fallbackItem(result.raw, actionType)]
+      : [];
 
-  if (candidates.length > 0) {
-    await db.insert(schema.aiCandidates).values(candidates);
+  if (!items.length) {
+    return jsonError(422, "AI 返回为空，请稍后重试", undefined, requestId);
   }
 
   await db.insert(schema.aiRequestLogs).values({
     id: crypto.randomUUID(),
     projectId,
-    truthSnapshotId: snapshot.id,
+    truthSnapshotId: snapshotLogId,
     actionType: `derive_${actionType}`,
     provider: result.provider,
     model: result.model,
-    meta: { prompt: ACTION_PROMPT[actionType] }
+    meta: { prompt: ACTION_PROMPT[actionType], mode: "direct" }
   });
+
+  const directItems = items.map((item) => ({
+    target,
+    title: item.title,
+    summary: item.summary ?? null,
+    content: normalizeDoc(item.content, item.summary || item.title),
+    refs: item.refs ?? null,
+    riskFlags: item.riskFlags ?? []
+  }));
 
   console.log(routeLabel, {
     route: routeLabel,
@@ -164,17 +196,8 @@ export async function POST(
       actionType,
       provider: result.provider,
       model: result.model,
-      candidates: candidates.map((candidate) => ({
-        id: candidate.id,
-        target: candidate.target,
-        title: candidate.title,
-        summary: candidate.summary,
-        content: candidate.content,
-        refs: candidate.refs,
-        riskFlags: candidate.riskFlags,
-        status: candidate.status
-      }))
+      items: directItems
     },
     { requestId }
   );
-}
+}
