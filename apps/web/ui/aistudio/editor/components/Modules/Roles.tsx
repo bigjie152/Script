@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Lock, Sparkles, Target, User, Users, BookOpenText, Pencil, Check, X } from "lucide-react";
+import AiTriggerButton from "../AiTriggerButton";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
 
@@ -22,6 +23,11 @@ interface RolesProps {
   onRenameEntry: (entryId: string, name: string) => Promise<boolean>;
   onSave?: () => void;
   readOnly?: boolean;
+  aiTriggerVisible?: boolean;
+  aiTriggerDisabledReason?: string | null;
+  onAiTrigger?: () => void;
+  aiDraftActive?: boolean;
+  aiOverlay?: React.ReactNode;
 }
 
 const Roles: React.FC<RolesProps> = ({
@@ -31,7 +37,12 @@ const Roles: React.FC<RolesProps> = ({
   onCreateEntry,
   onRenameEntry,
   onSave,
-  readOnly = false
+  readOnly = false,
+  aiTriggerVisible,
+  aiTriggerDisabledReason,
+  onAiTrigger,
+  aiDraftActive,
+  aiOverlay
 }) => {
   const {
     entries,
@@ -69,8 +80,18 @@ const Roles: React.FC<RolesProps> = ({
 
   if (!selectedEntry) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">角色概览</h2>
+      <div className="max-w-6xl mx-auto relative">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">角色概览</h2>
+          {aiTriggerVisible && onAiTrigger ? (
+            <AiTriggerButton
+              onClick={onAiTrigger}
+              disabled={Boolean(aiTriggerDisabledReason)}
+              disabledReason={aiTriggerDisabledReason}
+            />
+          ) : null}
+        </div>
+        {aiOverlay}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {entries.map((role) => (
             <div
@@ -172,6 +193,16 @@ const Roles: React.FC<RolesProps> = ({
 
   return (
     <div className="h-full flex flex-col min-w-0">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">??</h2>
+        {aiTriggerVisible && onAiTrigger ? (
+          <AiTriggerButton
+            onClick={onAiTrigger}
+            disabled={Boolean(aiTriggerDisabledReason)}
+            disabledReason={aiTriggerDisabledReason}
+          />
+        ) : null}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="flex items-center gap-2 mb-1">
@@ -256,7 +287,8 @@ const Roles: React.FC<RolesProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden">
+      <div className={`relative flex-1 flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden ${aiDraftActive ? "ring-2 ring-indigo-300 border-indigo-200" : ""}`}>
+        {aiOverlay}
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
           {editingId === selectedEntry.id && !readOnly ? (
             <input

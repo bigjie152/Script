@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Activity, Clock3, Repeat } from "lucide-react";
+import AiTriggerButton from "../AiTriggerButton";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
 
@@ -18,6 +19,11 @@ interface TimelineProps {
   onSelectEntry: (entryId: string) => void;
   onCreateEntry: () => void;
   readOnly?: boolean;
+  aiTriggerVisible?: boolean;
+  aiTriggerDisabledReason?: string | null;
+  onAiTrigger?: () => void;
+  aiDraftActive?: boolean;
+  aiOverlay?: React.ReactNode;
 }
 
 const Timeline: React.FC<TimelineProps> = ({
@@ -25,7 +31,12 @@ const Timeline: React.FC<TimelineProps> = ({
   entryId,
   onSelectEntry,
   onCreateEntry,
-  readOnly = false
+  readOnly = false,
+  aiTriggerVisible,
+  aiTriggerDisabledReason,
+  onAiTrigger,
+  aiDraftActive,
+  aiOverlay
 }) => {
   const { entries, setActiveEntry, document, setDocument, updateMeta } = collection;
 
@@ -41,8 +52,18 @@ const Timeline: React.FC<TimelineProps> = ({
 
   if (!selectedEntry) {
     return (
-      <div className="max-w-5xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">时间线</h2>
+      <div className="max-w-5xl mx-auto relative">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">时间线</h2>
+          {aiTriggerVisible && onAiTrigger ? (
+            <AiTriggerButton
+              onClick={onAiTrigger}
+              disabled={Boolean(aiTriggerDisabledReason)}
+              disabledReason={aiTriggerDisabledReason}
+            />
+          ) : null}
+        </div>
+        {aiOverlay}
         <div className="space-y-4">
           {entries.map((item) => (
             <button
@@ -88,6 +109,16 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className="h-full flex flex-col min-w-0">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">时间线</h2>
+        {aiTriggerVisible && onAiTrigger ? (
+          <AiTriggerButton
+            onClick={onAiTrigger}
+            disabled={Boolean(aiTriggerDisabledReason)}
+            disabledReason={aiTriggerDisabledReason}
+          />
+        ) : null}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
           <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
@@ -157,7 +188,8 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 rounded-xl border border-slate-100 bg-white overflow-hidden">
+      <div className={`relative flex-1 rounded-xl border border-slate-100 bg-white overflow-hidden ${aiDraftActive ? "ring-2 ring-indigo-300 border-indigo-200" : ""}`}>
+        {aiOverlay}
         <DocumentEditor value={document} onChange={setDocument} readonly={readOnly} />
       </div>
     </div>

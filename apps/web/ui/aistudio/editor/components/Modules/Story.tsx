@@ -1,4 +1,5 @@
 ﻿import { BookOpenText } from "lucide-react";
+import AiTriggerButton from "../AiTriggerButton";
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { EditorDocument } from "@/types/editorDocument";
 import type { MentionItem } from "@/editors/tiptap/mentionSuggestion";
@@ -10,6 +11,11 @@ interface StoryProps {
   mentionItems?: MentionItem[];
   onMentionClick?: (item: MentionItem) => void;
   onOpenTruth?: () => void;
+  aiTriggerVisible?: boolean;
+  aiTriggerDisabledReason?: string | null;
+  onAiTrigger?: () => void;
+  aiDraftActive?: boolean;
+  aiOverlay?: React.ReactNode;
 }
 
 const Story: React.FC<StoryProps> = ({
@@ -18,7 +24,12 @@ const Story: React.FC<StoryProps> = ({
   readOnly = false,
   mentionItems = [],
   onMentionClick,
-  onOpenTruth
+  onOpenTruth,
+  aiTriggerVisible,
+  aiTriggerDisabledReason,
+  onAiTrigger,
+  aiDraftActive,
+  aiOverlay
 }) => {
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col gap-5 p-1">
@@ -33,6 +44,13 @@ const Story: React.FC<StoryProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {aiTriggerVisible && onAiTrigger ? (
+            <AiTriggerButton
+              onClick={onAiTrigger}
+              disabled={Boolean(aiTriggerDisabledReason)}
+              disabledReason={aiTriggerDisabledReason}
+            />
+          ) : null}
           {onOpenTruth ? (
             <button
               type="button"
@@ -51,7 +69,8 @@ const Story: React.FC<StoryProps> = ({
       </section>
 
       <section className="flex-1 min-h-0">
-        <div className="flex-1 rounded-xl border border-slate-100 bg-white overflow-hidden">
+        <div className={`relative flex-1 rounded-xl border border-slate-100 bg-white overflow-hidden ${aiDraftActive ? "ring-2 ring-indigo-300 border-indigo-200" : ""}`}>
+          {aiOverlay}
           <DocumentEditor
             value={document}
             onChange={setDocument}

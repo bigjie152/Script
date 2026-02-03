@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Sidebar, { NavStructure } from "./components/Sidebar";
 import Header from "./components/Header";
 import RightPanel from "./components/RightPanel";
+import AiDraftOverlay, { AiDraftMode } from "./components/AiDraftOverlay";
 import Overview from "./components/Modules/Overview";
 import Truth from "./components/Modules/Truth";
 import Story from "./components/Modules/Story";
@@ -13,7 +14,7 @@ import Clues from "./components/Modules/Clues";
 import Timeline from "./components/Modules/Timeline";
 import Manual from "./components/Modules/Manual";
 import { resolveModuleKey, MODULE_CONFIG_MAP } from "@/modules/modules.config";
-import { EditorModuleKey } from "@/types/editorDocument";
+import { EditorModuleKey, EditorDocument } from "@/types/editorDocument";
 import { useTruthDocument } from "@/hooks/useTruthDocument";
 import { useModuleDocument } from "@/hooks/useModuleDocument";
 import { useModuleCollection } from "@/hooks/useModuleCollection";
@@ -21,12 +22,50 @@ import { useProjectMeta } from "@/hooks/useProjectMeta";
 import { MentionItem } from "@/editors/tiptap/mentionSuggestion";
 import { normalizeContent, updateDocumentContent } from "@/editors/adapters/plainTextAdapter";
 import { getStructureStatus, StructureStatusResponse } from "@/services/projectApi";
+import { deriveDirectContent } from "@/services/aiApi";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
 type RouteParams = {
   projectId?: string;
   module?: string;
+};
+
+type AiDraftBackup =
+  | {
+      kind: "document";
+      module: EditorModuleKey;
+      document: EditorDocument;
+    }
+  | {
+      kind: "collection";
+      module: EditorModuleKey;
+      snapshot: {
+        kind: "collection";
+        entries: Array<Record<string, unknown>>;
+        activeId?: string | null;
+      };
+    };
+
+const AI_ACTION_BY_MODULE: Record<EditorModuleKey, string | null> = {
+  overview: null,
+  truth: "outline",
+  story: "story",
+  roles: "role",
+  clues: "clue",
+  timeline: "timeline",
+  dm: "dm"
+};
+
+const TARGET_MODULE_MAP: Record<string, EditorModuleKey> = {
+  insight: "truth",
+  outline: "truth",
+  worldcheck: "truth",
+  story: "story",
+  role: "roles",
+  clue: "clues",
+  timeline: "timeline",
+  dm: "dm"
 };
 
 const EditorApp: React.FC = () => {
@@ -58,6 +97,20 @@ const EditorApp: React.FC = () => {
   const [structureStatus, setStructureStatus] = useState<StructureStatusResponse | null>(null);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [structureVersion, setStructureVersion] = useState(0);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLastPrompt, setAiLastPrompt] = useState("");
+  const [aiMode, setAiMode] = useState<AiDraftMode>("append");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiDraftActive, setAiDraftActive] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [aiTarget, setAiTarget] = useState<{
+    module: EditorModuleKey;
+    entryId?: string | null;
+    actionType: string;
+  } | null>(null);
+  const [aiBackup, setAiBackup] = useState<AiDraftBackup | null>(null);
 
   const mentionItems = useMemo<MentionItem[]>(
     () => [
@@ -90,6 +143,35 @@ const EditorApp: React.FC = () => {
     [roles.entries, clues.entries, timeline.entries, manual.entries]
   );
 
+  const currentEntryId = useMemo(() => {
+    if (moduleKey === "roles") return entryId ?? roles.activeEntryId ?? null;
+    if (moduleKey === "clues") return entryId ?? clues.activeEntryId ?? null;
+    if (moduleKey === "timeline") return entryId ?? timeline.activeEntryId ?? null;
+    if (moduleKey === "dm") return entryId ?? manual.activeEntryId ?? null;
+    return null;
+  }, [
+    moduleKey,
+    entryId,
+    roles.activeEntryId,
+    clues.activeEntryId,
+    timeline.activeEntryId,
+    manual.activeEntryId
+  ]);
+
+  const currentEntry = useMemo(() => {
+    if (moduleKey === "roles") return roles.activeEntry ?? null;
+    if (moduleKey === "clues") return clues.activeEntry ?? null;
+    if (moduleKey === "timeline") return timeline.activeEntry ?? null;
+    if (moduleKey === "dm") return manual.activeEntry ?? null;
+    return null;
+  }, [
+    moduleKey,
+    roles.activeEntry,
+    clues.activeEntry,
+    timeline.activeEntry,
+    manual.activeEntry
+  ]);
+
   useEffect(() => {
     if (!projectId || params.module) return;
     router.replace(`/projects/${projectId}/editor/overview`);
@@ -114,15 +196,15 @@ const EditorApp: React.FC = () => {
     const raw = truthState.project?.status;
     if (raw) {
       const normalized = raw.toUpperCase();
-      if (normalized === "TRUTH_LOCKED") return "";
-      if (normalized === "PUBLISHED") return "ѷ";
-      if (normalized === "ARCHIVED") return "ѹ鵵";
-      return "ݸ";
+      if (normalized === "TRUTH_LOCKED") return "真相已锁定";
+      if (normalized === "PUBLISHED") return "已发布";
+      if (normalized === "ARCHIVED") return "已归档";
+      return "草稿阶段";
     }
     const status = projectMeta.form.status;
-    if (status === "In Progress") return "";
-    if (status === "Completed") return "";
-    return "ݸ";
+    if (status === "In Progress") return "进行中";
+    if (status === "Completed") return "已完成";
+    return "草稿阶段";
   }, [projectMeta.form.status, truthState.project?.status]);
 
   const isReadOnly =
@@ -130,13 +212,13 @@ const EditorApp: React.FC = () => {
     truthState.project?.status === "ARCHIVED";
   const readOnlyReason =
     truthState.project?.status === "PUBLISHED"
-      ? "ĿѷǰΪֻ"
+      ? "项目已发布"
       : truthState.project?.status === "ARCHIVED"
-        ? "Ŀѹ鵵ǰΪֻ"
+        ? "项目已归档"
         : "";
 
   const truthLocked = truthState.truth?.status === "LOCKED";
-  const truthStatusLabel = truthLocked ? "" : "ݸ";
+  const truthStatusLabel = truthLocked ? "已锁定" : "草稿中";
 
   const headerModuleLabel = MODULE_CONFIG_MAP[moduleKey]?.label ?? "";
 
@@ -174,6 +256,12 @@ const EditorApp: React.FC = () => {
   }, [combinedSaveState]);
 
   useEffect(() => {
+    if (!aiNotice) return;
+    const timer = window.setTimeout(() => setAiNotice(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [aiNotice]);
+
+  useEffect(() => {
     if (!projectId) return;
     let alive = true;
     async function run() {
@@ -193,8 +281,334 @@ const EditorApp: React.FC = () => {
     };
   }, [projectId, structureVersion]);
 
+  const aiActionType = AI_ACTION_BY_MODULE[moduleKey];
+  const aiUiActive = aiTarget?.module === moduleKey;
+
+  const aiDraftingHere = aiDraftActive && aiUiActive;
+
+  const aiTriggerDisabledReason = useMemo(() => {
+    if (!aiActionType) return "当前模块暂不支持 AI 生成";
+    if (isReadOnly) return "项目处于只读状态";
+    if (aiGenerating) return "AI 正在生成中";
+    if (aiDraftActive) return "请先处理当前 AI 草稿";
+    if (moduleKey === "truth" && truthLocked) return "Truth 已锁定，无法生成";
+    if (moduleKey !== "truth" && !truthLocked) return "请先锁定 Truth";
+    return null;
+  }, [aiActionType, isReadOnly, aiGenerating, aiDraftActive, moduleKey, truthLocked]);
+
+  const aiTriggerVisible =
+    Boolean(aiActionType) && !(aiUiActive && (aiPromptOpen || aiDraftActive || aiGenerating));
+
+  const buildAiContext = useCallback(() => {
+    const summarize = (entries: Array<Record<string, unknown>>) =>
+      entries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        meta: entry.meta ?? null,
+        placeholderId: (entry as Record<string, unknown>).placeholderId ?? entry.id
+      }));
+
+    const currentDoc =
+      moduleKey === "truth"
+        ? truthState.document.content
+        : moduleKey === "story"
+          ? storyDoc.document.content
+          : moduleKey === "overview"
+            ? overviewDoc.document.content
+            : currentEntry?.content ?? { type: "doc", content: [] };
+
+    return {
+      current: {
+        module: moduleKey,
+        entryId: currentEntryId,
+        meta: currentEntry?.meta ?? null,
+        content: currentDoc
+      },
+      truth: truthState.document.content,
+      story: storyDoc.document.content,
+      overview: overviewDoc.document.content,
+      roles: summarize(roles.entries as Array<Record<string, unknown>>),
+      clues: summarize(clues.entries as Array<Record<string, unknown>>),
+      timeline: summarize(timeline.entries as Array<Record<string, unknown>>),
+      dm: summarize(manual.entries as Array<Record<string, unknown>>),
+      structure: structureStatus
+    };
+  }, [
+    moduleKey,
+    currentEntryId,
+    currentEntry,
+    truthState.document.content,
+    storyDoc.document.content,
+    overviewDoc.document.content,
+    roles.entries,
+    clues.entries,
+    timeline.entries,
+    manual.entries,
+    structureStatus
+  ]);
+
+  const restoreFromBackup = useCallback(
+    (backup: AiDraftBackup | null) => {
+      if (!backup) return;
+      if (backup.kind === "document") {
+        if (backup.module === "truth") {
+          truthState.setDocument(backup.document);
+        } else if (backup.module === "story") {
+          storyDoc.setDocument(backup.document);
+        } else if (backup.module === "overview") {
+          overviewDoc.setDocument(backup.document);
+        }
+      } else {
+        if (backup.module === "roles") roles.replaceCollection(backup.snapshot as any);
+        if (backup.module === "clues") clues.replaceCollection(backup.snapshot as any);
+        if (backup.module === "timeline") timeline.replaceCollection(backup.snapshot as any);
+        if (backup.module === "dm") manual.replaceCollection(backup.snapshot as any);
+      }
+    },
+    [truthState, storyDoc, overviewDoc, roles, clues, timeline, manual]
+  );
+
+  const enterAiDraft = useCallback(
+    (
+      items: Array<{ target: string; title: string; content?: Record<string, unknown> | null }>,
+      mode: AiDraftMode
+    ) => {
+      if (!items.length) return null;
+      const resolvedTarget = TARGET_MODULE_MAP[items[0].target] || moduleKey;
+
+      if (resolvedTarget === "truth") {
+        setAiBackup({
+          kind: "document",
+          module: "truth",
+          document: JSON.parse(JSON.stringify(truthState.document)) as EditorDocument
+        });
+        const incomingDocs = items.map((item) => normalizeContent(item.content ?? {}));
+        const baseDoc = normalizeContent(truthState.document.content);
+        const merged =
+          mode === "replace"
+            ? {
+                type: "doc",
+                content: incomingDocs.flatMap((doc) => (doc as any).content || [])
+              }
+            : {
+                type: "doc",
+                content: [
+                  ...((baseDoc as any).content || []),
+                  ...incomingDocs.flatMap((doc) => (doc as any).content || [])
+                ]
+              };
+        truthState.setDocument(updateDocumentContent(truthState.document, merged));
+      }
+
+      if (resolvedTarget === "story") {
+        setAiBackup({
+          kind: "document",
+          module: "story",
+          document: JSON.parse(JSON.stringify(storyDoc.document)) as EditorDocument
+        });
+        const incomingDocs = items.map((item) => normalizeContent(item.content ?? {}));
+        const baseDoc = normalizeContent(storyDoc.document.content);
+        const merged =
+          mode === "replace"
+            ? {
+                type: "doc",
+                content: incomingDocs.flatMap((doc) => (doc as any).content || [])
+              }
+            : {
+                type: "doc",
+                content: [
+                  ...((baseDoc as any).content || []),
+                  ...incomingDocs.flatMap((doc) => (doc as any).content || [])
+                ]
+              };
+        storyDoc.setDocument(updateDocumentContent(storyDoc.document, merged));
+      }
+
+      if (resolvedTarget === "roles") {
+        setAiBackup({
+          kind: "collection",
+          module: "roles",
+          snapshot: roles.getSnapshot() as any
+        });
+        roles.applyEntries(
+          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
+          mode
+        );
+      }
+
+      if (resolvedTarget === "clues") {
+        setAiBackup({
+          kind: "collection",
+          module: "clues",
+          snapshot: clues.getSnapshot() as any
+        });
+        clues.applyEntries(
+          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
+          mode
+        );
+      }
+
+      if (resolvedTarget === "timeline") {
+        setAiBackup({
+          kind: "collection",
+          module: "timeline",
+          snapshot: timeline.getSnapshot() as any
+        });
+        timeline.applyEntries(
+          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
+          mode
+        );
+      }
+
+      if (resolvedTarget === "dm") {
+        setAiBackup({
+          kind: "collection",
+          module: "dm",
+          snapshot: manual.getSnapshot() as any
+        });
+        manual.applyEntries(
+          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
+          mode
+        );
+      }
+
+      const entryForTarget = resolvedTarget === moduleKey ? currentEntryId : null;
+      setAiTarget({
+        module: resolvedTarget,
+        entryId: entryForTarget,
+        actionType: aiActionType || "outline"
+      });
+      setAiDraftActive(true);
+      setAiPromptOpen(false);
+      setAiNotice(null);
+
+      return { targetModule: resolvedTarget, itemCount: items.length };
+    },
+    [
+      TARGET_MODULE_MAP,
+      moduleKey,
+      truthState,
+      storyDoc,
+      roles,
+      clues,
+      timeline,
+      manual,
+      currentEntryId,
+      aiActionType
+    ]
+  );
+
+  const handleAiTrigger = useCallback(() => {
+    if (!aiActionType || aiTriggerDisabledReason) {
+      if (aiTriggerDisabledReason) {
+        setAiError(aiTriggerDisabledReason);
+      }
+      return;
+    }
+    if (aiDraftActive) {
+      setAiError("请先处理当前 AI 草稿");
+      return;
+    }
+    setAiTarget({ module: moduleKey, entryId: currentEntryId, actionType: aiActionType });
+    setAiPromptOpen(true);
+    setAiError(null);
+    setAiNotice(null);
+  }, [aiActionType, aiTriggerDisabledReason, aiDraftActive, moduleKey, currentEntryId]);
+
+  const handleAiCancelPrompt = useCallback(() => {
+    setAiPromptOpen(false);
+    setAiError(null);
+  }, []);
+
+  const handleAiSubmit = useCallback(async () => {
+    if (!projectId || !aiActionType) return;
+    const trimmedPrompt = aiPrompt.trim();
+    if (!trimmedPrompt) {
+      setAiError("请输入提示词");
+      return;
+    }
+    if (aiTriggerDisabledReason) {
+      setAiError(aiTriggerDisabledReason);
+      return;
+    }
+    setAiGenerating(true);
+    setAiError(null);
+    setAiLastPrompt(trimmedPrompt);
+    try {
+      const result = await deriveDirectContent(projectId, {
+        actionType: aiActionType,
+        intent: trimmedPrompt,
+        truthSnapshotId: truthState.latestSnapshotId ?? undefined,
+        context: buildAiContext()
+      });
+      enterAiDraft(result.items || [], aiMode);
+      setAiPrompt("");
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [
+    projectId,
+    aiActionType,
+    aiPrompt,
+    aiTriggerDisabledReason,
+    truthState.latestSnapshotId,
+    buildAiContext,
+    enterAiDraft,
+    aiMode
+  ]);
+
+  const handleAiAccept = useCallback(() => {
+    setAiDraftActive(false);
+    setAiBackup(null);
+    setAiTarget(null);
+    setAiNotice("AI 草稿已保留，请手动保存。");
+  }, []);
+
+  const handleAiDiscard = useCallback(() => {
+    restoreFromBackup(aiBackup);
+    setAiDraftActive(false);
+    setAiBackup(null);
+    setAiTarget(null);
+    setAiPromptOpen(false);
+    setAiError(null);
+  }, [restoreFromBackup, aiBackup]);
+
+  const handleAiRetry = useCallback(() => {
+    restoreFromBackup(aiBackup);
+    setAiDraftActive(false);
+    setAiBackup(null);
+    setAiError(null);
+    setAiPrompt(aiLastPrompt);
+    setAiPromptOpen(true);
+  }, [restoreFromBackup, aiBackup, aiLastPrompt]);
+
+  const aiOverlayNode = aiUiActive ? (
+    <AiDraftOverlay
+      promptOpen={aiPromptOpen}
+      prompt={aiPrompt}
+      mode={aiMode}
+      isGenerating={aiGenerating}
+      draftActive={aiDraftingHere}
+      error={aiError}
+      notice={aiNotice}
+      onPromptChange={setAiPrompt}
+      onPromptSubmit={handleAiSubmit}
+      onPromptCancel={handleAiCancelPrompt}
+      onModeChange={setAiMode}
+      onAccept={handleAiAccept}
+      onRetry={handleAiRetry}
+      onDiscard={handleAiDiscard}
+    />
+  ) : null;
+
   const handleSave = useCallback(async () => {
     if (isReadOnly) return false;
+    if (aiDraftActive && aiUiActive) {
+      setAiNotice("请先采纳或放弃 AI 草稿，再保存。");
+      return false;
+    }
     if (moduleKey === "overview") {
       const results = await Promise.all([
         overviewDoc.hasUnsaved ? overviewDoc.save() : Promise.resolve(true),
@@ -211,6 +625,8 @@ const EditorApp: React.FC = () => {
     return false;
   }, [
     isReadOnly,
+    aiDraftActive,
+    aiUiActive,
     moduleKey,
     overviewDoc,
     projectMeta,
@@ -246,17 +662,42 @@ const EditorApp: React.FC = () => {
   const navigate = useCallback(
     async (module: EditorModuleKey, entry?: string) => {
       if (!projectId) return;
+      if (aiGenerating) {
+        window.alert("AI 正在生成，请稍后再切换模块。");
+        return;
+      }
+      if (aiPromptOpen) {
+        const ok = window.confirm("AI 指令尚未提交，确定要退出并关闭输入吗？");
+        if (!ok) return;
+        setAiPromptOpen(false);
+        setAiError(null);
+      }
+      if (aiDraftActive) {
+        const ok = window.confirm("AI 草稿尚未采纳，是否放弃并继续切换？");
+        if (!ok) return;
+        handleAiDiscard();
+      }
       if (hasUnsaved && !isReadOnly) {
         const ok = await handleSave();
         if (!ok) {
-          const force = window.confirm("????????????");
+          const force = window.confirm("保存失败，仍要切换模块吗？");
           if (!force) return;
         }
       }
       const base = `/projects/${projectId}/editor/${module}`;
       router.push(entry ? `${base}?entry=${entry}` : base);
     },
-    [projectId, hasUnsaved, isReadOnly, handleSave, router]
+    [
+      projectId,
+      aiGenerating,
+      aiPromptOpen,
+      aiDraftActive,
+      handleAiDiscard,
+      hasUnsaved,
+      isReadOnly,
+      handleSave,
+      router
+    ]
   );
 
 
@@ -275,94 +716,72 @@ const EditorApp: React.FC = () => {
       mode: "append" | "replace";
     }) => {
       if (isReadOnly) {
-        return { ok: false, message: readOnlyReason || "?????" };
+        return { ok: false, message: readOnlyReason || "项目处于只读状态" };
       }
-
+      if (aiDraftActive) {
+        return { ok: false, message: "请先处理当前 AI 草稿" };
+      }
       if (!payload.items.length) {
-        return { ok: false, message: "AI ????" };
+        return { ok: false, message: "AI 返回为空" };
       }
 
-      const incomingFirst = normalizeContent(payload.items[0]?.content ?? {});
-      const mergeDoc = (base: Record<string, unknown>, incoming: Record<string, unknown>) => {
-        const baseDoc = normalizeContent(base);
-        const incomingDoc = normalizeContent(incoming);
-        const baseNodes = Array.isArray((baseDoc as any).content) ? (baseDoc as any).content : [];
-        const incomingNodes = Array.isArray((incomingDoc as any).content) ? (incomingDoc as any).content : [];
-        return {
-          type: "doc",
-          content: [...baseNodes, ...incomingNodes]
-        } as Record<string, unknown>;
+      const targetModule = TARGET_MODULE_MAP[payload.target] || moduleKey;
+      if (targetModule === "truth" && truthLocked) {
+        return { ok: false, message: "真相已锁定，无法生成" };
+      }
+      if (targetModule !== "truth" && !truthLocked) {
+        return { ok: false, message: "请先锁定真相" };
+      }
+
+      const items = payload.items.map((item) => ({
+        target: payload.target,
+        title: item.title,
+        content: item.content ?? {}
+      }));
+
+      const requiresTitle = ["roles", "clues", "timeline", "dm"].includes(targetModule);
+      const filteredItems = requiresTitle
+        ? items.filter((item) => item.title && item.title.trim().length > 0)
+        : items;
+
+      if (!filteredItems.length) {
+        return { ok: false, message: "AI 返回为空" };
+      }
+
+      const result = enterAiDraft(filteredItems, payload.mode);
+      if (!result) {
+        return { ok: false, message: "AI 返回为空" };
+      }
+
+      const moduleLabelMap: Record<EditorModuleKey, string> = {
+        overview: "概览",
+        truth: "真相",
+        story: "故事",
+        roles: "角色",
+        clues: "线索",
+        timeline: "时间线",
+        dm: "DM 手册"
       };
-      const nextContent = (base: Record<string, unknown>) =>
-        payload.mode === "replace" ? incomingFirst : mergeDoc(base, incomingFirst);
+      const targetLabel = moduleLabelMap[result.targetModule] || "对应模块";
+      const crossModuleNotice =
+        result.targetModule !== moduleKey
+          ? `已写入 ${targetLabel} 模块草稿，请切换后确认。`
+          : "已写入当前模块草稿，请在下方确认。";
+      const countHint = result.itemCount > 1 ? `共生成 ${result.itemCount} 条。` : "";
 
-      if (payload.target === "insight") {
-        if (truthLocked) {
-          return { ok: false, message: "Truth ????????" };
-        }
-        truthState.setDocument(
-          updateDocumentContent(truthState.document, nextContent(truthState.document.content))
-        );
-        const ok = await truthState.save();
-        return ok ? { ok: true } : { ok: false, message: truthState.saveError || "????" };
-      }
-
-      if (payload.target === "story") {
-        storyDoc.setDocument(
-          updateDocumentContent(storyDoc.document, nextContent(storyDoc.document.content))
-        );
-        const ok = await storyDoc.save();
-        return ok ? { ok: true } : { ok: false, message: storyDoc.saveError || "????" };
-      }
-
-      const items = payload.items
-        .map((item) => ({ title: item.title, content: item.content ?? {} }))
-        .filter((item) => item.title && item.title.trim().length > 0);
-
-      if (!items.length) {
-        return { ok: false, message: "AI ????" };
-      }
-
-      if (payload.target === "role") {
-        roles.applyEntries(items, payload.mode);
-        const ok = await roles.save();
-        return ok ? { ok: true } : { ok: false, message: roles.saveError || "????" };
-      }
-
-      if (payload.target === "clue") {
-        clues.applyEntries(items, payload.mode);
-        const ok = await clues.save();
-        return ok ? { ok: true } : { ok: false, message: clues.saveError || "????" };
-      }
-
-      if (payload.target === "timeline") {
-        timeline.applyEntries(items, payload.mode);
-        const ok = await timeline.save();
-        return ok ? { ok: true } : { ok: false, message: timeline.saveError || "????" };
-      }
-
-      if (payload.target === "dm") {
-        manual.applyEntries(items, payload.mode);
-        const ok = await manual.save();
-        return ok ? { ok: true } : { ok: false, message: manual.saveError || "????" };
-      }
-
-      return { ok: false, message: "????????" };
+      return { ok: true, message: `${crossModuleNotice}${countHint}`.trim() };
     },
     [
       isReadOnly,
       readOnlyReason,
+      aiDraftActive,
+      moduleKey,
       truthLocked,
-      truthState,
-      storyDoc,
-      roles,
-      clues,
-      timeline,
-      manual
+      enterAiDraft
     ]
   );
 
-  const createEntry = useCallback(
+const createEntry = useCallback(
     (module: EditorModuleKey) => {
       if (!projectId) return null;
       let nextId: string | null = null;
@@ -497,6 +916,11 @@ const EditorApp: React.FC = () => {
               mentionItems={mentionItems}
               onMentionClick={handleMentionClick}
               readOnly={isReadOnly}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
           {moduleKey === "story" && (
@@ -507,6 +931,11 @@ const EditorApp: React.FC = () => {
               mentionItems={mentionItems}
               onMentionClick={handleMentionClick}
               onOpenTruth={() => navigate("truth")}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
           {moduleKey === "roles" && (
@@ -517,6 +946,11 @@ const EditorApp: React.FC = () => {
               onCreateEntry={() => createEntry("roles")}
               onRenameEntry={(id, name) => renameEntry("roles", id, name)}
               readOnly={isReadOnly}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
           {moduleKey === "clues" && (
@@ -526,6 +960,11 @@ const EditorApp: React.FC = () => {
               onSelectEntry={(id) => navigate("clues", id)}
               onCreateEntry={() => createEntry("clues")}
               readOnly={isReadOnly}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
           {moduleKey === "timeline" && (
@@ -535,6 +974,11 @@ const EditorApp: React.FC = () => {
               onSelectEntry={(id) => navigate("timeline", id)}
               onCreateEntry={() => createEntry("timeline")}
               readOnly={isReadOnly}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
           {moduleKey === "dm" && (
@@ -544,6 +988,11 @@ const EditorApp: React.FC = () => {
               onSelectEntry={(id) => navigate("dm", id)}
               onCreateEntry={() => createEntry("dm")}
               readOnly={isReadOnly}
+              aiTriggerVisible={aiTriggerVisible}
+              aiTriggerDisabledReason={aiTriggerDisabledReason}
+              onAiTrigger={handleAiTrigger}
+              aiDraftActive={aiDraftingHere}
+              aiOverlay={aiOverlayNode}
             />
           )}
         </main>
@@ -553,6 +1002,8 @@ const EditorApp: React.FC = () => {
         projectId={projectId}
         readOnly={isReadOnly}
         truthLocked={truthLocked}
+        truthSnapshotId={truthState.latestSnapshotId ?? null}
+        aiContext={buildAiContext()}
         onApplyAiContent={applyAiContent}
       />
     </div>

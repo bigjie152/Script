@@ -251,6 +251,22 @@ export function useModuleCollection(
     []
   );
 
+  const getSnapshot = useCallback(() => {
+    return JSON.parse(JSON.stringify(collectionRef.current)) as ModuleCollection;
+  }, []);
+
+  const replaceCollection = useCallback(
+    (next: ModuleCollection) => {
+      setCollection(next);
+      collectionRef.current = next;
+      const active = getActiveEntry(next);
+      if (active) {
+        setDocument(toEditorDocument(active, { projectId, module: moduleKey }));
+      }
+    },
+    [projectId, moduleKey]
+  );
+
   const applyEntries = useCallback(
     (items: Array<{ title: string; content: Record<string, unknown> }>, mode: "append" | "replace") => {
       if (!items.length) return;
@@ -374,6 +390,8 @@ export function useModuleCollection(
     setActiveEntry,
     updateMeta,
     updateData,
+    getSnapshot,
+    replaceCollection,
     applyEntries,
     refresh
   };

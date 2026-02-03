@@ -10,6 +10,8 @@ interface RightPanelProps {
   projectId?: string;
   readOnly?: boolean;
   truthLocked?: boolean;
+  truthSnapshotId?: string | null;
+  aiContext?: Record<string, unknown>;
   onApplyAiContent?: (payload: {
     target: string;
     items: Array<{ title: string; content?: Record<string, unknown> | null }>;
@@ -29,6 +31,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
   projectId,
   readOnly,
   truthLocked,
+  truthSnapshotId,
+  aiContext,
   onApplyAiContent
 }) => {
   const params = useParams();
@@ -160,14 +164,10 @@ const RightPanel: React.FC<RightPanelProps> = ({
       setAiError("请先锁定 Truth 后再生成派生内容");
       return;
     }
-    const writingTruth = ["outline", "worldcheck"].includes(aiAction);
+    const writingTruth = ["outline", "worldcheck", "insight"].includes(aiAction);
     if (writingTruth && truthLocked) {
       setAiError("Truth 已锁定，无法写入，请先解锁");
       return;
-    }
-    if (mode === "replace") {
-      const ok = window.confirm("将用 AI 生成内容覆盖当前编辑区，建议先保存现有内容。是否继续？");
-      if (!ok) return;
     }
 
     setAiLoading(true);
@@ -176,7 +176,9 @@ const RightPanel: React.FC<RightPanelProps> = ({
     try {
       const result = await deriveDirectContent(resolvedProjectId, {
         actionType: aiAction,
-        intent: aiIntent || undefined
+        intent: aiIntent || undefined,
+        truthSnapshotId: truthSnapshotId ?? undefined,
+        context: aiContext
       });
       if (!onApplyAiContent) {
         setAiError("未配置写入处理器");
@@ -195,34 +197,13 @@ const RightPanel: React.FC<RightPanelProps> = ({
         mode
       });
       if (!applyResult.ok) {
-        setAiError(applyResult.message || "写入失败，请稍后重试");
+        setAiError(applyResult.message || "写入草稿失败，请稍后重试");
         return;
       }
-      const targetModuleMap: Record<string, string> = {
-        insight: "truth",
-        story: "story",
-        role: "roles",
-        clue: "clues",
-        timeline: "timeline",
-        dm: "dm"
-      };
-      const moduleLabelMap: Record<string, string> = {
-        truth: "Truth",
-        story: "故事",
-        roles: "角色",
-        clues: "线索",
-        timeline: "时间线",
-        dm: "DM 手册"
-      };
-      const targetModule = targetModuleMap[result.items[0].target] || "";
-      const noticeBase = `已生成并写入（${result.provider}/${result.model}）。`;
-      const targetLabelName = moduleLabelMap[targetModule] || "对应模块";
-      const crossModuleNotice =
-        targetModule && currentModule && targetModule !== currentModule
-          ? `已写入 ${targetLabelName} 模块，请切换查看。`
-          : "已写入当前编辑区。";
-      const itemHint = result.items.length > 1 ? `共写入 ${result.items.length} 条目。` : "";
-      setAiNotice(`${noticeBase} ${crossModuleNotice} ${itemHint}`.trim());
+      const baseNotice = applyResult.message || "已生成草稿，请在对应模块确认。";
+      const countHint = result.items.length > 1 ? `共生成 ${result.items.length} 条。` : "";
+      const saveHint = "采纳后需手动保存。";
+      setAiNotice([baseNotice, countHint, saveHint].filter(Boolean).join(" "));
       setAiIntent("");
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
@@ -478,4 +459,5 @@ const RightPanel: React.FC<RightPanelProps> = ({
   );
 };
 
-export default RightPanel;
+export default RightPanel;
+

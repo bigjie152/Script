@@ -2,6 +2,7 @@
 import { DocumentEditor } from "@/editors/DocumentEditor";
 import type { MentionItem } from "@/editors/tiptap/mentionSuggestion";
 import type { EditorDocument } from "@/types/editorDocument";
+import AiTriggerButton from "../AiTriggerButton";
 
 type TruthState = {
   truth: { status: string; updatedAt?: string | null } | null;
@@ -18,6 +19,11 @@ interface TruthProps {
   mentionItems: MentionItem[];
   onMentionClick: (item: MentionItem) => void;
   readOnly?: boolean;
+  aiTriggerVisible?: boolean;
+  aiTriggerDisabledReason?: string | null;
+  onAiTrigger?: () => void;
+  aiDraftActive?: boolean;
+  aiOverlay?: React.ReactNode;
 }
 
 const Truth: React.FC<TruthProps> = ({
@@ -25,7 +31,12 @@ const Truth: React.FC<TruthProps> = ({
   latestSnapshotId,
   mentionItems,
   onMentionClick,
-  readOnly = false
+  readOnly = false,
+  aiTriggerVisible,
+  aiTriggerDisabledReason,
+  onAiTrigger,
+  aiDraftActive,
+  aiOverlay
 }) => {
   const isLocked = truthState.locked;
   const isReadOnly = readOnly || isLocked;
@@ -89,18 +100,28 @@ const Truth: React.FC<TruthProps> = ({
             <Database size={18} className="text-indigo-600" />
             真理源 (Single Source of Truth)
           </h2>
-          {isLocked && (
-            <div className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-200">
-              内容已锁定，作为派生源
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isLocked && (
+              <div className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full border border-amber-200">
+                内容已锁定，作为派生源
+              </div>
+            )}
+            {aiTriggerVisible && onAiTrigger ? (
+              <AiTriggerButton
+                onClick={onAiTrigger}
+                disabled={Boolean(aiTriggerDisabledReason)}
+                disabledReason={aiTriggerDisabledReason}
+              />
+            ) : null}
+          </div>
         </div>
 
         <div
-          className={`flex-1 rounded-xl overflow-hidden transition-all duration-300 border ${
+          className={`relative flex-1 rounded-xl overflow-hidden transition-all duration-300 border ${
             isLocked ? "border-amber-200 bg-amber-50/30" : "border-slate-100"
-          }`}
+          } ${aiDraftActive ? "ring-2 ring-indigo-300 border-indigo-200" : ""}`}
         >
+          {aiOverlay}
           <DocumentEditor
             value={truthState.document}
             onChange={truthState.setDocument}
