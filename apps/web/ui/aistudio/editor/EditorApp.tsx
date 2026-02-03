@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Sidebar, { NavStructure } from "./components/Sidebar";
 import Header from "./components/Header";
@@ -22,7 +22,7 @@ import { useProjectMeta } from "@/hooks/useProjectMeta";
 import { MentionItem } from "@/editors/tiptap/mentionSuggestion";
 import { normalizeContent, updateDocumentContent } from "@/editors/adapters/plainTextAdapter";
 import { getStructureStatus, StructureStatusResponse } from "@/services/projectApi";
-import { deriveDirectContent } from "@/services/aiApi";
+import { deriveDirectContentStream } from "@/services/aiApi";
 
 type SaveState = "idle" | "saving" | "success" | "error";
 
@@ -46,6 +46,12 @@ type AiDraftBackup =
         activeId?: string | null;
       };
     };
+
+type AiPreviewBase = {
+  module: EditorModuleKey;
+  entryId?: string | null;
+  doc: Record<string, unknown>;
+};
 
 const AI_ACTION_BY_MODULE: Record<EditorModuleKey, string | null> = {
   overview: null,
@@ -90,10 +96,10 @@ const EditorApp: React.FC = () => {
     truthState.refresh
   );
 
-  const roles = useModuleCollection(projectId, "roles", "ɫ");
-  const clues = useModuleCollection(projectId, "clues", "");
-  const timeline = useModuleCollection(projectId, "timeline", "ʱ");
-  const manual = useModuleCollection(projectId, "dm", "DM ֲ");
+  const roles = useModuleCollection(projectId, "roles", "角色");
+  const clues = useModuleCollection(projectId, "clues", "线索");
+  const timeline = useModuleCollection(projectId, "timeline", "时间点");
+  const manual = useModuleCollection(projectId, "dm", "DM 手册");
   const [structureStatus, setStructureStatus] = useState<StructureStatusResponse | null>(null);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [structureVersion, setStructureVersion] = useState(0);
@@ -102,6 +108,7 @@ const EditorApp: React.FC = () => {
   const [aiLastPrompt, setAiLastPrompt] = useState("");
   const [aiMode, setAiMode] = useState<AiDraftMode>("append");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiStreaming, setAiStreaming] = useState(false);
   const [aiDraftActive, setAiDraftActive] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
@@ -110,7 +117,14 @@ const EditorApp: React.FC = () => {
     entryId?: string | null;
     actionType: string;
   } | null>(null);
-  const [aiBackup, setAiBackup] = useState<AiDraftBackup | null>(null);
+  const aiBackupRef = useRef<AiDraftBackup | null>(null);
+  const aiPreviewBaseRef = useRef<AiPreviewBase | null>(null);
+  const aiStreamTextRef = useRef("");
+  const aiPreviewFrameRef = useRef<number | null>(null);
+
+  const updateAiBackup = useCallback((backup: AiDraftBackup | null) => {
+    aiBackupRef.current = backup;
+  }, []);
 
   const mentionItems = useMemo<MentionItem[]>(
     () => [
@@ -272,7 +286,7 @@ const EditorApp: React.FC = () => {
         setStructureError(null);
       } catch (err) {
         if (!alive) return;
-        setStructureError(err instanceof Error ? err.message : "ؽṹ״̬ʧ");
+        setStructureError(err instanceof Error ? err.message : "结构状态加载失败");
       }
     }
     run();
@@ -377,7 +391,7 @@ const EditorApp: React.FC = () => {
       const resolvedTarget = TARGET_MODULE_MAP[items[0].target] || moduleKey;
 
       if (resolvedTarget === "truth") {
-        setAiBackup({
+        updateAiBackup({
           kind: "document",
           module: "truth",
           document: JSON.parse(JSON.stringify(truthState.document)) as EditorDocument
@@ -401,7 +415,7 @@ const EditorApp: React.FC = () => {
       }
 
       if (resolvedTarget === "story") {
-        setAiBackup({
+        updateAiBackup({
           kind: "document",
           module: "story",
           document: JSON.parse(JSON.stringify(storyDoc.document)) as EditorDocument
@@ -425,7 +439,7 @@ const EditorApp: React.FC = () => {
       }
 
       if (resolvedTarget === "roles") {
-        setAiBackup({
+        updateAiBackup({
           kind: "collection",
           module: "roles",
           snapshot: roles.getSnapshot() as any
@@ -437,7 +451,7 @@ const EditorApp: React.FC = () => {
       }
 
       if (resolvedTarget === "clues") {
-        setAiBackup({
+        updateAiBackup({
           kind: "collection",
           module: "clues",
           snapshot: clues.getSnapshot() as any
@@ -449,7 +463,7 @@ const EditorApp: React.FC = () => {
       }
 
       if (resolvedTarget === "timeline") {
-        setAiBackup({
+        updateAiBackup({
           kind: "collection",
           module: "timeline",
           snapshot: timeline.getSnapshot() as any
@@ -461,7 +475,7 @@ const EditorApp: React.FC = () => {
       }
 
       if (resolvedTarget === "dm") {
-        setAiBackup({
+        updateAiBackup({
           kind: "collection",
           module: "dm",
           snapshot: manual.getSnapshot() as any
@@ -494,7 +508,8 @@ const EditorApp: React.FC = () => {
       timeline,
       manual,
       currentEntryId,
-      aiActionType
+      aiActionType,
+      updateAiBackup
     ]
   );
 
@@ -520,6 +535,187 @@ const EditorApp: React.FC = () => {
     setAiError(null);
   }, []);
 
+  const prepareAiPreviewBase = useCallback(() => {
+    const cloneDoc = (doc: Record<string, unknown>) =>
+      JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+
+    if (moduleKey === "truth") {
+      updateAiBackup({
+        kind: "document",
+        module: "truth",
+        document: JSON.parse(JSON.stringify(truthState.document)) as EditorDocument
+      });
+      aiPreviewBaseRef.current = {
+        module: "truth",
+        doc: cloneDoc(normalizeContent(truthState.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "story") {
+      updateAiBackup({
+        kind: "document",
+        module: "story",
+        document: JSON.parse(JSON.stringify(storyDoc.document)) as EditorDocument
+      });
+      aiPreviewBaseRef.current = {
+        module: "story",
+        doc: cloneDoc(normalizeContent(storyDoc.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "overview") {
+      updateAiBackup({
+        kind: "document",
+        module: "overview",
+        document: JSON.parse(JSON.stringify(overviewDoc.document)) as EditorDocument
+      });
+      aiPreviewBaseRef.current = {
+        module: "overview",
+        doc: cloneDoc(normalizeContent(overviewDoc.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "roles") {
+      updateAiBackup({
+        kind: "collection",
+        module: "roles",
+        snapshot: roles.getSnapshot() as any
+      });
+      aiPreviewBaseRef.current = {
+        module: "roles",
+        entryId: currentEntryId,
+        doc: cloneDoc(normalizeContent(roles.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "clues") {
+      updateAiBackup({
+        kind: "collection",
+        module: "clues",
+        snapshot: clues.getSnapshot() as any
+      });
+      aiPreviewBaseRef.current = {
+        module: "clues",
+        entryId: currentEntryId,
+        doc: cloneDoc(normalizeContent(clues.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "timeline") {
+      updateAiBackup({
+        kind: "collection",
+        module: "timeline",
+        snapshot: timeline.getSnapshot() as any
+      });
+      aiPreviewBaseRef.current = {
+        module: "timeline",
+        entryId: currentEntryId,
+        doc: cloneDoc(normalizeContent(timeline.document.content))
+      };
+      return;
+    }
+
+    if (moduleKey === "dm") {
+      updateAiBackup({
+        kind: "collection",
+        module: "dm",
+        snapshot: manual.getSnapshot() as any
+      });
+      aiPreviewBaseRef.current = {
+        module: "dm",
+        entryId: currentEntryId,
+        doc: cloneDoc(normalizeContent(manual.document.content))
+      };
+    }
+  }, [
+    moduleKey,
+    currentEntryId,
+    truthState.document,
+    storyDoc.document,
+    overviewDoc.document,
+    roles.document,
+    clues.document,
+    timeline.document,
+    manual.document,
+    roles,
+    clues,
+    timeline,
+    manual,
+    updateAiBackup
+  ]);
+
+  const applyStreamingPreview = useCallback(
+    (text: string) => {
+      const base = aiPreviewBaseRef.current;
+      if (!base) return;
+      const incomingDoc = normalizeContent(text);
+      const baseNodes = Array.isArray((base.doc as any).content)
+        ? (base.doc as any).content
+        : [];
+      const incomingNodes = Array.isArray((incomingDoc as any).content)
+        ? (incomingDoc as any).content
+        : [];
+      const merged =
+        aiMode === "replace"
+          ? incomingDoc
+          : {
+              type: "doc",
+              content: [...baseNodes, ...incomingNodes]
+            };
+
+      if (base.module === "truth") {
+        truthState.setDocument(updateDocumentContent(truthState.document, merged));
+        return;
+      }
+      if (base.module === "story") {
+        storyDoc.setDocument(updateDocumentContent(storyDoc.document, merged));
+        return;
+      }
+      if (base.module === "overview") {
+        overviewDoc.setDocument(updateDocumentContent(overviewDoc.document, merged));
+        return;
+      }
+      if (base.module === "roles") {
+        roles.setDocument(updateDocumentContent(roles.document, merged));
+        return;
+      }
+      if (base.module === "clues") {
+        clues.setDocument(updateDocumentContent(clues.document, merged));
+        return;
+      }
+      if (base.module === "timeline") {
+        timeline.setDocument(updateDocumentContent(timeline.document, merged));
+        return;
+      }
+      if (base.module === "dm") {
+        manual.setDocument(updateDocumentContent(manual.document, merged));
+      }
+    },
+    [
+      aiMode,
+      truthState,
+      storyDoc,
+      overviewDoc,
+      roles,
+      clues,
+      timeline,
+      manual
+    ]
+  );
+
+  const scheduleStreamingPreview = useCallback(() => {
+    if (aiPreviewFrameRef.current !== null) return;
+    aiPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      aiPreviewFrameRef.current = null;
+      applyStreamingPreview(aiStreamTextRef.current);
+    });
+  }, [applyStreamingPreview]);
+
   const handleAiSubmit = useCallback(async () => {
     if (!projectId || !aiActionType) return;
     const trimmedPrompt = aiPrompt.trim();
@@ -532,21 +728,54 @@ const EditorApp: React.FC = () => {
       return;
     }
     setAiGenerating(true);
+    setAiStreaming(false);
     setAiError(null);
     setAiLastPrompt(trimmedPrompt);
+    aiStreamTextRef.current = "";
+    aiPreviewBaseRef.current = null;
+    if (aiPreviewFrameRef.current !== null) {
+      cancelAnimationFrame(aiPreviewFrameRef.current);
+      aiPreviewFrameRef.current = null;
+    }
+    prepareAiPreviewBase();
+
     try {
-      const result = await deriveDirectContent(projectId, {
-        actionType: aiActionType,
-        intent: trimmedPrompt,
-        truthSnapshotId: truthState.latestSnapshotId ?? undefined,
-        context: buildAiContext()
-      });
+      const result = await deriveDirectContentStream(
+        projectId,
+        {
+          actionType: aiActionType,
+          intent: trimmedPrompt,
+          truthSnapshotId: truthState.latestSnapshotId ?? undefined,
+          context: buildAiContext()
+        },
+        {
+          onDelta: (delta) => {
+            if (!delta) return;
+            aiStreamTextRef.current += delta;
+            if (!aiStreaming) {
+              setAiStreaming(true);
+            }
+            scheduleStreamingPreview();
+          }
+        }
+      );
+
+      restoreFromBackup(aiBackupRef.current);
       enterAiDraft(result.items || [], aiMode);
       setAiPrompt("");
     } catch (err) {
-      setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后重试");
+      restoreFromBackup(aiBackupRef.current);
+      updateAiBackup(null);
+      setAiError(err instanceof Error ? err.message : "AI 生成失败，请稍后再试");
     } finally {
       setAiGenerating(false);
+      setAiStreaming(false);
+      aiStreamTextRef.current = "";
+      aiPreviewBaseRef.current = null;
+      if (aiPreviewFrameRef.current !== null) {
+        cancelAnimationFrame(aiPreviewFrameRef.current);
+        aiPreviewFrameRef.current = null;
+      }
     }
   }, [
     projectId,
@@ -556,33 +785,38 @@ const EditorApp: React.FC = () => {
     truthState.latestSnapshotId,
     buildAiContext,
     enterAiDraft,
-    aiMode
+    aiMode,
+    prepareAiPreviewBase,
+    scheduleStreamingPreview,
+    restoreFromBackup,
+    updateAiBackup,
+    aiStreaming
   ]);
 
   const handleAiAccept = useCallback(() => {
     setAiDraftActive(false);
-    setAiBackup(null);
+    updateAiBackup(null);
     setAiTarget(null);
     setAiNotice("AI 草稿已保留，请手动保存。");
-  }, []);
+  }, [updateAiBackup]);
 
   const handleAiDiscard = useCallback(() => {
-    restoreFromBackup(aiBackup);
+    restoreFromBackup(aiBackupRef.current);
     setAiDraftActive(false);
-    setAiBackup(null);
+    updateAiBackup(null);
     setAiTarget(null);
     setAiPromptOpen(false);
     setAiError(null);
-  }, [restoreFromBackup, aiBackup]);
+  }, [restoreFromBackup, updateAiBackup]);
 
   const handleAiRetry = useCallback(() => {
-    restoreFromBackup(aiBackup);
+    restoreFromBackup(aiBackupRef.current);
     setAiDraftActive(false);
-    setAiBackup(null);
+    updateAiBackup(null);
     setAiError(null);
     setAiPrompt(aiLastPrompt);
     setAiPromptOpen(true);
-  }, [restoreFromBackup, aiBackup, aiLastPrompt]);
+  }, [restoreFromBackup, updateAiBackup, aiLastPrompt]);
 
   const aiOverlayNode = aiUiActive ? (
     <AiDraftOverlay
@@ -590,6 +824,7 @@ const EditorApp: React.FC = () => {
       prompt={aiPrompt}
       mode={aiMode}
       isGenerating={aiGenerating}
+      streaming={aiStreaming}
       draftActive={aiDraftingHere}
       error={aiError}
       notice={aiNotice}
@@ -781,7 +1016,7 @@ const EditorApp: React.FC = () => {
     ]
   );
 
-const createEntry = useCallback(
+  const createEntry = useCallback(
     (module: EditorModuleKey) => {
       if (!projectId) return null;
       let nextId: string | null = null;
@@ -865,7 +1100,7 @@ const createEntry = useCallback(
   );
 
   if (!projectId) {
-    return <div className="p-6 text-sm text-gray-500">ĿڻЧ</div>;
+    return <div className="p-6 text-sm text-gray-500">项目无效</div>;
   }
 
   return (
@@ -884,7 +1119,7 @@ const createEntry = useCallback(
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           moduleLabel={headerModuleLabel}
-          projectTitle={truthState.project?.name || "δ籾"}
+          projectTitle={truthState.project?.name || "未命名"}
           projectStatusLabel={projectStatusLabel}
           truthStatusLabel={truthStatusLabel}
           truthLocked={truthLocked}

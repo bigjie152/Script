@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { HelpCircle, Lock, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import { getStructureStatus, listImpactReports, ImpactReportItem, listIssues, IssueItem } from "@/services/projectApi";
-import { deriveDirectContent, runLogicCheck } from "@/services/aiApi";
+import { deriveDirectContentStream, runLogicCheck } from "@/services/aiApi";
 
 interface RightPanelProps {
   projectId?: string;
@@ -174,7 +174,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
     setAiError(null);
     setAiNotice(null);
     try {
-      const result = await deriveDirectContent(resolvedProjectId, {
+      const result = await deriveDirectContentStream(resolvedProjectId, {
         actionType: aiAction,
         intent: aiIntent || undefined,
         truthSnapshotId: truthSnapshotId ?? undefined,

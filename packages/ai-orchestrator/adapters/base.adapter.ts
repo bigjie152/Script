@@ -9,6 +9,11 @@ export type AIClient = {
     user: string;
     temperature?: number;
   }) => Promise<string>;
+  completeStream?: (input: {
+    system: string;
+    user: string;
+    temperature?: number;
+  }) => AsyncIterable<string>;
 };
 
 export type AIPurpose = "derive" | "check";
@@ -242,6 +247,12 @@ function createMockClient(): AIClient {
       }
 
       return JSON.stringify({ items: fallback.items });
+    },
+    completeStream: async function* ({ user }) {
+      const content = await this.complete({ system: "", user });
+      if (content) {
+        yield content;
+      }
     }
   };
 }

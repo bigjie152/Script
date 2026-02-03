@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { jsonError, jsonResponse } from "@/lib/http";
-import { deriveCandidates } from "@/lib/ai";
+import { deriveCandidates, deriveCandidatesStream } from "@/lib/ai";
 import { loadPrompt } from "@/lib/prompts";
 import { getAuthUser } from "@/lib/auth";
 
@@ -32,6 +32,8 @@ const ACTION_TARGET: Record<ActionType, string> = {
   dm: "dm"
 };
 
+const WRITING_TRUTH_ACTIONS = new Set<ActionType>(["outline", "worldcheck"]);
+
 function normalizeDoc(input: unknown, fallback: string) {
   if (input && typeof input === "object") {
     return input as Record<string, unknown>;
@@ -61,6 +63,15 @@ function fallbackItem(raw: string, actionType: ActionType) {
   };
 }
 
+function createSseHeaders(requestId: string) {
+  return new Headers({
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "x-request-id": requestId
+  });
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -73,6 +84,7 @@ export async function POST(
   const intent = typeof body?.intent === "string" ? body.intent : undefined;
   const requestedSnapshotId =
     typeof body?.truthSnapshotId === "string" ? body.truthSnapshotId : null;
+  const streamEnabled = body?.stream === true;
 
   if (!ACTIONS.includes(actionType)) {
     return jsonError(400, "不支持的 AI 动作类型", { actionType }, requestId);
@@ -104,6 +116,23 @@ export async function POST(
       .where(eq(schema.projects.id, projectId));
   }
 
+  const [truthRow] = await db
+    .select()
+    .from(schema.truths)
+    .where(eq(schema.truths.projectId, projectId))
+    .orderBy(desc(schema.truths.createdAt))
+    .limit(1);
+
+  const truthLocked = truthRow?.status === "LOCKED";
+  const writingTruth = WRITING_TRUTH_ACTIONS.has(actionType);
+
+  if (writingTruth && truthLocked) {
+    return jsonError(409, "Truth 已锁定，无法生成，请先解锁", undefined, requestId);
+  }
+  if (!writingTruth && !truthLocked) {
+    return jsonError(409, "请先锁定 Truth，再生成派生内容", undefined, requestId);
+  }
+
   const snapshotRows = await db
     .select()
     .from(schema.truthSnapshots)
@@ -121,7 +150,7 @@ export async function POST(
   let snapshot = snapshotRows[0];
   let snapshotLogId: string | null = snapshot?.id ?? null;
 
-  if (!snapshot && (actionType === "outline" || actionType === "worldcheck")) {
+  if (!snapshot && writingTruth) {
     const [truth] = await db
       .select()
       .from(schema.truths)
@@ -145,6 +174,107 @@ export async function POST(
   }
 
   const prompt = await loadPrompt(ACTION_PROMPT[actionType]);
+
+  if (streamEnabled) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let raw = "";
+        const send = (payload: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        };
+        const pingTimer = setInterval(() => send({ type: "ping" }), 10000);
+
+        try {
+          const iterator = deriveCandidatesStream({
+            prompt,
+            project,
+            truthSnapshot: snapshot,
+            actionType,
+            intent,
+            context: body?.context ?? null
+          });
+
+          while (true) {
+            const { value, done } = await iterator.next();
+            if (done) {
+              raw = value?.raw ?? raw;
+              const provider = value?.provider ?? "unknown";
+              const model = value?.model ?? "unknown";
+              const items = value?.items ?? [];
+              const target = ACTION_TARGET[actionType];
+              const resolvedItems = items.length
+                ? items
+                : raw && raw.trim()
+                  ? [fallbackItem(raw, actionType)]
+                  : [];
+
+              if (!resolvedItems.length) {
+                send({ type: "error", message: "AI 返回为空，请稍后再试" });
+                controller.close();
+                return;
+              }
+
+              await db.insert(schema.aiRequestLogs).values({
+                id: crypto.randomUUID(),
+                projectId,
+                truthSnapshotId: snapshotLogId,
+                actionType: `derive_${actionType}`,
+                provider,
+                model,
+                meta: { prompt: ACTION_PROMPT[actionType], mode: "direct", stream: true }
+              });
+
+              const directItems = resolvedItems.map((item) => ({
+                target,
+                title: item.title,
+                summary: item.summary ?? null,
+                content: normalizeDoc(item.content, item.summary || item.title),
+                refs: item.refs ?? null,
+                riskFlags: item.riskFlags ?? []
+              }));
+
+              send({
+                type: "final",
+                payload: {
+                  actionType,
+                  provider,
+                  model,
+                  items: directItems
+                }
+              });
+              send({ type: "done" });
+              controller.close();
+              return;
+            }
+            if (value) {
+              raw += value;
+              send({ type: "delta", content: value });
+            }
+          }
+        } catch (err) {
+          send({
+            type: "error",
+            message: err instanceof Error ? err.message : "AI 生成失败，请稍后再试"
+          });
+          controller.close();
+        } finally {
+          clearInterval(pingTimer);
+        }
+      }
+    });
+
+    console.log(routeLabel, {
+      route: routeLabel,
+      requestId,
+      status: 200,
+      latencyMs: Date.now() - startedAt,
+      stream: true
+    });
+
+    return new Response(stream, { status: 200, headers: createSseHeaders(requestId) });
+  }
+
   const result = await deriveCandidates({
     prompt,
     project,
@@ -162,7 +292,7 @@ export async function POST(
       : [];
 
   if (!items.length) {
-    return jsonError(422, "AI 返回为空，请稍后重试", undefined, requestId);
+    return jsonError(422, "AI 返回为空，请稍后再试", undefined, requestId);
   }
 
   await db.insert(schema.aiRequestLogs).values({
@@ -200,4 +330,4 @@ export async function POST(
     },
     { requestId }
   );
-}
+}

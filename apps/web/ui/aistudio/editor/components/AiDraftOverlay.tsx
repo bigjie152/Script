@@ -9,6 +9,7 @@ export type AiDraftOverlayProps = {
   prompt: string;
   mode: AiDraftMode;
   isGenerating: boolean;
+  streaming?: boolean;
   draftActive: boolean;
   error?: string | null;
   notice?: string | null;
@@ -26,6 +27,7 @@ const AiDraftOverlay: React.FC<AiDraftOverlayProps> = ({
   prompt,
   mode,
   isGenerating,
+  streaming = false,
   draftActive,
   error,
   notice,
@@ -106,12 +108,21 @@ const AiDraftOverlay: React.FC<AiDraftOverlayProps> = ({
       ) : null}
 
       {isGenerating ? (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/65 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-lg border border-slate-100">
-            <Loader2 size={18} className="animate-spin text-indigo-500" />
-            <span className="text-sm text-slate-600 font-medium">AI 正在思考…</span>
+        streaming ? (
+          <div className="absolute right-4 top-4 z-30">
+            <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 shadow-md border border-slate-100 text-xs text-slate-600">
+              <Loader2 size={14} className="animate-spin text-indigo-500" />
+              正在实时生成…
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/65 backdrop-blur-sm">
+            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-lg border border-slate-100">
+              <Loader2 size={18} className="animate-spin text-indigo-500" />
+              <span className="text-sm text-slate-600 font-medium">AI 正在思考…</span>
+            </div>
+          </div>
+        )
       ) : null}
 
       {draftActive && !isGenerating ? (

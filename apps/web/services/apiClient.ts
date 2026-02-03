@@ -29,6 +29,10 @@ export function getApiBase() {
   return "/api";
 }
 
+export function resolveApiUrl(path: string) {
+  return resolveUrl(getApiBase(), path);
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},

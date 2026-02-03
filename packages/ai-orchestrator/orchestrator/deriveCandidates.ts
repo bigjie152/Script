@@ -46,26 +46,7 @@ function normalizeContent(item: Record<string, unknown>, fallback: string) {
   return buildDocFromText(fallback);
 }
 
-export async function deriveCandidates(input: DeriveCandidatesInput) {
-  const client = getAIClient("derive");
-  const payload = {
-    action: `derive_${input.actionType}`,
-    project: { id: input.project.id, name: input.project.name || undefined },
-    truthSnapshot: {
-      id: input.truthSnapshot.id,
-      version: input.truthSnapshot.version ?? undefined,
-      content: input.truthSnapshot.content
-    },
-    intent: input.intent,
-    context: input.context
-  };
-
-  const raw = await client.complete({
-    system: input.prompt,
-    user: JSON.stringify(payload, null, 2),
-    temperature: 0.2
-  });
-
+export function parseDerivedCandidates(raw: string) {
   const parsed = extractJson<{
     items?: Array<Record<string, unknown>>;
     candidates?: Array<Record<string, unknown>>;
@@ -104,6 +85,72 @@ export async function deriveCandidates(input: DeriveCandidatesInput) {
     } as DerivedCandidate;
   });
 
+  return items;
+}
+
+function buildPayload(input: DeriveCandidatesInput) {
+  return {
+    action: `derive_${input.actionType}`,
+    project: { id: input.project.id, name: input.project.name || undefined },
+    truthSnapshot: {
+      id: input.truthSnapshot.id,
+      version: input.truthSnapshot.version ?? undefined,
+      content: input.truthSnapshot.content
+    },
+    intent: input.intent,
+    context: input.context
+  };
+}
+
+export async function deriveCandidates(input: DeriveCandidatesInput) {
+  const client = getAIClient("derive");
+  const payload = buildPayload(input);
+
+  const raw = await client.complete({
+    system: input.prompt,
+    user: JSON.stringify(payload, null, 2),
+    temperature: 0.2
+  });
+
+  const items = parseDerivedCandidates(raw);
+  return {
+    items,
+    provider: client.provider,
+    model: client.model,
+    raw
+  };
+}
+
+export async function* deriveCandidatesStream(
+  input: DeriveCandidatesInput
+): AsyncGenerator<string, { items: DerivedCandidate[]; provider: string; model: string; raw: string }, void> {
+  const client = getAIClient("derive");
+  const payload = buildPayload(input);
+
+  const stream =
+    client.completeStream?.({
+      system: input.prompt,
+      user: JSON.stringify(payload, null, 2),
+      temperature: 0.2
+    }) ??
+    (async function* () {
+      const raw = await client.complete({
+        system: input.prompt,
+        user: JSON.stringify(payload, null, 2),
+        temperature: 0.2
+      });
+      if (raw) yield raw;
+    })();
+
+  let raw = "";
+  for await (const chunk of stream) {
+    raw += chunk;
+    if (chunk) {
+      yield chunk;
+    }
+  }
+
+  const items = parseDerivedCandidates(raw);
   return {
     items,
     provider: client.provider,
