@@ -7,6 +7,19 @@ const rootDir = path.resolve(scriptDir, "..");
 const promptsDir = path.join(rootDir, "packages", "prompts");
 const targetFile = path.join(rootDir, "apps", "web", "lib", "prompts.ts");
 
+const USED_PROMPTS = new Set([
+  "check/consistency.v1.md",
+  "check/logic.v1.md",
+  "global/ai-generate.system.v1.md",
+  "derive/worldcheck.v1.md",
+  "derive/truth.v1.md",
+  "derive/story.v1.md",
+  "derive/role.v1.md",
+  "derive/clue.v1.md",
+  "derive/timeline.v1.md",
+  "derive/dm.v1.md"
+]);
+
 async function listPromptFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -34,6 +47,9 @@ async function run() {
       continue;
     }
     const relative = normalizePath(path.relative(promptsDir, file));
+    if (!USED_PROMPTS.has(relative)) {
+      continue;
+    }
     const content = await fs.readFile(file, "utf8");
     const normalized = content.replace(/\r\n/g, "\n");
     entries.push([relative, normalized]);

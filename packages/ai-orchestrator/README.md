@@ -4,7 +4,7 @@
 AI 编排层（Orchestrator），以“流水线”方式组织 AI 生成与派生流程。每个函数代表一个确定动作，输入/输出均为 Domain 实体或值对象。
 
 ## 包含内容
-- orchestrator/：生成与派生步骤（generateTruth/lockTruth/deriveRoles/deriveClues/deriveTimeline/deriveDMGuide/consistencyCheck）
+- orchestrator/：生成与派生步骤（deriveCandidates/consistencyCheck/logicCheck）
 - adapters/：模型与供应商适配层（base/deepseek）
 - types/：流程与适配类型定义
 - index.ts：对外出口

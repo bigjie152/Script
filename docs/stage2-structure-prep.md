@@ -24,7 +24,7 @@
 
 ### 定义
 - `useMockAiTasks()` 提供两个动作：
-  - `deriveRoles`
+  - `derive`（actionType=role）
   - `reviewLogic`
 - 每个动作包含 `status`（idle/pending/success/error）与 `message`。
 

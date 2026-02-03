@@ -23,10 +23,6 @@ Write-Host "==> Lock truth"
 $lock = Invoke-RestMethod -Method Post -Uri "$BaseUrl/projects/$projectId/truth/lock"
 $snapshotId = $lock.truthSnapshotId
 
-Write-Host "==> Derive roles"
-$deriveBody = @{ truthSnapshotId = $snapshotId } | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri "$BaseUrl/projects/$projectId/ai/derive/roles" -ContentType "application/json" -Body $deriveBody | Out-Null
-
 Write-Host "==> Consistency check"
 $checkBody = @{ truthSnapshotId = $snapshotId } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$BaseUrl/projects/$projectId/ai/check/consistency" -ContentType "application/json" -Body $checkBody | Out-Null

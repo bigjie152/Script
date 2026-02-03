@@ -44,8 +44,7 @@ function useMockAction(label: string): AiActionState {
 }
 
 export function useMockAiTasks() {
-  const deriveRoles = useMockAction("生成角色");
   const reviewLogic = useMockAction("一致性检查");
 
-  return { deriveRoles, reviewLogic };
+  return { reviewLogic };
 }

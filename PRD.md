@@ -326,7 +326,7 @@
 - requestId
 - userId
 - projectId
-- actionType（generateTruth / deriveRoles / consistencyCheck 等）
+- actionType（deriveTruth / deriveRole / consistencyCheck 等）
 - inputRef（truthSnapshotId、moduleIds）
 - promptVersion
 - modelProvider + modelName
@@ -382,7 +382,7 @@
 - generateTruth(projectId, inputs) -> truthDraft
 - reviseTruth(truthId, instruction) -> truthDraft
 - lockTruth(truthId) -> truthSnapshotId
-- deriveRoles(projectId, truthSnapshotId) -> roles[]
+- derive(projectId, actionType=role, truthSnapshotId) -> items[]
 - deriveClues(projectId, truthSnapshotId) -> clues[]
 - deriveTimeline(projectId, truthSnapshotId) -> flowNodes[]
 - deriveDMGuide(projectId, truthSnapshotId) -> dmGuide

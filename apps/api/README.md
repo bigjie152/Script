@@ -15,7 +15,7 @@
 - `GET /api/projects/:id`
 - `PUT /api/projects/:id/truth`
 - `POST /api/projects/:id/truth/lock`
-- `POST /api/projects/:id/ai/derive/roles`
+- `POST /api/projects/:id/ai/derive`（actionType=role）
 - `POST /api/projects/:id/ai/check/consistency`
 - `GET /api/projects/:id/issues`
 - `POST /api/projects/:id/community/feedback`（可选）

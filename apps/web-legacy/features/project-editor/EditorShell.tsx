@@ -67,7 +67,7 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
   const timelineCollection = useModuleCollection(projectId, "timeline", "时间线");
   const dmCollection = useModuleCollection(projectId, "dm", "章节");
   const projectMeta = useProjectMeta(projectId, project, refresh);
-  const { deriveRoles, reviewLogic } = useMockAiTasks();
+  const { reviewLogic } = useMockAiTasks();
   const [tab, setTab] = useState("ai");
   const [panelError, setPanelError] = useState<string | null>(null);
   const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
@@ -343,16 +343,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
 
   const handleUnlockCancel = () => {
     setUnlockConfirmOpen(false);
-  };
-
-  const handleDeriveRoles = () => {
-    if (!canWrite) {
-      setPanelError("请先登录后再操作");
-      return;
-    }
-    if (!truthLocked) return;
-    setPanelError(null);
-    deriveRoles.run();
   };
 
   const handleReviewLogic = () => {
@@ -1759,9 +1749,6 @@ export function EditorShell({ projectId, module }: EditorShellProps) {
                 unlockConfirmOpen={unlockConfirmOpen}
                 onUnlockConfirm={handleUnlockConfirm}
                 onUnlockCancel={handleUnlockCancel}
-                onDeriveRoles={handleDeriveRoles}
-                deriveStatus={deriveRoles.status}
-                deriveMessage={deriveRoles.message}
                 onReviewLogic={handleReviewLogic}
                 reviewStatus={reviewLogic.status}
                 reviewMessage={reviewLogic.message}

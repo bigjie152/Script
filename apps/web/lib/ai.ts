@@ -1,5 +1,4 @@
 export {
-  deriveRoles,
   consistencyCheck,
   deriveCandidates,
   deriveCandidatesStream,

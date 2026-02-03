@@ -18,7 +18,7 @@ API Base：`https://script-426.pages.dev`（本地后端未提供 D1 binding）
 3. Overview：`GET /api/projects/{id}` → 200  
 4. Truth 保存：`PUT /api/projects/{id}/truth` → 200  
 5. Lock Truth：`POST /api/projects/{id}/truth/lock` → 200  
-6. 生成角色：`POST /api/projects/{id}/ai/derive/roles` → 200  
+6. 生成角色：`POST /api/projects/{id}/ai/derive`（actionType=role） → 200  
 7. 一致性检查：`POST /api/projects/{id}/ai/check/consistency` → 200  
 8. Issues 列表：`GET /api/projects/{id}/issues` → 200  
 

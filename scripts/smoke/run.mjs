@@ -45,11 +45,6 @@ async function main() {
   const lock = await request("POST", `/projects/${projectId}/truth/lock`);
   const truthSnapshotId = lock.truthSnapshotId;
 
-  console.log("==> Derive roles");
-  await request("POST", `/projects/${projectId}/ai/derive/roles`, {
-    truthSnapshotId
-  });
-
   console.log("==> Consistency check");
   await request("POST", `/projects/${projectId}/ai/check/consistency`, {
     truthSnapshotId

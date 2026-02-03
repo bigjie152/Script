@@ -15,7 +15,7 @@
 - 需要的数据：truth.content、truth.status、truthId
 
 ## 角色派生面板（AI Panel / Roles）
-- 触发派生：`POST /api/projects/{id}/ai/derive/roles`
+- 触发派生：`POST /api/projects/{id}/ai/derive`（actionType=role）
 - 触发时机：Truth 已锁定后，用户点击“生成角色”
 - 需要的数据：truthSnapshotId（可传，默认最新）
 

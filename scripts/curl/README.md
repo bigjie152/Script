@@ -1,7 +1,7 @@
 # curl smoke tests
 
 These scripts exercise the V0.1 backend flow:
-Project -> Truth (draft) -> Lock -> Derive Roles -> Consistency Check -> Issues.
+Project -> Truth (draft) -> Lock -> Derive (role) -> Consistency Check -> Issues.
 
 ## Bash
 ```bash

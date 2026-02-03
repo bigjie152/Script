@@ -19,12 +19,6 @@ echo "==> Lock truth"
 lock=$(curl -s -X POST "$BASE_URL/projects/$project_id/truth/lock")
 snapshot_id=$(printf "%s" "$lock" | python -c "import sys, json; print(json.load(sys.stdin)['truthSnapshotId'])")
 
-echo "==> Derive roles"
-curl -s -X POST "$BASE_URL/projects/$project_id/ai/derive/roles" \
-  -H "Content-Type: application/json" \
-  -d "{\"truthSnapshotId\":\"$snapshot_id\"}" \
-  >/dev/null
-
 echo "==> Consistency check"
 curl -s -X POST "$BASE_URL/projects/$project_id/ai/check/consistency" \
   -H "Content-Type: application/json" \

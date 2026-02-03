@@ -11,9 +11,6 @@ type AIPanelProps = {
   unlockConfirmOpen?: boolean;
   onUnlockConfirm?: () => void;
   onUnlockCancel?: () => void;
-  onDeriveRoles: () => void;
-  deriveStatus?: AiStatus;
-  deriveMessage?: string | null;
   onReviewLogic: () => void;
   reviewStatus?: AiStatus;
   reviewMessage?: string | null;
@@ -26,15 +23,11 @@ export function AIPanel({
   unlockConfirmOpen = false,
   onUnlockConfirm,
   onUnlockCancel,
-  onDeriveRoles,
-  deriveStatus,
-  deriveMessage,
   onReviewLogic,
   reviewStatus,
   reviewMessage
 }: AIPanelProps) {
   const statusLabel = locked ? "已锁定（Locked）" : "草稿（Draft）";
-  const deriveHint = deriveMessage || (locked ? "功能即将上线" : "请先锁定真相");
   const reviewHint =
     reviewMessage ||
     (locked ? "可进行逻辑审查（Mock）" : "未锁定也可检查，锁定后更有意义");
@@ -72,44 +65,6 @@ export function AIPanel({
               锁定真相
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="glass-panel-strong p-5">
-        <div className="text-sm font-semibold">派生生成</div>
-        <div className="mt-2 text-xs text-muted">
-          派生能力依赖已锁定的 Truth。
-        </div>
-        <div className="mt-4 space-y-2">
-          <Button
-            variant="primary"
-            onClick={onDeriveRoles}
-            disabled={!locked}
-            loading={deriveStatus === "pending"}
-          >
-            生成角色
-          </Button>
-          <div
-            className={`text-xs ${
-              deriveStatus === "error" ? "text-red-500" : "text-muted"
-            }`}
-          >
-            {deriveHint}
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted">
-          <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            线索
-            <div className="mt-1 text-[11px] text-muted">即将上线</div>
-          </div>
-          <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            时间线
-            <div className="mt-1 text-[11px] text-muted">即将上线</div>
-          </div>
-          <div className="rounded-xl border border-dashed border-white/60 px-3 py-2">
-            DM 手册
-            <div className="mt-1 text-[11px] text-muted">即将上线</div>
-          </div>
         </div>
       </div>
 

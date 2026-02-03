@@ -13,13 +13,13 @@ const ACTIONS = ["outline", "worldcheck", "story", "role", "clue", "timeline", "
 type ActionType = (typeof ACTIONS)[number];
 
 const ACTION_PROMPT: Record<ActionType, string> = {
-  outline: "derive/outline.v2.md",
+  outline: "derive/truth.v1.md",
   worldcheck: "derive/worldcheck.v1.md",
-  story: "derive/story.v2.md",
-  role: "derive/role.v2.md",
-  clue: "derive/clue.v2.md",
-  timeline: "derive/timeline.v2.md",
-  dm: "derive/dm.v2.md"
+  story: "derive/story.v1.md",
+  role: "derive/role.v1.md",
+  clue: "derive/clue.v1.md",
+  timeline: "derive/timeline.v1.md",
+  dm: "derive/dm.v1.md"
 };
 
 const ACTION_TARGET: Record<ActionType, string> = {
@@ -188,7 +188,9 @@ export async function POST(
     return jsonError(409, "未找到 Truth 快照，请先锁定 Truth", undefined, requestId);
   }
 
-  const prompt = await loadPrompt(ACTION_PROMPT[actionType]);
+  const modulePrompt = await loadPrompt(ACTION_PROMPT[actionType]);
+  const globalPrompt = await loadPrompt("global/ai-generate.system.v1.md");
+  const prompt = [globalPrompt, modulePrompt].filter(Boolean).join("\n\n");
 
   if (streamEnabled) {
     const encoder = new TextEncoder();

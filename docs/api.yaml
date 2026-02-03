@@ -178,47 +178,6 @@ paths:
                     status: LOCKED
         "404":
           $ref: "#/components/responses/NotFound"
-  /projects/{id}/ai/derive/roles:
-    post:
-      summary: AI derive roles
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                truthSnapshotId:
-                  type: string
-      responses:
-        "200":
-          description: Derived roles
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  truthSnapshotId:
-                    type: string
-                  roles:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Role"
-              examples:
-                default:
-                  value:
-                    truthSnapshotId: "uuid"
-                    roles:
-                      - name: Primary Role
-                        summary: Stable mock role for V0.1 integration.
-                        meta:
-                          source: mock
         "404":
           $ref: "#/components/responses/NotFound"
   /projects/{id}/ai/check/consistency:
