@@ -27,6 +27,7 @@ export type DeriveDirectItem = {
   content: Record<string, unknown>;
   refs?: unknown;
   riskFlags?: string[] | null;
+  meta?: Record<string, unknown> | null;
 };
 
 export type DeriveDirectResponse = {

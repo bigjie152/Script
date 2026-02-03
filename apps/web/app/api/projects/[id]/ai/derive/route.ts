@@ -13,13 +13,13 @@ const ACTIONS = ["outline", "worldcheck", "story", "role", "clue", "timeline", "
 type ActionType = (typeof ACTIONS)[number];
 
 const ACTION_PROMPT: Record<ActionType, string> = {
-  outline: "derive/outline.v1.md",
+  outline: "derive/outline.v2.md",
   worldcheck: "derive/worldcheck.v1.md",
-  story: "derive/story.v1.md",
-  role: "derive/role.v1.md",
-  clue: "derive/clue.v1.md",
-  timeline: "derive/timeline.v1.md",
-  dm: "derive/dm.v1.md"
+  story: "derive/story.v2.md",
+  role: "derive/role.v2.md",
+  clue: "derive/clue.v2.md",
+  timeline: "derive/timeline.v2.md",
+  dm: "derive/dm.v2.md"
 };
 
 const ACTION_TARGET: Record<ActionType, string> = {
@@ -50,6 +50,21 @@ function normalizeDoc(input: unknown, fallback: string) {
         ]
       : []
   };
+}
+
+function resolveCandidateMeta(candidate: unknown) {
+  if (!candidate || typeof candidate !== "object") return null;
+  const metaSource = (candidate as { meta?: unknown }).meta;
+  if (!metaSource || typeof metaSource !== "object") return null;
+  const raw = metaSource as Record<string, unknown>;
+  const nested = raw.meta;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    return nested as Record<string, unknown>;
+  }
+  if ("title" in raw || "content" in raw || "type" in raw) {
+    return null;
+  }
+  return raw;
 }
 
 function fallbackItem(raw: string, actionType: ActionType) {
@@ -225,14 +240,15 @@ export async function POST(
                 meta: { prompt: ACTION_PROMPT[actionType], mode: "direct", stream: true }
               });
 
-              const directItems = resolvedItems.map((item) => ({
-                target,
-                title: item.title,
-                summary: item.summary ?? null,
-                content: normalizeDoc(item.content, item.summary || item.title),
-                refs: item.refs ?? null,
-                riskFlags: item.riskFlags ?? []
-              }));
+                const directItems = resolvedItems.map((item) => ({
+                  target,
+                  title: item.title,
+                  summary: item.summary ?? null,
+                  content: normalizeDoc(item.content, item.summary || item.title),
+                  refs: item.refs ?? null,
+                  riskFlags: item.riskFlags ?? [],
+                  meta: resolveCandidateMeta(item)
+                }));
 
               send({
                 type: "final",
@@ -311,7 +327,8 @@ export async function POST(
     summary: item.summary ?? null,
     content: normalizeDoc(item.content, item.summary || item.title),
     refs: item.refs ?? null,
-    riskFlags: item.riskFlags ?? []
+    riskFlags: item.riskFlags ?? [],
+    meta: resolveCandidateMeta(item)
   }));
 
   console.log(routeLabel, {

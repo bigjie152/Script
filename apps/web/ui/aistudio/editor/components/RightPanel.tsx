@@ -14,7 +14,11 @@ interface RightPanelProps {
   aiContext?: Record<string, unknown>;
   onApplyAiContent?: (payload: {
     target: string;
-    items: Array<{ title: string; content?: Record<string, unknown> | null }>;
+    items: Array<{
+      title: string;
+      content?: Record<string, unknown> | null;
+      meta?: Record<string, unknown> | null;
+    }>;
     mode: "append" | "replace";
   }) => Promise<{ ok: boolean; message?: string }>;
 }
@@ -188,14 +192,15 @@ const RightPanel: React.FC<RightPanelProps> = ({
         setAiError("AI 返回为空，请稍后重试");
         return;
       }
-      const applyResult = await onApplyAiContent({
-        target: result.items[0].target,
-        items: result.items.map((item) => ({
-          title: item.title,
-          content: item.content
-        })),
-        mode
-      });
+        const applyResult = await onApplyAiContent({
+          target: result.items[0].target,
+          items: result.items.map((item) => ({
+            title: item.title,
+            content: item.content,
+            meta: item.meta ?? null
+          })),
+          mode
+        });
       if (!applyResult.ok) {
         setAiError(applyResult.message || "写入草稿失败，请稍后重试");
         return;

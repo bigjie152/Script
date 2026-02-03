@@ -384,7 +384,12 @@ const EditorApp: React.FC = () => {
 
   const enterAiDraft = useCallback(
     (
-      items: Array<{ target: string; title: string; content?: Record<string, unknown> | null }>,
+      items: Array<{
+        target: string;
+        title: string;
+        content?: Record<string, unknown> | null;
+        meta?: Record<string, unknown> | null;
+      }>,
       mode: AiDraftMode
     ) => {
       if (!items.length) return null;
@@ -438,53 +443,69 @@ const EditorApp: React.FC = () => {
         storyDoc.setDocument(updateDocumentContent(storyDoc.document, merged));
       }
 
-      if (resolvedTarget === "roles") {
-        updateAiBackup({
-          kind: "collection",
-          module: "roles",
-          snapshot: roles.getSnapshot() as any
-        });
-        roles.applyEntries(
-          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
-          mode
-        );
-      }
+        if (resolvedTarget === "roles") {
+          updateAiBackup({
+            kind: "collection",
+            module: "roles",
+            snapshot: roles.getSnapshot() as any
+          });
+          roles.applyEntries(
+            items.map((item) => ({
+              title: item.title,
+              content: item.content ?? {},
+              meta: item.meta ?? null
+            })),
+            mode
+          );
+        }
 
-      if (resolvedTarget === "clues") {
-        updateAiBackup({
-          kind: "collection",
-          module: "clues",
-          snapshot: clues.getSnapshot() as any
-        });
-        clues.applyEntries(
-          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
-          mode
-        );
-      }
+        if (resolvedTarget === "clues") {
+          updateAiBackup({
+            kind: "collection",
+            module: "clues",
+            snapshot: clues.getSnapshot() as any
+          });
+          clues.applyEntries(
+            items.map((item) => ({
+              title: item.title,
+              content: item.content ?? {},
+              meta: item.meta ?? null
+            })),
+            mode
+          );
+        }
 
-      if (resolvedTarget === "timeline") {
-        updateAiBackup({
-          kind: "collection",
-          module: "timeline",
-          snapshot: timeline.getSnapshot() as any
-        });
-        timeline.applyEntries(
-          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
-          mode
-        );
-      }
+        if (resolvedTarget === "timeline") {
+          updateAiBackup({
+            kind: "collection",
+            module: "timeline",
+            snapshot: timeline.getSnapshot() as any
+          });
+          timeline.applyEntries(
+            items.map((item) => ({
+              title: item.title,
+              content: item.content ?? {},
+              meta: item.meta ?? null
+            })),
+            mode
+          );
+        }
 
-      if (resolvedTarget === "dm") {
-        updateAiBackup({
-          kind: "collection",
-          module: "dm",
-          snapshot: manual.getSnapshot() as any
-        });
-        manual.applyEntries(
-          items.map((item) => ({ title: item.title, content: item.content ?? {} })),
-          mode
-        );
-      }
+        if (resolvedTarget === "dm") {
+          updateAiBackup({
+            kind: "collection",
+            module: "dm",
+            snapshot: manual.getSnapshot() as any
+          });
+          manual.applyEntries(
+            items.map((item) => ({
+              title: item.title,
+              content: item.content ?? {},
+              meta: item.meta ?? null
+            })),
+            mode
+          );
+        }
 
       const entryForTarget = resolvedTarget === moduleKey ? currentEntryId : null;
       setAiTarget({
@@ -947,7 +968,11 @@ const EditorApp: React.FC = () => {
   const applyAiContent = useCallback(
     async (payload: {
       target: string;
-      items: Array<{ title: string; content?: Record<string, unknown> | null }>;
+      items: Array<{
+        title: string;
+        content?: Record<string, unknown> | null;
+        meta?: Record<string, unknown> | null;
+      }>;
       mode: "append" | "replace";
     }) => {
       if (isReadOnly) {
@@ -971,7 +996,8 @@ const EditorApp: React.FC = () => {
       const items = payload.items.map((item) => ({
         target: payload.target,
         title: item.title,
-        content: item.content ?? {}
+        content: item.content ?? {},
+        meta: item.meta ?? null
       }));
 
       const requiresTitle = ["roles", "clues", "timeline", "dm"].includes(targetModule);

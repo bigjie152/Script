@@ -268,7 +268,14 @@ export function useModuleCollection(
   );
 
   const applyEntries = useCallback(
-    (items: Array<{ title: string; content: Record<string, unknown> }>, mode: "append" | "replace") => {
+    (
+      items: Array<{
+        title: string;
+        content: Record<string, unknown>;
+        meta?: Record<string, unknown> | null;
+      }>,
+      mode: "append" | "replace"
+    ) => {
       if (!items.length) return;
       const now = new Date().toISOString();
       const normalizeName = (value: string) => value.trim().toLowerCase();
@@ -282,6 +289,10 @@ export function useModuleCollection(
           content: [...baseNodes, ...incomingNodes]
         } as Record<string, unknown>;
       };
+      const normalizeMeta = (value: unknown) =>
+        value && typeof value === "object" && !Array.isArray(value)
+          ? (value as Record<string, unknown>)
+          : {};
 
       const prev = collectionRef.current;
       const nextEntries = [...prev.entries];
@@ -294,12 +305,18 @@ export function useModuleCollection(
         const key = normalizeName(title);
         const matchIndex = indexByName.get(key);
         const incoming = normalizeContent(item.content);
+        const incomingMeta = normalizeMeta(item.meta);
         if (matchIndex !== undefined) {
           const existing = nextEntries[matchIndex];
           const nextContent = mode === "append" ? mergeDoc(existing.content, incoming) : incoming;
+          const nextMeta =
+            Object.keys(incomingMeta).length > 0
+              ? { ...(existing.meta || {}), ...incomingMeta }
+              : existing.meta ?? {};
           nextEntries[matchIndex] = {
             ...existing,
             content: nextContent,
+            meta: nextMeta,
             updatedAt: now
           };
         } else {
@@ -308,7 +325,7 @@ export function useModuleCollection(
             id,
             name: title,
             content: incoming,
-            meta: {},
+            meta: incomingMeta,
             data: {},
             placeholderId: id,
             updatedAt: now

@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev -p 3000",
+    "sync-prompts": "node ../../scripts/sync-prompts.mjs",
+    "prebuild": "node ../../scripts/sync-prompts.mjs",
     "build": "next build",
     "start": "next start -p 3000",
     "test:e2e": "playwright test"
